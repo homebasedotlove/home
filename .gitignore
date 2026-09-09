@@ -4,3 +4,10 @@ dist/
 .DS_Store
 packages/farcaster-adapter/.snapshot/
 packages/farcaster-adapter/tsconfig.compat.generated.json
+
+# tsc emit must never land beside sources; a stray outDir once put 66 build
+# artifacts in src/. Ignored so a misconfigured build cannot be committed.
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+packages/*/src/**/*.js.map

@@ -35,7 +35,10 @@ import { isRenderableCast, toFeedItemView } from './feedItem';
  */
 export type MixedItemLike<TType, TCast extends CastFeedItemLike> =
   | { type: TType; item: TCast }
-  | { type: Exclude<PropertyKey, TType> extends never ? never : unknown; item: unknown };
+  | {
+      type: Exclude<PropertyKey, TType> extends never ? never : unknown;
+      item: unknown;
+    };
 
 export type SeamResult<TItem> = {
   /** The render list, personalised. Same element type that came in. */
@@ -67,7 +70,8 @@ export function personalizeMixedFeed<TItem>(
   items: TItem[],
   { isCast, getCast, spec, context }: SeamOptions<TItem>,
 ): SeamResult<TItem> {
-  const castRows: { item: TItem; view: ReturnType<typeof toFeedItemView> }[] = [];
+  const castRows: { item: TItem; view: ReturnType<typeof toFeedItemView> }[] =
+    [];
   const interstitials: { item: TItem; fraction: number }[] = [];
 
   items.forEach((item, index) => {
@@ -101,7 +105,10 @@ export function personalizeMixedFeed<TItem>(
   const out = [...ranked];
   let lastAt = -1;
   for (const { item, fraction } of interstitials) {
-    const at = Math.min(out.length, Math.max(lastAt + 1, Math.round(fraction * out.length)));
+    const at = Math.min(
+      out.length,
+      Math.max(lastAt + 1, Math.round(fraction * out.length)),
+    );
     out.splice(at, 0, item);
     lastAt = at;
   }

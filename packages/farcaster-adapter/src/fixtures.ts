@@ -1,18 +1,24 @@
 /**
  * Fixtures shaped exactly like real API responses.
  *
+ * Shipped from `src` rather than `test` so the client core and its end-to-end
+ * tests use the same page the adapter's unit tests do — one definition of what
+ * a realistic feed looks like, not three that drift apart.
+ *
  * They are typed against `CastFeedItemLike`, and `compat/assertCompat.ts`
  * proves that shape matches the real generated `ApiCastFeedItem`. So a fixture
  * that satisfies these types is a fixture the real API could have produced —
  * which is the closest thing to live data available without credentials.
  */
 
-import type { CastFeedItemLike, CastLike } from '../src/apiShapes';
+import type { CastFeedItemLike, CastLike } from './apiShapes';
 
 export const NOW = 1_764_600_000_000;
 const HOUR = 3_600_000;
 
-type CastOverrides = Partial<Omit<CastLike, 'author' | 'replies' | 'reactions' | 'recasts'>> & {
+type CastOverrides = Partial<
+  Omit<CastLike, 'author' | 'replies' | 'reactions' | 'recasts'>
+> & {
   fid?: number;
   likes?: number;
   recastCount?: number;
@@ -20,7 +26,13 @@ type CastOverrides = Partial<Omit<CastLike, 'author' | 'replies' | 'reactions' |
 };
 
 export function cast(hash: string, overrides: CastOverrides = {}): CastLike {
-  const { fid = 1, likes = 0, recastCount = 0, replyCount = 0, ...rest } = overrides;
+  const {
+    fid = 1,
+    likes = 0,
+    recastCount = 0,
+    replyCount = 0,
+    ...rest
+  } = overrides;
   return {
     hash,
     text: '',
@@ -70,7 +82,10 @@ export function homeFeedPage(): CastFeedItemLike[] {
       reason: 'following-author',
       score: 0.62,
       agoHours: 0.4,
-      cast: { fid: 123, text: 'the thing nobody tells you about open protocols' },
+      cast: {
+        fid: 123,
+        text: 'the thing nobody tells you about open protocols',
+      },
     }),
     feedItem('0x02', {
       reason: 'popular',
@@ -97,21 +112,33 @@ export function homeFeedPage(): CastFeedItemLike[] {
       cast: {
         fid: 9021,
         text: 'Trade perps with 1-click on Base.',
-        embeds: { snap: [{ type: 'snap' }], images: [], urls: [], unknowns: [] },
+        embeds: {
+          snap: [{ type: 'snap' }],
+          images: [],
+          urls: [],
+          unknowns: [],
+        },
       },
     }),
     feedItem('0x05', {
       reason: 'popular-in-channel',
       score: 0.83,
       agoHours: 5.5,
-      cast: { fid: 1177, text: 'a taxonomy of feed anxiety', channel: { key: 'design' } },
+      cast: {
+        fid: 1177,
+        text: 'a taxonomy of feed anxiety',
+        channel: { key: 'design' },
+      },
     }),
     feedItem('0x06', {
       reason: 'high-quality-unfollowed',
       score: 0.68,
       agoHours: 1.8,
       authorQuality: 'neutral',
-      cast: { fid: 762, text: 'infinite scroll is the absence of a stopping cue' },
+      cast: {
+        fid: 762,
+        text: 'infinite scroll is the absence of a stopping cue',
+      },
     }),
     feedItem('0x07', {
       reason: 'following-author',

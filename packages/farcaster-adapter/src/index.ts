@@ -12,3 +12,4 @@ export * from './apiShapes';
 export * from './embeds';
 export * from './feedItem';
 export * from './seam';
+export * from './fixtures';

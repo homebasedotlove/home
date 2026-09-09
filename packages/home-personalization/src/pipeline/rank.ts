@@ -44,7 +44,8 @@ export function rankNormalize(items: FeedItemView[]): Map<string, number> {
   let i = 0;
   while (i < sorted.length) {
     let j = i;
-    while (j + 1 < sorted.length && sorted[j + 1]!.score === sorted[i]!.score) j++;
+    while (j + 1 < sorted.length && sorted[j + 1]!.score === sorted[i]!.score)
+      j++;
     const avgPos = (i + j) / 2;
     const value = (avgPos + 1) / denom;
     for (let k = i; k <= j; k++) out.set(sorted[k]!.id, value);
@@ -67,7 +68,10 @@ export function recencyFactor(ageMs: number, halfLifeHours: number): number {
  * vanishes entirely, so a reader who has not opted in is never silently
  * re-ranked by their own click history.
  */
-export function affinityFactor(affinity: number | undefined, boost: number): number {
+export function affinityFactor(
+  affinity: number | undefined,
+  boost: number,
+): number {
   if (!boost || affinity === undefined) return 1;
   return 1 + boost * (affinity - 0.5) * 2;
 }
@@ -80,8 +84,14 @@ export function scoreItem(
 ): number {
   const group = item.reason ? reasonGroup(item.reason) : undefined;
   const weight = group ? (sort.weights[group] ?? 1) : 1;
-  const recency = recencyFactor(ctx.now - item.timestampMs, sort.recencyHalfLifeHours);
-  const affinity = affinityFactor(ctx.affinity?.(item.authorFid), sort.affinityBoost);
+  const recency = recencyFactor(
+    ctx.now - item.timestampMs,
+    sort.recencyHalfLifeHours,
+  );
+  const affinity = affinityFactor(
+    ctx.affinity?.(item.authorFid),
+    sort.affinityBoost,
+  );
   // A zero weight collapses a whole category to the bottom while preserving
   // the relative order inside it, so turning the dial back up restores the
   // ordering the reader had rather than an arbitrary one.
@@ -95,7 +105,10 @@ export function scoreItem(
  * posted four times in a row is a judgement the reader did not ask for; moving
  * it down the page produces the same relief and loses nothing.
  */
-export function diversify(items: FeedItemView[], caps: DiversityCaps): FeedItemView[] {
+export function diversify(
+  items: FeedItemView[],
+  caps: DiversityCaps,
+): FeedItemView[] {
   const { maxPerAuthor, maxPerChannel } = caps;
   if (!maxPerAuthor && !maxPerChannel) return items;
   const window = caps.window ?? 25;
@@ -104,15 +117,22 @@ export function diversify(items: FeedItemView[], caps: DiversityCaps): FeedItemV
   const deferred: FeedItemView[] = [];
   const recent: FeedItemView[] = [];
 
-  const countIn = (pick: (i: FeedItemView) => string | undefined, key: string) =>
-    recent.reduce((n, i) => (pick(i) === key ? n + 1 : n), 0);
+  const countIn = (
+    pick: (i: FeedItemView) => string | undefined,
+    key: string,
+  ) => recent.reduce((n, i) => (pick(i) === key ? n + 1 : n), 0);
 
   const fits = (item: FeedItemView): boolean => {
     if (maxPerAuthor !== undefined) {
-      if (countIn((i) => String(i.authorFid), String(item.authorFid)) >= maxPerAuthor) return false;
+      if (
+        countIn((i) => String(i.authorFid), String(item.authorFid)) >=
+        maxPerAuthor
+      )
+        return false;
     }
     if (maxPerChannel !== undefined && item.channelKey) {
-      if (countIn((i) => i.channelKey, item.channelKey) >= maxPerChannel) return false;
+      if (countIn((i) => i.channelKey, item.channelKey) >= maxPerChannel)
+        return false;
     }
     return true;
   };
@@ -155,13 +175,19 @@ export function rank(
     const normalized = rankNormalize(items);
     const scores = new Map<string, number>();
     for (const item of items) {
-      scores.set(item.id, scoreItem(item, normalized.get(item.id) ?? 0.5, sort, ctx));
+      scores.set(
+        item.id,
+        scoreItem(item, normalized.get(item.id) ?? 0.5, sort, ctx),
+      );
     }
     ordered = [...items].sort((a, b) => {
       const d = (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0);
       // Newest first among equals, then by id so the order is total and a
       // re-render never reshuffles the page under the reader's thumb.
-      return d !== 0 ? d : b.timestampMs - a.timestampMs || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      return d !== 0
+        ? d
+        : b.timestampMs - a.timestampMs ||
+            (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     });
   } else {
     ordered = [...items];

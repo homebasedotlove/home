@@ -1,17 +1,38 @@
 # Wiring the kernel into a fork
 
-[`packages/personalization`](../../packages/personalization) is deliberately
-inert: no React, no React Native, no API client, no storage engine. This is the
-list of places a fork of
+Three packages sit between a fork and the reader:
+
+| | |
+| --- | --- |
+| [`home-personalization`](../../packages/home-personalization) | The kernel. No React, no API client, no storage engine. |
+| [`farcaster-adapter`](../../packages/farcaster-adapter) | The type boundary, and the replacement for the feed `flatMap`. |
+| [`home-client-core`](../../packages/home-client-core) | Everything between storage and the screen, with no screen. |
+
+They are already wired to each other. This is the list of places a fork of
 [`farcasterxyz/client`](https://github.com/farcasterxyz/client) has to touch to
-make it do something. Paths and line numbers are against snapshot `b6922e2`;
-they will drift, but the shapes will not.
+connect them to a running app. Paths and line numbers are against snapshot
+`b6922e2`; they will drift, but the shapes will not.
 
 There are six call sites. None of them require backend changes.
 
+## Before anything else: does it still fit?
+
+```bash
+SNAPSHOT=../client pnpm verify:compat
+```
+
+This compiles the adapter against the snapshot's own generated `api.ts` and
+asserts the shape of all 34 fields it reads, plus exact equality on the two
+enumerations Home mirrors — the author-quality tiers and the ranking reasons.
+If upstream renamed something, this names it before you start.
+
+`pnpm verify:compat:drift` then mutates upstream eleven ways and fails if any
+goes undetected, because a compatibility check that cannot fail is worse than
+no check. Both run in CI.
+
 ---
 
-## 0. Add the package
+## 0. Add the packages
 
 ```yaml
 # pnpm-workspace.yaml — the client already globs packages/*
@@ -20,48 +41,25 @@ packages:
   - apps/*
 ```
 
-Copy `packages/personalization` in and add `"@home/personalization":
-"workspace:*"` to the mobile and web app manifests. It has no dependencies, so
-there is nothing else to resolve.
+Copy all three in and add `"home-client-core": "workspace:*"` to the mobile and
+web app manifests. They pin the same Node the client does (20.19.5), use the
+client's prettier config and tsconfig shape, and have no runtime dependencies
+between them and the outside world.
 
 ---
 
-## 1. The adapter — `ApiCastFeedItem` → `FeedItemView`
+## 1. The adapter — already written
 
-**New file**, roughly forty lines. The only place that knows about both type
-systems, which is what keeps the rest of the kernel portable.
+`farcaster-adapter` maps `ApiCastFeedItem` onto the kernel's `FeedItemView`,
+including the three fields the reference client receives and never reads:
+`meta.includeReason`, `meta.score`, `meta.authorQuality`. It also classifies
+embeds by what they *are* rather than which array they arrived in, so a URL
+embed carrying a token payload is a token post to a reader muting token charts.
 
-```ts
-import type { ApiCastFeedItem } from 'farcaster-client-data';
-import type { FeedItemView } from '@home/personalization';
-
-export function toFeedItemView(item: ApiCastFeedItem): FeedItemView {
-  const cast = item.cast;
-  const view: FeedItemView = {
-    id: item.id,
-    timestampMs: item.timestamp,
-    authorFid: cast.author.fid,
-    text: cast.text ?? '',
-    isRecast: Boolean(cast.recast),
-    isReply: Boolean(cast.parentHash),
-    embedKinds: classifyEmbeds(cast),
-    engagement: {
-      likes: cast.reactions?.count ?? 0,
-      recasts: cast.recasts?.count ?? 0,
-      replies: cast.replies?.count ?? 0,
-    },
-  };
-  if (cast.channel?.key) view.channelKey = cast.channel.key;
-  // The three fields the reference client receives and never reads.
-  if (item.meta?.includeReason) view.reason = item.meta.includeReason.type;
-  if (item.meta?.score !== undefined) view.score = item.meta.score;
-  if (item.meta?.authorQuality) view.authorQuality = item.meta.authorQuality;
-  return view;
-}
-```
-
-Verify the field names against the current snapshot's `ApiCast` before relying
-on them — the meta block is stable but the cast shape is not.
+Nothing to write. The only thing worth knowing is that it declares the API
+slice it reads locally (`src/apiShapes.ts`) rather than importing
+`farcaster-client-data`, so it builds and tests anywhere — and that
+`verify:compat` is what stops that local copy from drifting.
 
 ---
 
@@ -69,53 +67,43 @@ on them — the meta block is stable but the cast shape is not.
 
 **`packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useMixedFeedItems.ts:311`**
 
-The reference client flattens pages into a render list with a plain `flatMap`:
+The reference client flattens pages into a render list with a plain `flatMap`.
+That memo is the seam. Replace it with `personalizeMixedFeed`:
 
 ```ts
-const flatItems = useMemo(
-  () => data?.pages.flatMap((page) => [ ...page.result.items.map(...) ]),
-  [data],
-);
-```
+import { personalizeMixedFeed } from 'farcaster-adapter';
 
-That memo is the seam. Everything in the
-[Sift and Sort axes](../design/the-six-axes.md) happens by running the kernel
-over the result:
-
-```ts
-const flatItems = useMemo(() => {
+const personalized = useMemo(() => {
   const raw = data?.pages.flatMap(/* unchanged */) ?? [];
-  const casts = raw.filter(isCastItem);
-  const { items, receipts, mix } = runFeedPipeline(
-    casts.map((c) => toFeedItemView(c.item)),
+  return personalizeMixedFeed(raw, {
+    isCast: (row) => row.type === FeedItemType.Cast,
+    getCast: (row) => row.item,
     spec,
-    { now: Date.now(), affinity },
-  );
-  const byId = new Map(casts.map((c) => [c.item.id, c]));
-  return {
-    items: items.map((v) => byId.get(v.id)!),          // back to render items
-    interstitials: raw.filter((r) => !isCastItem(r)),  // suggestions, topics
-    receipts,
-    mix,
-  };
+    context: { now: Date.now(), affinity },
+  });
 }, [data, spec, affinity]);
 ```
 
-Three notes:
+It returns `{ items, receipts, mix, hiddenCount }`, where `items` are the
+**original row objects** — the components downstream keep receiving the API
+types they already know how to draw.
 
-- **Map back to the original render items.** `FeedItemView` is for deciding;
-  the existing components should keep receiving the API types they already know.
-- **Keep interstitials out of the pipeline.** Suggested-user and
-  trending-topic rows are not casts and should not be ranked as if they were;
-  reinsert them at their original positions.
-- **`receipts` and `mix` are the UI.** Thread them out of the hook — they are
-  what [feed receipts and the mix dial](../design/signature-interactions.md)
-  render.
+Three behaviours it already handles, each of which is a bug if you write it
+yourself:
 
-`runFeedPipeline` is pure and synchronous, so it is also what the feed editor's
-live preview calls on the cached page. Same code path, no second implementation.
+- **Interstitials keep their place.** Suggested-user and trending-topic rows
+  have no author, timestamp or reason. They are pinned to the *fraction* of the
+  list they occupied, so a row a quarter of the way down stays a quarter of the
+  way down after a re-rank that removed half the casts. Anchoring to the
+  absolute index pushes every interstitial to the end of a filtered feed.
+- **Deleted casts never reach the pipeline**, and do not count as filtered — a
+  deleted cast is not something the reader hid.
+- **`receipts` and `mix` are the UI.** They are what the feed receipts line and
+  the mix dial render; thread them out of the hook.
 
----
+`runFeedPipeline` underneath is pure and synchronous, so the same call powers
+the feed editor's live preview over a cached page. One code path, no second
+implementation.
 
 ## 3. The theme provider
 
@@ -141,7 +129,7 @@ seed from preferences instead of a four-value union, and
 **`components/settings/ThemeSettings.tsx`** becomes the seed editor.
 
 The contrast enforcement in
-[`deriveTheme`](../../packages/personalization/src/theme/index.ts) is what makes
+[`deriveTheme`](../../packages/home-personalization/src/theme/index.ts) is what makes
 this safe to expose. Without it, opening the palette to readers ships
 unreadable themes.
 
@@ -167,9 +155,18 @@ On web, the same three methods over `localStorage`. Keep it **synchronous**:
 preferences are read during the first render of the feed, and an async read there
 means a frame of the wrong theme on every cold start.
 
-A `PreferencesProvider` holds the document in context and writes through on
-change. Because it is local state, changes apply on the next frame — which is
-what retires *["Restart your app to see your updated default
+`HomeClient` from `home-client-core` already holds the document, persists on
+change, and exposes `update(fn)` taking any of the pure actions from
+`home-personalization/prefs/actions`. A `PreferencesProvider` is a thin React
+wrapper over it:
+
+```ts
+// The entire path from tapping "Less" on a why-chip to a changed feed.
+client.update((p) => nudgeReason(p, feedId, 'discovery', 'down'));
+```
+
+Because it is local state, changes apply on the next frame — which is what
+retires *["Restart your app to see your updated default
 feed!"](../research/reference-client-audit.md#3-changing-your-default-feed-asks-you-to-restart-the-app)*.
 
 Server preferences stay authoritative for what the server owns: notifications,
@@ -203,14 +200,16 @@ endpoints that already exist.
 
 ## 6. Boundaries
 
-A `SessionProvider` accumulating foreground time, feeding
-[`evaluateBoundaries`](../../packages/personalization/src/boundaries/index.ts)
-on a slow interval. `state.desaturation` drives a saturation matrix over the
-root view; `state.status` drives the end-of-feed component.
+Forward the platform's AppState transitions to `client.foreground()` and
+`client.background()`; everything else is done. `renderFeed()` returns a
+`boundary` whose `desaturation` drives a saturation matrix over the root view
+and whose `status` drives the end-of-feed component.
 
-For catch-up, persist the newest `timestampMs` the reader has actually seen —
-the existing `setFeedSeen` / viewability plumbing in `Feed.tsx` already tracks
-this — and pass it to `applyCatchUp` before rendering.
+For catch-up, call `client.markRead(timestampMs)` from the existing
+`setFeedSeen` / viewability plumbing in `Feed.tsx`. `renderFeed()` then reports
+`caughtUp` and `moreAvailable` separately, because *"you're caught up"* and
+*"that's everything since Tuesday, there's more below"* are different sentences
+to show someone.
 
 ---
 
@@ -227,10 +226,29 @@ this — and pass it to `applyCatchUp` before rendering.
 
 Steps 1–4 are the product. Everything after is depth.
 
+## Seeing it work before you touch the app
+
+```bash
+pnpm --filter home-client-core demo
+```
+
+Drives the client core through the whole journey — cold start, tapping a
+why-chip, a mute expiring after a week, a session budget winding down, catch-up
+ending the feed, a config moving to a new device, a feed encoded as a link — and
+prints the feed at each step. Every claim in `docs/design` is observable there
+without a simulator, an API key, or a phone.
+
 ## Testing across the seam
 
-The kernel has [88 tests](../../packages/personalization/test) that run in
-`node --test` with no dependencies and no simulator. Keep it that way: when a
-ranking or filtering bug appears, it should be reproducible as a fixture in that
-suite rather than as a tap sequence on a phone. The adapter in step 1 is the
-only file that should ever need the app's test harness.
+204 tests across the three packages, all in `vitest run`, none needing a
+simulator:
+
+| | |
+| --- | --- |
+| `home-personalization` | 162 — the pipeline, themes, boundaries, preferences |
+| `farcaster-adapter` | 21 — adaptation, embed classification, the seam |
+| `home-client-core` | 21 — the end-to-end journey above, asserted |
+
+Keep it that way. When a ranking or filtering bug appears it should be
+reproducible as a fixture in that suite, not as a tap sequence on a phone. The
+React layer added in the steps above should contain nothing but rendering.

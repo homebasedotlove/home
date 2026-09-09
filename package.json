@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm --filter './packages/**' build",
-    "check:all": "pnpm typecheck && pnpm test && pnpm verify:compat",
+    "check:all": "pnpm format:check && pnpm typecheck && pnpm build && pnpm test && pnpm verify:compat && pnpm verify:compat:drift",
     "clean": "pnpm --filter '*' --parallel clean",
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",

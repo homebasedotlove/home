@@ -38,7 +38,9 @@ export const NEW_SESSION_AFTER_MS = 30 * 60_000;
  * beats a continuous one.
  */
 export function localDayKey(now: number, date = new Date(now)): number {
-  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  return (
+    date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate()
+  );
 }
 
 export function newSession(now: number, date = new Date(now)): SessionState {
@@ -46,7 +48,11 @@ export function newSession(now: number, date = new Date(now)): SessionState {
 }
 
 /** Zero the daily total when the local day has turned over. */
-function rollDay(state: SessionState, now: number, date = new Date(now)): SessionState {
+function rollDay(
+  state: SessionState,
+  now: number,
+  date = new Date(now),
+): SessionState {
   const key = localDayKey(now, date);
   return key === state.dayKey ? state : { ...state, dayMs: 0, dayKey: key };
 }
@@ -61,8 +67,10 @@ export function enterForeground(
   if (state.activeSince !== undefined) return rollDay(state, now, date);
 
   const rolled = rollDay(state, now, date);
-  const awayMs = rolled.lastActiveAt === undefined ? 0 : now - rolled.lastActiveAt;
-  const startsNewSitting = rolled.lastActiveAt !== undefined && awayMs >= NEW_SESSION_AFTER_MS;
+  const awayMs =
+    rolled.lastActiveAt === undefined ? 0 : now - rolled.lastActiveAt;
+  const startsNewSitting =
+    rolled.lastActiveAt !== undefined && awayMs >= NEW_SESSION_AFTER_MS;
   return {
     ...rolled,
     sessionMs: startsNewSitting ? 0 : rolled.sessionMs,
@@ -92,9 +100,16 @@ export function enterBackground(
  * Current totals including the in-progress stretch, without mutating state.
  * This is what feeds `evaluateBoundaries` on each tick.
  */
-export function usageNow(state: SessionState, now: number, date = new Date(now)) {
+export function usageNow(
+  state: SessionState,
+  now: number,
+  date = new Date(now),
+) {
   const rolled = rollDay(state, now, date);
-  const live = rolled.activeSince === undefined ? 0 : Math.max(0, now - rolled.activeSince);
+  const live =
+    rolled.activeSince === undefined
+      ? 0
+      : Math.max(0, now - rolled.activeSince);
   return {
     sessionMs: rolled.sessionMs + live,
     dayMs: rolled.dayMs + live,
@@ -103,7 +118,11 @@ export function usageNow(state: SessionState, now: number, date = new Date(now))
 }
 
 /** Record the newest cast the reader has seen, for catch-up mode. */
-export function markSeen(state: SessionState, timestampMs: number): SessionState {
-  if (state.lastSeenMs !== undefined && state.lastSeenMs >= timestampMs) return state;
+export function markSeen(
+  state: SessionState,
+  timestampMs: number,
+): SessionState {
+  if (state.lastSeenMs !== undefined && state.lastSeenMs >= timestampMs)
+    return state;
   return { ...state, lastSeenMs: timestampMs };
 }

@@ -45,10 +45,16 @@ export type CompiledRule = {
   test: (text: string) => boolean;
 };
 
-export function compileKeywordRule(rule: KeywordRule, now: number): CompiledRule | undefined {
+export function compileKeywordRule(
+  rule: KeywordRule,
+  now: number,
+): CompiledRule | undefined {
   if (rule.expiresAt !== undefined && rule.expiresAt <= now) return undefined;
-  const pattern = rule.caseSensitive ? rule.pattern : rule.pattern.toLowerCase();
-  const prep = (text: string) => (rule.caseSensitive ? text : text.toLowerCase());
+  const pattern = rule.caseSensitive
+    ? rule.pattern
+    : rule.pattern.toLowerCase();
+  const prep = (text: string) =>
+    rule.caseSensitive ? text : text.toLowerCase();
 
   if (rule.mode === 'regex') {
     let re: RegExp;
@@ -69,7 +75,10 @@ export function compileKeywordRule(rule: KeywordRule, now: number): CompiledRule
   return { rule, test: (text) => prep(text).includes(pattern) };
 }
 
-export function compileKeywordRules(rules: KeywordRule[], now: number): CompiledRule[] {
+export function compileKeywordRules(
+  rules: KeywordRule[],
+  now: number,
+): CompiledRule[] {
   const out: CompiledRule[] = [];
   for (const rule of rules) {
     const compiled = compileKeywordRule(rule, now);
@@ -79,7 +88,10 @@ export function compileKeywordRules(rules: KeywordRule[], now: number): Compiled
 }
 
 /** First rule that matches, or undefined. Used to name the rule in a receipt. */
-export function firstMatch(compiled: CompiledRule[], text: string): CompiledRule | undefined {
+export function firstMatch(
+  compiled: CompiledRule[],
+  text: string,
+): CompiledRule | undefined {
   for (const c of compiled) {
     if (c.test(text)) return c;
   }

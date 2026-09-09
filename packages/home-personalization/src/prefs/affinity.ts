@@ -17,7 +17,8 @@
  *   would pin a reader to whatever they cared about a year ago.
  */
 
-export type InteractionKind = 'like' | 'recast' | 'reply' | 'open-profile' | 'dwell';
+export type InteractionKind =
+  'like' | 'recast' | 'reply' | 'open-profile' | 'dwell';
 
 /** What each interaction is worth. Replying is a stronger signal than liking. */
 const WEIGHTS: Record<InteractionKind, number> = {
@@ -49,7 +50,10 @@ export function emptyAffinity(now: number): AffinityState {
  * Apply elapsed decay. Done lazily on read and write rather than on a timer:
  * the result is identical and it costs nothing while the app is closed.
  */
-export function decayAffinity(state: AffinityState, now: number): AffinityState {
+export function decayAffinity(
+  state: AffinityState,
+  now: number,
+): AffinityState {
   const elapsed = now - state.updatedAt;
   if (elapsed <= 0) return state;
   const factor = Math.pow(0.5, elapsed / AFFINITY_HALF_LIFE_MS);
@@ -71,7 +75,10 @@ export function recordInteraction(
 ): AffinityState {
   const decayed = decayAffinity(state, now);
   const key = String(fid);
-  const scores = { ...decayed.scores, [key]: (decayed.scores[key] ?? 0) + WEIGHTS[kind] };
+  const scores = {
+    ...decayed.scores,
+    [key]: (decayed.scores[key] ?? 0) + WEIGHTS[kind],
+  };
 
   if (Object.keys(scores).length > AFFINITY_MAX_AUTHORS) {
     const kept = Object.entries(scores)
@@ -108,7 +115,11 @@ export function affinityLookup(
 }
 
 /** The authors this reader engages with most. Powers "build a list from this". */
-export function topAuthors(state: AffinityState, now: number, limit = 30): number[] {
+export function topAuthors(
+  state: AffinityState,
+  now: number,
+  limit = 30,
+): number[] {
   return Object.entries(decayAffinity(state, now).scores)
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)

@@ -215,7 +215,7 @@ building rather than merely worth complaining about.
 
 The design that follows is in [`docs/design/`](../design/README.md); the
 architecture is implemented in
-[`packages/personalization`](../../packages/personalization); the six call sites
+[`packages/home-personalization`](../../packages/home-personalization); the six call sites
 that connect them to a fork are in
 [`docs/integration/wiring-into-a-fork.md`](../integration/wiring-into-a-fork.md).
 

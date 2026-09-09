@@ -4,18 +4,30 @@ import assert from 'node:assert/strict';
 import { classifyEmbeds, EMBED_KINDS, EMBED_KIND_LABELS } from '../src/embeds';
 import { isRenderableCast, toFeedItemView } from '../src/feedItem';
 import { personalizeMixedFeed } from '../src/seam';
-import { cast, feedItem, homeFeedPage, NOW } from './fixtures';
+import { cast, feedItem, homeFeedPage, NOW } from '../src/fixtures';
 import { makeFeedSpec, emptySift, defaultSort } from 'home-personalization';
 
 describe('embed classification', () => {
   test('reads the payload, not the array a link arrived in', () => {
     const tokenLink = cast('a', {
-      embeds: { images: [], unknowns: [], urls: [{ type: 'url', tokenV2: { ca: '0x1' } }] },
+      embeds: {
+        images: [],
+        unknowns: [],
+        urls: [{ type: 'url', tokenV2: { ca: '0x1' } }],
+      },
     });
-    assert.deepEqual(classifyEmbeds(tokenLink), ['token'], 'a token link is a token post');
+    assert.deepEqual(
+      classifyEmbeds(tokenLink),
+      ['token'],
+      'a token link is a token post',
+    );
 
     const nftLink = cast('b', {
-      embeds: { images: [], unknowns: [], urls: [{ type: 'url', collection: { id: 'x' } }] },
+      embeds: {
+        images: [],
+        unknowns: [],
+        urls: [{ type: 'url', collection: { id: 'x' } }],
+      },
     });
     assert.deepEqual(classifyEmbeds(nftLink), ['nft']);
 
@@ -42,15 +54,24 @@ describe('embed classification', () => {
     });
     const kinds = classifyEmbeds(everything);
     for (const expected of [
-      'image', 'video', 'quote', 'mini-app', 'transaction', 'group-invite', 'link',
-      'token', 'collectible',
+      'image',
+      'video',
+      'quote',
+      'mini-app',
+      'transaction',
+      'group-invite',
+      'link',
+      'token',
+      'collectible',
     ]) {
       assert.ok(kinds.includes(expected as never), `missing ${expected}`);
     }
   });
 
   test('empty arrays are not embeds', () => {
-    const bare = cast('a', { embeds: { images: [], urls: [], videos: [], unknowns: [] } });
+    const bare = cast('a', {
+      embeds: { images: [], urls: [], videos: [], unknowns: [] },
+    });
     assert.deepEqual(classifyEmbeds(bare), []);
     assert.deepEqual(classifyEmbeds(cast('b')), []);
   });
@@ -59,8 +80,12 @@ describe('embed classification', () => {
     const twoTokens = cast('a', {
       token: { ca: '0x1' },
       embeds: {
-        images: [], unknowns: [],
-        urls: [{ type: 'url', token: {} }, { type: 'url', tokenV2: {} }],
+        images: [],
+        unknowns: [],
+        urls: [
+          { type: 'url', token: {} },
+          { type: 'url', tokenV2: {} },
+        ],
       },
     });
     assert.deepEqual(classifyEmbeds(twoTokens), ['token']);
@@ -112,13 +137,18 @@ describe('feed item adaptation', () => {
   });
 
   test('an unknown quality tier is dropped, not coerced', () => {
-    const view = toFeedItemView(feedItem('a', { authorQuality: 'exceptional' }));
+    const view = toFeedItemView(
+      feedItem('a', { authorQuality: 'exceptional' }),
+    );
     assert.equal(
       view.authorQuality,
       undefined,
       'a tier the client does not understand must not become one it filters on',
     );
-    assert.equal(toFeedItemView(feedItem('b', { authorQuality: 'spam' })).authorQuality, 'spam');
+    assert.equal(
+      toFeedItemView(feedItem('b', { authorQuality: 'spam' })).authorQuality,
+      'spam',
+    );
   });
 
   test('missing meta yields an unattributed item rather than a guess', () => {
@@ -135,14 +165,19 @@ describe('feed item adaptation', () => {
 
   test('deleted casts are not renderable', () => {
     assert.equal(isRenderableCast(feedItem('a')), true);
-    assert.equal(isRenderableCast(feedItem('b', { cast: { deleted: true } })), false);
+    assert.equal(
+      isRenderableCast(feedItem('b', { cast: { deleted: true } })),
+      false,
+    );
   });
 
   test('the whole fixture page adapts without loss', () => {
     const views = homeFeedPage().map(toFeedItemView);
     assert.equal(views.length, 12);
     assert.equal(new Set(views.map((v) => v.id)).size, 12);
-    assert.ok(views.every((v) => Number.isFinite(v.timestampMs) && v.authorFid > 0));
+    assert.ok(
+      views.every((v) => Number.isFinite(v.timestampMs) && v.authorFid > 0),
+    );
     assert.equal(views.filter((v) => v.reason === 'snap-promoted').length, 1);
     assert.equal(views.find((v) => v.id === '0x03')!.channelKey, 'design');
     assert.equal(views.find((v) => v.id === '0x03')!.isRecast, true);
@@ -150,17 +185,24 @@ describe('feed item adaptation', () => {
 });
 
 describe('the seam', () => {
-  type Row = { type: 'cast'; item: ReturnType<typeof feedItem> } | { type: 'suggestions' };
+  type Row =
+    | { type: 'cast'; item: ReturnType<typeof feedItem> }
+    | { type: 'suggestions' };
 
   const rows = (): Row[] => [
-    ...homeFeedPage().slice(0, 4).map((item) => ({ type: 'cast' as const, item })),
+    ...homeFeedPage()
+      .slice(0, 4)
+      .map((item) => ({ type: 'cast' as const, item })),
     { type: 'suggestions' as const },
-    ...homeFeedPage().slice(4).map((item) => ({ type: 'cast' as const, item })),
+    ...homeFeedPage()
+      .slice(4)
+      .map((item) => ({ type: 'cast' as const, item })),
   ];
 
   const opts = (spec: ReturnType<typeof makeFeedSpec>) => ({
     isCast: (r: Row) => r.type === 'cast',
-    getCast: (r: Row) => (r as { type: 'cast'; item: ReturnType<typeof feedItem> }).item,
+    getCast: (r: Row) =>
+      (r as { type: 'cast'; item: ReturnType<typeof feedItem> }).item,
     spec,
     context: { now: NOW },
   });
@@ -170,53 +212,108 @@ describe('the seam', () => {
     const spec = makeFeedSpec('t', 'T', { kind: 'home' });
     const out = personalizeMixedFeed(input, opts(spec));
     for (const row of out.items) {
-      assert.ok(input.includes(row), 'components keep receiving the types they know');
+      assert.ok(
+        input.includes(row),
+        'components keep receiving the types they know',
+      );
     }
   });
 
   test('interstitials survive filtering and stay proportionally placed', () => {
-    const spec = makeFeedSpec('t', 'T', { kind: 'home' }, {
-      sift: { ...emptySift(), mutedGroups: ['discovery', 'promoted'] },
-    });
+    const spec = makeFeedSpec(
+      't',
+      'T',
+      { kind: 'home' },
+      {
+        sift: { ...emptySift(), mutedGroups: ['discovery', 'promoted'] },
+      },
+    );
     const out = personalizeMixedFeed(rows(), opts(spec));
-    const suggestionIndex = out.items.findIndex((r) => r.type === 'suggestions');
-    assert.notEqual(suggestionIndex, -1, 'not ranked away as if it were a cast');
+    const suggestionIndex = out.items.findIndex(
+      (r) => r.type === 'suggestions',
+    );
+    assert.notEqual(
+      suggestionIndex,
+      -1,
+      'not ranked away as if it were a cast',
+    );
     assert.ok(suggestionIndex > 0 && suggestionIndex < out.items.length - 1);
     assert.ok(out.hiddenCount > 0);
   });
 
   test('a fully filtered feed still keeps its interstitials', () => {
-    const spec = makeFeedSpec('t', 'T', { kind: 'home' }, {
-      sift: { ...emptySift(), mutedGroups: ['direct', 'network', 'discovery', 'promoted'] },
-    });
+    const spec = makeFeedSpec(
+      't',
+      'T',
+      { kind: 'home' },
+      {
+        sift: {
+          ...emptySift(),
+          mutedGroups: ['direct', 'network', 'discovery', 'promoted'],
+        },
+      },
+    );
     const out = personalizeMixedFeed(rows(), opts(spec));
-    assert.deepEqual(out.items.map((r) => r.type), ['suggestions']);
+    assert.deepEqual(
+      out.items.map((r) => r.type),
+      ['suggestions'],
+    );
   });
 
   test('deleted casts never reach the pipeline', () => {
     const input: Row[] = [
-      { type: 'cast', item: feedItem('live', { reason: 'popular', score: 0.5 }) },
-      { type: 'cast', item: feedItem('gone', { reason: 'popular', score: 0.9, cast: { deleted: true } }) },
+      {
+        type: 'cast',
+        item: feedItem('live', { reason: 'popular', score: 0.5 }),
+      },
+      {
+        type: 'cast',
+        item: feedItem('gone', {
+          reason: 'popular',
+          score: 0.9,
+          cast: { deleted: true },
+        }),
+      },
     ];
-    const out = personalizeMixedFeed(input, opts(makeFeedSpec('t', 'T', { kind: 'home' })));
+    const out = personalizeMixedFeed(
+      input,
+      opts(makeFeedSpec('t', 'T', { kind: 'home' })),
+    );
     assert.equal(out.items.length, 1);
     assert.equal(out.hiddenCount, 0, 'a deleted cast is not a filtered one');
   });
 
   test('reports the mix of what is actually visible', () => {
-    const out = personalizeMixedFeed(rows(), opts(makeFeedSpec('t', 'T', { kind: 'home' })));
+    const out = personalizeMixedFeed(
+      rows(),
+      opts(makeFeedSpec('t', 'T', { kind: 'home' })),
+    );
     assert.equal(out.mix.total + out.hiddenCount, 12);
     assert.equal(out.mix.byGroup.promoted, 1);
     assert.ok(out.mix.byGroup.direct! >= 3);
   });
 
   test('weights actually reorder the rendered list', () => {
-    const server = personalizeMixedFeed(rows(), opts(makeFeedSpec('t', 'T', { kind: 'home' })));
+    const server = personalizeMixedFeed(
+      rows(),
+      opts(makeFeedSpec('t', 'T', { kind: 'home' })),
+    );
     const weighted = personalizeMixedFeed(
       rows(),
-      opts(makeFeedSpec('t', 'T', { kind: 'home' }, {
-        sort: { ...defaultSort(), mode: 'weighted', weights: { direct: 3, discovery: 0.2 } },
-      })),
+      opts(
+        makeFeedSpec(
+          't',
+          'T',
+          { kind: 'home' },
+          {
+            sort: {
+              ...defaultSort(),
+              mode: 'weighted',
+              weights: { direct: 3, discovery: 0.2 },
+            },
+          },
+        ),
+      ),
     );
     assert.notDeepEqual(
       server.items.map((r) => (r.type === 'cast' ? r.item.id : 'x')),
@@ -225,7 +322,10 @@ describe('the seam', () => {
   });
 
   test('an empty list is not a crash', () => {
-    const out = personalizeMixedFeed([] as Row[], opts(makeFeedSpec('t', 'T', { kind: 'home' })));
+    const out = personalizeMixedFeed(
+      [] as Row[],
+      opts(makeFeedSpec('t', 'T', { kind: 'home' })),
+    );
     assert.deepEqual(out.items, []);
     assert.equal(out.mix.total, 0);
   });

@@ -26,7 +26,11 @@ function utf8Bytes(str: string): number[] {
     } else if (cp < 0x800) {
       out.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
     } else if (cp < 0x10000) {
-      out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+      out.push(
+        0xe0 | (cp >> 12),
+        0x80 | ((cp >> 6) & 0x3f),
+        0x80 | (cp & 0x3f),
+      );
     } else {
       out.push(
         0xf0 | (cp >> 18),
@@ -41,7 +45,7 @@ function utf8Bytes(str: string): number[] {
 
 function utf8String(bytes: number[]): string {
   let out = '';
-  for (let i = 0; i < bytes.length; ) {
+  for (let i = 0; i < bytes.length;) {
     const b0 = bytes[i]!;
     let cp: number;
     let len: number;
@@ -61,7 +65,8 @@ function utf8String(bytes: number[]): string {
     if (i + len > bytes.length) throw new Error('truncated utf-8 sequence');
     for (let k = 1; k < len; k++) {
       const b = bytes[i + k]!;
-      if ((b & 0xc0) !== 0x80) throw new Error('invalid utf-8 continuation byte');
+      if ((b & 0xc0) !== 0x80)
+        throw new Error('invalid utf-8 continuation byte');
       cp = (cp << 6) | (b & 0x3f);
     }
     out += String.fromCodePoint(cp);
@@ -134,7 +139,8 @@ export function compactSpec(spec: FeedSpec): Record<string, unknown> {
 
   const sortOut: Record<string, unknown> = {};
   if (spec.sort.mode !== sort.mode) sortOut.mode = spec.sort.mode;
-  if (Object.keys(spec.sort.weights).length > 0) sortOut.weights = spec.sort.weights;
+  if (Object.keys(spec.sort.weights).length > 0)
+    sortOut.weights = spec.sort.weights;
   if (spec.sort.recencyHalfLifeHours !== sort.recencyHalfLifeHours) {
     sortOut.recencyHalfLifeHours = spec.sort.recencyHalfLifeHours;
   }
@@ -154,7 +160,8 @@ export function encodeShare(spec: FeedSpec): string {
   return b64urlEncode(JSON.stringify(compactSpec(spec)));
 }
 
-export type DecodeResult = ValidationResult | { ok: false; issues: [{ path: string; message: string }] };
+export type DecodeResult =
+  ValidationResult | { ok: false; issues: [{ path: string; message: string }] };
 
 export function decodeShare(encoded: string): DecodeResult {
   let json: unknown;
@@ -163,7 +170,12 @@ export function decodeShare(encoded: string): DecodeResult {
   } catch (e) {
     return {
       ok: false,
-      issues: [{ path: '', message: `not a readable feed link: ${(e as Error).message}` }],
+      issues: [
+        {
+          path: '',
+          message: `not a readable feed link: ${(e as Error).message}`,
+        },
+      ],
     };
   }
   return validateFeedSpec(json);
@@ -173,14 +185,20 @@ export function decodeShare(encoded: string): DecodeResult {
  * Deep-link form. Kept separate from `encodeShare` so the transport can change
  * without touching the encoding.
  */
-export function shareUrl(spec: FeedSpec, origin = 'https://home.example'): string {
+export function shareUrl(
+  spec: FeedSpec,
+  origin = 'https://home.example',
+): string {
   return `${origin.replace(/\/$/, '')}/f/${encodeShare(spec)}`;
 }
 
 export function parseShareUrl(url: string): DecodeResult {
   const m = /\/f\/([A-Za-z0-9\-_]+)/.exec(url);
   if (!m || !m[1]) {
-    return { ok: false, issues: [{ path: '', message: 'no feed payload found in that link' }] };
+    return {
+      ok: false,
+      issues: [{ path: '', message: 'no feed payload found in that link' }],
+    };
   }
   return decodeShare(m[1]);
 }

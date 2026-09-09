@@ -55,7 +55,8 @@ export function toFeedItemView(item: CastFeedItemLike): FeedItemView {
 
   const meta = item.meta;
   if (meta?.includeReason?.type) view.reason = meta.includeReason.type;
-  if (typeof meta?.score === 'number' && Number.isFinite(meta.score)) view.score = meta.score;
+  if (typeof meta?.score === 'number' && Number.isFinite(meta.score))
+    view.score = meta.score;
   const quality = toAuthorQuality(meta?.authorQuality);
   if (quality) view.authorQuality = quality;
 

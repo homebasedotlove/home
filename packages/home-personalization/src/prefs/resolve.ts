@@ -23,7 +23,10 @@ export type EffectiveSkin = {
 };
 
 /** Per-feed overrides win over the global defaults, field by field. */
-export function resolveSkin(prefs: Preferences, feedSkin?: SkinOverrides): EffectiveSkin {
+export function resolveSkin(
+  prefs: Preferences,
+  feedSkin?: SkinOverrides,
+): EffectiveSkin {
   const base: EffectiveSkin = { ...prefs.skin };
   if (!feedSkin) return base;
   return {
@@ -92,7 +95,13 @@ export type TypeScale = {
   bodyLineHeight: number;
 };
 
-const BASE_SCALE = { caption: 11, meta: 13, body: 15, title: 18, display: 24 } as const;
+const BASE_SCALE = {
+  caption: 11,
+  meta: 13,
+  body: 15,
+  title: 18,
+  display: 24,
+} as const;
 
 /**
  * Density and font scale are independent axes and must stay that way: a reader

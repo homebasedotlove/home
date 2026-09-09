@@ -18,8 +18,14 @@ describe('defaults', () => {
   test('a new reader gets three feeds, not one', () => {
     const p = defaultPreferences();
     assert.equal(p.feeds.length, 3);
-    assert.deepEqual(p.feedOrder, p.feeds.map((f) => f.id));
-    assert.ok(p.feeds.some((f) => f.sort.mode === 'chronological'), 'an unranked option ships by default');
+    assert.deepEqual(
+      p.feedOrder,
+      p.feeds.map((f) => f.id),
+    );
+    assert.ok(
+      p.feeds.some((f) => f.sort.mode === 'chronological'),
+      'an unranked option ships by default',
+    );
     assert.ok(p.feeds.some((f) => f.sift.mutedGroups.includes('promoted')));
   });
 
@@ -77,7 +83,10 @@ describe('migration', () => {
   });
 
   test('a newer document is salvaged and the reader is told', () => {
-    const raw = { ...JSON.parse(exportPreferences(defaultPreferences())), version: 999 };
+    const raw = {
+      ...JSON.parse(exportPreferences(defaultPreferences())),
+      version: 999,
+    };
     const r = migratePreferences(raw);
     assert.match(r.notes.join(' '), /newer version/);
     assert.equal(r.preferences.version, PREFERENCES_VERSION);
@@ -94,7 +103,14 @@ describe('migration', () => {
   test('a custom theme survives alongside the presets', () => {
     const raw = JSON.parse(exportPreferences(defaultPreferences()));
     raw.themes = [
-      { id: 'mine', name: 'Mine', mode: 'dark', background: '#111111', foreground: '#eeeeee', accent: '#ff8800' },
+      {
+        id: 'mine',
+        name: 'Mine',
+        mode: 'dark',
+        background: '#111111',
+        foreground: '#eeeeee',
+        accent: '#ff8800',
+      },
     ];
     const r = migratePreferences(raw);
     assert.ok(r.preferences.themes.some((t) => t.id === 'mine'));
@@ -107,9 +123,15 @@ describe('migration', () => {
     raw.feedOrder = ['deleted-long-ago', 'home'];
     raw.darkThemeId = 'gone';
     const r = migratePreferences(raw);
-    assert.ok(r.preferences.feeds.some((f) => f.id === r.preferences.activeFeedId));
+    assert.ok(
+      r.preferences.feeds.some((f) => f.id === r.preferences.activeFeedId),
+    );
     assert.equal(r.preferences.feedOrder.includes('deleted-long-ago'), false);
-    assert.equal(r.preferences.feedOrder.length, 3, 'feeds missing from the order are appended');
+    assert.equal(
+      r.preferences.feedOrder.length,
+      3,
+      'feeds missing from the order are appended',
+    );
     assert.equal(r.preferences.darkThemeId, 'midnight');
   });
 
@@ -124,10 +146,19 @@ describe('migration', () => {
   test('unknown actions and gestures are dropped, not stored', () => {
     const raw = JSON.parse(exportPreferences(defaultPreferences()));
     raw.actionBar = ['like', 'launch-missiles', 'reply'];
-    raw.gestures = { swipeLeft: 'nope', swipeRight: 'quote', doubleTap: 'like', longPress: 'why' };
+    raw.gestures = {
+      swipeLeft: 'nope',
+      swipeRight: 'quote',
+      doubleTap: 'like',
+      longPress: 'why',
+    };
     const r = migratePreferences(raw);
     assert.deepEqual(r.preferences.actionBar, ['like', 'reply']);
-    assert.equal(r.preferences.gestures.swipeLeft, 'bookmark', 'falls back to the default');
+    assert.equal(
+      r.preferences.gestures.swipeLeft,
+      'bookmark',
+      'falls back to the default',
+    );
     assert.equal(r.preferences.gestures.swipeRight, 'quote');
   });
 

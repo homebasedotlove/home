@@ -8,10 +8,11 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
-    "src/**/*"
+    "src/**/*",
+    "test/fixtures.ts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\" --config ../../.prettierrc.js --ignore-path ../../.prettierignore",
     "lint": "eslint",

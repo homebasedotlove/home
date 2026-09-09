@@ -41,7 +41,7 @@ every change:
 ```
 
 The preview is not a mock. It runs the same
-[`runFeedPipeline`](../../packages/personalization/src/pipeline/index.ts) call
+[`runFeedPipeline`](../../packages/home-personalization/src/pipeline/index.ts) call
 the real feed does, over the currently cached page. If the change would empty
 the feed, the preview says so before it is saved — the failure mode of powerful
 filters is a silent empty feed and no idea which rule caused it.
@@ -86,7 +86,7 @@ Typing `mute` finds the filters section, every keyword rule, and the mute
 gesture binding. Typing `election` finds the specific rule.
 
 This works because preferences are
-[one document with one schema](../../packages/personalization/src/prefs/index.ts).
+[one document with one schema](../../packages/home-personalization/src/prefs/index.ts).
 Search over a settings tree is only possible when there is a settings tree, and
 that is the payoff for refusing to scatter state across a server object, local
 storage, and component state.

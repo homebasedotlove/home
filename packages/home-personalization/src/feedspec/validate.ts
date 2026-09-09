@@ -114,7 +114,8 @@ export function isProbablySafeRegex(source: string): boolean {
       const frame = stack.pop();
       const next = source[i + 1];
       const quantified = next === '*' || next === '+' || next === '{';
-      if (frame && quantified && (frame.hasQuantifier || frame.hasAlternation)) return false;
+      if (frame && quantified && (frame.hasQuantifier || frame.hasAlternation))
+        return false;
       if (quantified) note((f) => void (f.hasQuantifier = true));
       atom();
       continue;
@@ -180,7 +181,10 @@ function validateSource(
       return { kind: 'list', listId: s.listId.slice(0, 64) };
     case 'search': {
       if (typeof s.query !== 'string' || !s.query.trim()) {
-        issues.push({ path: `${path}.query`, message: 'required non-empty string' });
+        issues.push({
+          path: `${path}.query`,
+          message: 'required non-empty string',
+        });
         return undefined;
       }
       return { kind: 'search', query: s.query.slice(0, LIMITS.searchChars) };
@@ -191,7 +195,10 @@ function validateSource(
         return undefined;
       }
       if (!Array.isArray(s.parts) || s.parts.length === 0) {
-        issues.push({ path: `${path}.parts`, message: 'required non-empty array' });
+        issues.push({
+          path: `${path}.parts`,
+          message: 'required non-empty array',
+        });
         return undefined;
       }
       if (s.parts.length > LIMITS.blendParts) {
@@ -201,23 +208,37 @@ function validateSource(
         });
         return undefined;
       }
-      const parts: { source: Exclude<Source, { kind: 'blend' }>; weight: number }[] = [];
+      const parts: {
+        source: Exclude<Source, { kind: 'blend' }>;
+        weight: number;
+      }[] = [];
       s.parts.forEach((raw, i) => {
         const p = raw as Record<string, unknown>;
-        const inner = validateSource(p.source, `${path}.parts[${i}].source`, issues, depth + 1);
+        const inner = validateSource(
+          p.source,
+          `${path}.parts[${i}].source`,
+          issues,
+          depth + 1,
+        );
         if (!inner || inner.kind === 'blend') return;
         const weight = isFiniteNumber(p.weight) ? clamp(p.weight, 0, 100) : 1;
         parts.push({ source: inner, weight });
       });
       if (parts.length === 0) return undefined;
       if (parts.every((p) => p.weight === 0)) {
-        issues.push({ path: `${path}.parts`, message: 'at least one part needs a non-zero weight' });
+        issues.push({
+          path: `${path}.parts`,
+          message: 'at least one part needs a non-zero weight',
+        });
         return undefined;
       }
       return { kind: 'blend', parts };
     }
     default:
-      issues.push({ path: `${path}.kind`, message: `unknown source kind: ${String(s.kind)}` });
+      issues.push({
+        path: `${path}.kind`,
+        message: `unknown source kind: ${String(s.kind)}`,
+      });
       return undefined;
   }
 }
@@ -237,7 +258,10 @@ function validateKeywords(
   for (const [i, item] of raw.slice(0, LIMITS.keywordRules).entries()) {
     const k = item as Record<string, unknown>;
     if (typeof k.pattern !== 'string' || !k.pattern) {
-      warnings.push({ path: `${path}[${i}].pattern`, message: 'skipped: not a string' });
+      warnings.push({
+        path: `${path}[${i}].pattern`,
+        message: 'skipped: not a string',
+      });
       continue;
     }
     const pattern = k.pattern.slice(0, LIMITS.keywordChars);
@@ -258,12 +282,19 @@ function validateKeywords(
     out.push(rule);
   }
   if (Array.isArray(raw) && raw.length > LIMITS.keywordRules) {
-    warnings.push({ path, message: `truncated to ${LIMITS.keywordRules} rules` });
+    warnings.push({
+      path,
+      message: `truncated to ${LIMITS.keywordRules} rules`,
+    });
   }
   return out;
 }
 
-function validateAuthors(raw: unknown, path: string, warnings: ValidationIssue[]): AuthorRule[] {
+function validateAuthors(
+  raw: unknown,
+  path: string,
+  warnings: ValidationIssue[],
+): AuthorRule[] {
   if (!Array.isArray(raw)) return [];
   const out: AuthorRule[] = [];
   for (const item of raw.slice(0, LIMITS.authorRules)) {
@@ -275,7 +306,10 @@ function validateAuthors(raw: unknown, path: string, warnings: ValidationIssue[]
     out.push(rule);
   }
   if (raw.length > LIMITS.authorRules) {
-    warnings.push({ path, message: `truncated to ${LIMITS.authorRules} rules` });
+    warnings.push({
+      path,
+      message: `truncated to ${LIMITS.authorRules} rules`,
+    });
   }
   return out;
 }
@@ -293,7 +327,11 @@ function validateSift(
     return base;
   }
   const s = raw as Record<string, unknown>;
-  const strArray = (v: unknown, allowed?: readonly string[], cap: number = LIMITS.channelRules) =>
+  const strArray = (
+    v: unknown,
+    allowed?: readonly string[],
+    cap: number = LIMITS.channelRules,
+  ) =>
     Array.isArray(v)
       ? v
           .filter((x): x is string => typeof x === 'string')
@@ -302,16 +340,29 @@ function validateSift(
       : [];
 
   return {
-    mutedReasons: strArray(s.mutedReasons, REASON_TYPES) as SiftRules['mutedReasons'],
-    mutedGroups: strArray(s.mutedGroups, REASON_GROUPS) as SiftRules['mutedGroups'],
-    keywords: validateKeywords(s.keywords, `${path}.keywords`, issues, warnings),
+    mutedReasons: strArray(
+      s.mutedReasons,
+      REASON_TYPES,
+    ) as SiftRules['mutedReasons'],
+    mutedGroups: strArray(
+      s.mutedGroups,
+      REASON_GROUPS,
+    ) as SiftRules['mutedGroups'],
+    keywords: validateKeywords(
+      s.keywords,
+      `${path}.keywords`,
+      issues,
+      warnings,
+    ),
     authors: validateAuthors(s.authors, `${path}.authors`, warnings),
     channels: strArray(s.channels),
     hideReplies: s.hideReplies === true,
     hideRecasts: s.hideRecasts === true,
     hideTextless: s.hideTextless === true,
     mutedEmbedKinds: strArray(s.mutedEmbedKinds, undefined, 32),
-    ...((RANKED_QUALITIES as readonly string[]).includes(s.minAuthorQuality as string)
+    ...((RANKED_QUALITIES as readonly string[]).includes(
+      s.minAuthorQuality as string,
+    )
       ? { minAuthorQuality: s.minAuthorQuality as RankedQuality }
       : {}),
     ...(isFiniteNumber(s.minScore) ? { minScore: s.minScore } : {}),
@@ -333,7 +384,10 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
       if (!isFiniteNumber(v)) continue;
       const clamped = clamp(v, 0, LIMITS.maxWeight);
       if (clamped !== v) {
-        warnings.push({ path: `sort.weights.${k}`, message: `clamped to ${clamped}` });
+        warnings.push({
+          path: `sort.weights.${k}`,
+          message: `clamped to ${clamped}`,
+        });
       }
       weights[k as keyof SortSpec['weights']] = clamped;
     }
@@ -345,10 +399,18 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
       : {};
   const diversity: SortSpec['diversity'] = {};
   if (isFiniteNumber(rawDiversity.maxPerAuthor)) {
-    diversity.maxPerAuthor = clamp(Math.floor(rawDiversity.maxPerAuthor), 1, 50);
+    diversity.maxPerAuthor = clamp(
+      Math.floor(rawDiversity.maxPerAuthor),
+      1,
+      50,
+    );
   }
   if (isFiniteNumber(rawDiversity.maxPerChannel)) {
-    diversity.maxPerChannel = clamp(Math.floor(rawDiversity.maxPerChannel), 1, 50);
+    diversity.maxPerChannel = clamp(
+      Math.floor(rawDiversity.maxPerChannel),
+      1,
+      50,
+    );
   }
   if (isFiniteNumber(rawDiversity.window)) {
     diversity.window = clamp(Math.floor(rawDiversity.window), 5, 200);
@@ -360,7 +422,9 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
     recencyHalfLifeHours: isFiniteNumber(s.recencyHalfLifeHours)
       ? clamp(s.recencyHalfLifeHours, 0.25, 336)
       : base.recencyHalfLifeHours,
-    affinityBoost: isFiniteNumber(s.affinityBoost) ? clamp(s.affinityBoost, 0, 1) : base.affinityBoost,
+    affinityBoost: isFiniteNumber(s.affinityBoost)
+      ? clamp(s.affinityBoost, 0, 1)
+      : base.affinityBoost,
     diversity,
   };
 }
@@ -370,7 +434,10 @@ export function validateFeedSpec(input: unknown): ValidationResult {
   const warnings: ValidationIssue[] = [];
 
   if (typeof input !== 'object' || input === null) {
-    return { ok: false, issues: [{ path: '', message: 'spec must be an object' }] };
+    return {
+      ok: false,
+      issues: [{ path: '', message: 'spec must be an object' }],
+    };
   }
   const raw = input as Record<string, unknown>;
 
@@ -393,7 +460,8 @@ export function validateFeedSpec(input: unknown): ValidationResult {
     typeof raw.name === 'string' && raw.name.trim()
       ? raw.name.trim().slice(0, LIMITS.nameChars)
       : '';
-  if (!name) issues.push({ path: 'name', message: 'required non-empty string' });
+  if (!name)
+    issues.push({ path: 'name', message: 'required non-empty string' });
 
   const source = validateSource(raw.source, 'source', issues);
   const sift = validateSift(raw.sift, 'sift', issues, warnings);
@@ -431,7 +499,8 @@ export function validateFeedSpec(input: unknown): ValidationResult {
     if (sk.hideCounts === true) skin.hideCounts = true;
     if (sk.showWhyChips === true) skin.showWhyChips = true;
     if (sk.absoluteTimestamps === true) skin.absoluteTimestamps = true;
-    if (typeof sk.themeId === 'string' && sk.themeId) skin.themeId = sk.themeId.slice(0, 64);
+    if (typeof sk.themeId === 'string' && sk.themeId)
+      skin.themeId = sk.themeId.slice(0, 64);
     if (Object.keys(skin).length > 0) spec.skin = skin;
   }
 

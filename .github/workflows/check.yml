@@ -1,0 +1,34 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Matches farcasterxyz/client's pinned Node, so anything that builds here
+      # builds in a fork of the client.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+
+      # Compiles the adapter against the real generated API types, then proves
+      # that check still fails when upstream drifts. The second job is the one
+      # that matters: a compatibility check that cannot fail is worse than none.
+      - run: pnpm verify:compat
+      - run: pnpm verify:compat:drift

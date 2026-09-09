@@ -1,7 +1,7 @@
 {
-  "name": "home-personalization",
+  "name": "home-client-core",
   "version": "0.0.0",
-  "description": "The personalization kernel for Home: user-defined feeds, transparent ranking, themes, and usage boundaries. No runtime dependencies.",
+  "description": "Everything between storage and the screen, with no screen: preferences, session, affinity, feed pipeline, theme.",
   "license": "MIT",
   "private": true,
   "main": "dist/index.js",
@@ -13,15 +13,21 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
+    "demo": "vite-node src/cli.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\" --config ../../.prettierrc.js --ignore-path ../../.prettierignore",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "farcaster-adapter": "workspace:*",
+    "home-personalization": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.19.0",
     "typescript": "^5.9.0",
+    "vite-node": "^3.1.1",
     "vitest": "^3.1.1"
   }
 }

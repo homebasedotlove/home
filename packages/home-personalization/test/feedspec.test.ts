@@ -1,8 +1,17 @@
 import { describe, test } from 'vitest';
 import assert from 'node:assert/strict';
 
-import { makeFeedSpec, starterFeeds, emptySift, defaultSort } from '../src/feedspec/defaults';
-import { validateFeedSpec, isProbablySafeRegex, LIMITS } from '../src/feedspec/validate';
+import {
+  makeFeedSpec,
+  starterFeeds,
+  emptySift,
+  defaultSort,
+} from '../src/feedspec/defaults';
+import {
+  validateFeedSpec,
+  isProbablySafeRegex,
+  LIMITS,
+} from '../src/feedspec/validate';
 import {
   b64urlDecode,
   b64urlEncode,
@@ -15,8 +24,21 @@ import {
 
 describe('base64url', () => {
   test('round-trips ascii, unicode, and emoji', () => {
-    for (const s of ['', 'a', 'ab', 'abc', 'hello world', 'ünïcødé', '日本語のテキスト', '🏠🌙 feed']) {
-      assert.equal(b64urlDecode(b64urlEncode(s)), s, `failed on ${JSON.stringify(s)}`);
+    for (const s of [
+      '',
+      'a',
+      'ab',
+      'abc',
+      'hello world',
+      'ünïcødé',
+      '日本語のテキスト',
+      '🏠🌙 feed',
+    ]) {
+      assert.equal(
+        b64urlDecode(b64urlEncode(s)),
+        s,
+        `failed on ${JSON.stringify(s)}`,
+      );
     }
   });
 
@@ -36,22 +58,46 @@ describe('regex safety', () => {
     assert.equal(isProbablySafeRegex('(a|aa)*'), false);
     assert.equal(isProbablySafeRegex('(a*)*'), false);
     assert.equal(isProbablySafeRegex('((a)+)+'), false, 'nested groups');
-    assert.equal(isProbablySafeRegex('(a|b)+'), false, 'over-eager on purpose: quantified alternation');
+    assert.equal(
+      isProbablySafeRegex('(a|b)+'),
+      false,
+      'over-eager on purpose: quantified alternation',
+    );
     assert.equal(isProbablySafeRegex('(x*){10,}'), false);
     assert.equal(isProbablySafeRegex('(a)\\1+'), false, 'back-references');
     assert.equal(isProbablySafeRegex('.*.*='), false);
     assert.equal(isProbablySafeRegex('['), false, 'uncompilable');
-    assert.equal(isProbablySafeRegex('a'.repeat(LIMITS.regexChars + 1)), false, 'over length');
+    assert.equal(
+      isProbablySafeRegex('a'.repeat(LIMITS.regexChars + 1)),
+      false,
+      'over length',
+    );
   });
 
   test('accepts ordinary patterns', () => {
     assert.equal(isProbablySafeRegex('^gm+$'), true);
     assert.equal(isProbablySafeRegex('\\$[A-Z]{2,6}\\b'), true);
-    assert.equal(isProbablySafeRegex('(bull|bear) market'), true, 'alternation without a quantifier');
+    assert.equal(
+      isProbablySafeRegex('(bull|bear) market'),
+      true,
+      'alternation without a quantifier',
+    );
     assert.equal(isProbablySafeRegex('(?:gm|gn) everyone'), true);
-    assert.equal(isProbablySafeRegex('(foo)?bar'), true, 'a bounded ? is not a blowup');
-    assert.equal(isProbablySafeRegex('[*+]{2,3}'), true, 'quantifier chars inside a class are literals');
-    assert.equal(isProbablySafeRegex('(a)*(b)*'), true, 'sequential, not nested');
+    assert.equal(
+      isProbablySafeRegex('(foo)?bar'),
+      true,
+      'a bounded ? is not a blowup',
+    );
+    assert.equal(
+      isProbablySafeRegex('[*+]{2,3}'),
+      true,
+      'quantifier chars inside a class are literals',
+    );
+    assert.equal(
+      isProbablySafeRegex('(a)*(b)*'),
+      true,
+      'sequential, not nested',
+    );
   });
 });
 
@@ -93,7 +139,10 @@ describe('validation', () => {
     });
     assert.equal(r.ok, true);
     if (r.ok) {
-      assert.deepEqual(r.spec.sift.keywords.map((k) => k.pattern), ['airdrop']);
+      assert.deepEqual(
+        r.spec.sift.keywords.map((k) => k.pattern),
+        ['airdrop'],
+      );
       assert.equal(r.warnings.length, 1);
       assert.match(r.warnings[0]!.message, /unsafe or invalid/);
     }
@@ -117,7 +166,11 @@ describe('validation', () => {
     if (r.ok) {
       assert.equal(r.spec.sort.weights.direct, LIMITS.maxWeight);
       assert.equal(r.spec.sort.weights.discovery, 0);
-      assert.equal('bogus' in r.spec.sort.weights, false, 'unknown groups are dropped');
+      assert.equal(
+        'bogus' in r.spec.sort.weights,
+        false,
+        'unknown groups are dropped',
+      );
       assert.ok(r.spec.sort.recencyHalfLifeHours <= 336);
       assert.equal(r.spec.sort.affinityBoost, 1);
       assert.equal(r.spec.sort.diversity.maxPerAuthor, 50);
@@ -139,7 +192,10 @@ describe('validation', () => {
       assert.equal(r.spec.name.length, LIMITS.nameChars);
       assert.equal([...r.spec.icon!].length, 2);
       assert.equal(r.spec.description!.length, LIMITS.descriptionChars);
-      assert.equal((r.spec.source as { query: string }).query.length, LIMITS.searchChars);
+      assert.equal(
+        (r.spec.source as { query: string }).query.length,
+        LIMITS.searchChars,
+      );
     }
   });
 
@@ -148,7 +204,10 @@ describe('validation', () => {
       version: 1,
       id: 'x',
       name: 'X',
-      source: { kind: 'blend', parts: [{ source: { kind: 'blend', parts: [] }, weight: 1 }] },
+      source: {
+        kind: 'blend',
+        parts: [{ source: { kind: 'blend', parts: [] }, weight: 1 }],
+      },
     });
     assert.equal(nested.ok, false);
 
@@ -156,7 +215,10 @@ describe('validation', () => {
       version: 1,
       id: 'x',
       name: 'X',
-      source: { kind: 'blend', parts: [{ source: { kind: 'home' }, weight: 0 }] },
+      source: {
+        kind: 'blend',
+        parts: [{ source: { kind: 'home' }, weight: 0 }],
+      },
     });
     assert.equal(zeroed.ok, false);
   });
@@ -167,7 +229,10 @@ describe('validation', () => {
       id: 'x',
       name: 'X',
       source: { kind: 'home' },
-      sift: { mutedReasons: ['popular', 'made-up-reason'], mutedGroups: ['promoted', 'nope'] },
+      sift: {
+        mutedReasons: ['popular', 'made-up-reason'],
+        mutedGroups: ['promoted', 'nope'],
+      },
     });
     assert.equal(r.ok, true);
     if (r.ok) {
@@ -179,13 +244,29 @@ describe('validation', () => {
 
 describe('share links', () => {
   test('round-trip preserves every field the reader set', () => {
-    const spec = makeFeedSpec('design', 'Design', { kind: 'channel', channelKey: 'design' }, {
-      icon: '🎨',
-      description: 'design channel, quiet',
-      sift: { ...emptySift(), mutedGroups: ['promoted'], keywords: [{ pattern: 'hiring', mode: 'word' }] },
-      sort: { ...defaultSort(), mode: 'weighted', weights: { direct: 2 }, recencyHalfLifeHours: 24, affinityBoost: 0.3, diversity: { maxPerAuthor: 2, window: 10 } },
-      skin: { density: 'compact', hideCounts: true },
-    });
+    const spec = makeFeedSpec(
+      'design',
+      'Design',
+      { kind: 'channel', channelKey: 'design' },
+      {
+        icon: '🎨',
+        description: 'design channel, quiet',
+        sift: {
+          ...emptySift(),
+          mutedGroups: ['promoted'],
+          keywords: [{ pattern: 'hiring', mode: 'word' }],
+        },
+        sort: {
+          ...defaultSort(),
+          mode: 'weighted',
+          weights: { direct: 2 },
+          recencyHalfLifeHours: 24,
+          affinityBoost: 0.3,
+          diversity: { maxPerAuthor: 2, window: 10 },
+        },
+        skin: { density: 'compact', hideCounts: true },
+      },
+    );
     const decoded = decodeShare(encodeShare(spec));
     assert.equal(decoded.ok, true);
     if (decoded.ok) assert.deepEqual(decoded.spec, spec);
@@ -211,7 +292,13 @@ describe('share links', () => {
 
   test('a tampered link fails validation rather than being trusted', () => {
     const evil = b64urlEncode(
-      JSON.stringify({ version: 1, id: 'x', name: 'X', source: { kind: 'home' }, sort: { weights: { direct: 1e9 } } }),
+      JSON.stringify({
+        version: 1,
+        id: 'x',
+        name: 'X',
+        source: { kind: 'home' },
+        sort: { weights: { direct: 1e9 } },
+      }),
     );
     const r = decodeShare(evil);
     assert.equal(r.ok, true);

@@ -56,18 +56,32 @@ describe('budgets', () => {
   });
 
   test('wind-down begins at three quarters and ramps to full', () => {
-    const settings = { ...defaultBoundarySettings(), sessionBudgetMinutes: 20, windDown: true };
+    const settings = {
+      ...defaultBoundarySettings(),
+      sessionBudgetMinutes: 20,
+      windDown: true,
+    };
     assert.equal(evaluateBoundaries(settings, usage(14)).status, 'open');
     const early = evaluateBoundaries(settings, usage(15));
     assert.equal(early.status, 'winding-down');
     assert.equal(early.desaturation, 0);
     const late = evaluateBoundaries(settings, usage(19));
-    assert.ok(late.desaturation > 0.7 && late.desaturation < 1, `got ${late.desaturation}`);
-    assert.equal(evaluateBoundaries(settings, usage(20)).status, 'session-over');
+    assert.ok(
+      late.desaturation > 0.7 && late.desaturation < 1,
+      `got ${late.desaturation}`,
+    );
+    assert.equal(
+      evaluateBoundaries(settings, usage(20)).status,
+      'session-over',
+    );
   });
 
   test('wind-down colour only drains when the reader asked for it', () => {
-    const settings = { ...defaultBoundarySettings(), sessionBudgetMinutes: 20, windDown: false };
+    const settings = {
+      ...defaultBoundarySettings(),
+      sessionBudgetMinutes: 20,
+      windDown: false,
+    };
     assert.equal(evaluateBoundaries(settings, usage(25)).desaturation, 0);
   });
 
@@ -79,8 +93,15 @@ describe('budgets', () => {
     };
     const s = evaluateBoundaries(settings, usage(10, 29));
     assert.equal(s.status, 'winding-down');
-    assert.equal(s.remainingMs, 1 * MIN, 'reports the day budget, not the session one');
-    assert.equal(evaluateBoundaries(settings, usage(10, 31)).status, 'day-over');
+    assert.equal(
+      s.remainingMs,
+      1 * MIN,
+      'reports the day budget, not the session one',
+    );
+    assert.equal(
+      evaluateBoundaries(settings, usage(10, 31)).status,
+      'day-over',
+    );
   });
 
   test('quiet hours win over an unspent budget', () => {
@@ -89,7 +110,10 @@ describe('budgets', () => {
       sessionBudgetMinutes: 60,
       quietHours: { startMinute: 0, endMinute: 6 * 60 },
     };
-    assert.equal(evaluateBoundaries(settings, usage(1, 1, 2 * 60)).status, 'quiet');
+    assert.equal(
+      evaluateBoundaries(settings, usage(1, 1, 2 * 60)).status,
+      'quiet',
+    );
   });
 
   test('messages state a fact and never scold', () => {
@@ -114,20 +138,32 @@ describe('catch-up', () => {
   });
 
   test('truncates at the last visit and reports that it did', () => {
-    const r = applyCatchUp(items, 150, { ...defaultBoundarySettings(), catchUp: true });
-    assert.deepEqual(r.items.map((i) => i.id), ['new', 'mid']);
+    const r = applyCatchUp(items, 150, {
+      ...defaultBoundarySettings(),
+      catchUp: true,
+    });
+    assert.deepEqual(
+      r.items.map((i) => i.id),
+      ['new', 'mid'],
+    );
     assert.equal(r.hasMore, true, 'the reader chose to stop; there is more');
     assert.equal(r.caughtUp, false);
   });
 
   test('distinguishes "caught up" from "you chose to stop"', () => {
-    const r = applyCatchUp(items, 999, { ...defaultBoundarySettings(), catchUp: true });
+    const r = applyCatchUp(items, 999, {
+      ...defaultBoundarySettings(),
+      catchUp: true,
+    });
     assert.deepEqual(r.items, []);
     assert.equal(r.caughtUp, true);
   });
 
   test('a first-ever visit shows everything rather than nothing', () => {
-    const r = applyCatchUp(items, undefined, { ...defaultBoundarySettings(), catchUp: true });
+    const r = applyCatchUp(items, undefined, {
+      ...defaultBoundarySettings(),
+      catchUp: true,
+    });
     assert.equal(r.items.length, 3);
   });
 });

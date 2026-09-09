@@ -26,7 +26,7 @@ does.
 The evidence these are responding to is in
 [`../research/reference-client-audit.md`](../research/reference-client-audit.md).
 The engine that implements them is
-[`packages/personalization`](../../packages/personalization).
+[`packages/home-personalization`](../../packages/home-personalization).
 
 ## The shape of it in one page
 

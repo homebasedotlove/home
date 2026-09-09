@@ -55,7 +55,9 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 export type _Cast = Assert<Assignable<ApiCast, CastLike>>;
 export type _Embeds = Assert<Assignable<ApiCastEmbeds, CastEmbedsLike>>;
-export type _Meta = Assert<Assignable<ApiCastFeedItemMeta, CastFeedItemMetaLike>>;
+export type _Meta = Assert<
+  Assignable<ApiCastFeedItemMeta, CastFeedItemMetaLike>
+>;
 export type _FeedItem = Assert<Assignable<ApiCastFeedItem, CastFeedItemLike>>;
 
 // ---------------------------------------------------------------------------
@@ -74,10 +76,14 @@ export type _Quality = Assert<Exact<ApiUserQuality, AuthorQuality>>;
  * would render as an unlabelled chip and be unmutable — exactly the failure
  * this client exists to fix.
  */
-export type _Reasons = Assert<Exact<ApiCastFeedIncludeReason['type'], ReasonType>>;
+export type _Reasons = Assert<
+  Exact<ApiCastFeedIncludeReason['type'], ReasonType>
+>;
 
 // Runtime constants have to agree with the types they mirror, too.
-export type _QualityConst = Assert<Exact<(typeof AUTHOR_QUALITIES)[number], ApiUserQuality>>;
+export type _QualityConst = Assert<
+  Exact<(typeof AUTHOR_QUALITIES)[number], ApiUserQuality>
+>;
 export type _ReasonConst = Assert<
   Exact<(typeof REASON_TYPES)[number], ApiCastFeedIncludeReason['type']>
 >;
@@ -105,51 +111,103 @@ export type _ReasonConst = Assert<
 type Field<T, K extends keyof T> = NonNullable<T[K]>;
 
 // ApiCastFeedItem
-export type _F_item_id = Assert<Assignable<Field<ApiCastFeedItem, 'id'>, string>>;
-export type _F_item_ts = Assert<Assignable<Field<ApiCastFeedItem, 'timestamp'>, number>>;
-export type _F_item_cast = Assert<Assignable<Field<ApiCastFeedItem, 'cast'>, CastLike>>;
-export type _F_item_meta = Assert<Assignable<Field<ApiCastFeedItem, 'meta'>, CastFeedItemMetaLike>>;
+export type _F_item_id = Assert<
+  Assignable<Field<ApiCastFeedItem, 'id'>, string>
+>;
+export type _F_item_ts = Assert<
+  Assignable<Field<ApiCastFeedItem, 'timestamp'>, number>
+>;
+export type _F_item_cast = Assert<
+  Assignable<Field<ApiCastFeedItem, 'cast'>, CastLike>
+>;
+export type _F_item_meta = Assert<
+  Assignable<Field<ApiCastFeedItem, 'meta'>, CastFeedItemMetaLike>
+>;
 
 // ApiCastFeedItemMeta — the three fields the reference client discards.
 export type _F_meta_reason = Assert<
   Assignable<Field<ApiCastFeedItemMeta, 'includeReason'>, { type: string }>
 >;
-export type _F_meta_score = Assert<Assignable<Field<ApiCastFeedItemMeta, 'score'>, number>>;
+export type _F_meta_score = Assert<
+  Assignable<Field<ApiCastFeedItemMeta, 'score'>, number>
+>;
 export type _F_meta_quality = Assert<
   Assignable<Field<ApiCastFeedItemMeta, 'authorQuality'>, string>
 >;
-export type _F_reason_type = Assert<Assignable<ApiCastFeedIncludeReason['type'], string>>;
+export type _F_reason_type = Assert<
+  Assignable<ApiCastFeedIncludeReason['type'], string>
+>;
 
 // ApiCast
 export type _F_cast_text = Assert<Assignable<Field<ApiCast, 'text'>, string>>;
-export type _F_cast_ts = Assert<Assignable<Field<ApiCast, 'timestamp'>, number>>;
-export type _F_cast_author = Assert<Assignable<Field<ApiCast, 'author'>, { fid: number }>>;
-export type _F_cast_parent = Assert<Assignable<Field<ApiCast, 'parentHash'>, string>>;
-export type _F_cast_recast = Assert<Assignable<Field<ApiCast, 'recast'>, boolean>>;
-export type _F_cast_deleted = Assert<Assignable<Field<ApiCast, 'deleted'>, boolean>>;
-export type _F_cast_channel = Assert<Assignable<Field<ApiCast, 'channel'>, { key: string }>>;
+export type _F_cast_ts = Assert<
+  Assignable<Field<ApiCast, 'timestamp'>, number>
+>;
+export type _F_cast_author = Assert<
+  Assignable<Field<ApiCast, 'author'>, { fid: number }>
+>;
+export type _F_cast_parent = Assert<
+  Assignable<Field<ApiCast, 'parentHash'>, string>
+>;
+export type _F_cast_recast = Assert<
+  Assignable<Field<ApiCast, 'recast'>, boolean>
+>;
+export type _F_cast_deleted = Assert<
+  Assignable<Field<ApiCast, 'deleted'>, boolean>
+>;
+export type _F_cast_channel = Assert<
+  Assignable<Field<ApiCast, 'channel'>, { key: string }>
+>;
 export type _F_cast_token = Assert<Assignable<Field<ApiCast, 'token'>, object>>;
-export type _F_cast_collectible = Assert<Assignable<Field<ApiCast, 'collectible'>, object>>;
-export type _F_cast_embeds = Assert<Assignable<Field<ApiCast, 'embeds'>, CastEmbedsLike>>;
-export type _F_cast_replies = Assert<Assignable<Field<ApiCast, 'replies'>, { count: number }>>;
-export type _F_cast_reactions = Assert<Assignable<Field<ApiCast, 'reactions'>, { count: number }>>;
-export type _F_cast_recasts = Assert<Assignable<Field<ApiCast, 'recasts'>, { count: number }>>;
+export type _F_cast_collectible = Assert<
+  Assignable<Field<ApiCast, 'collectible'>, object>
+>;
+export type _F_cast_embeds = Assert<
+  Assignable<Field<ApiCast, 'embeds'>, CastEmbedsLike>
+>;
+export type _F_cast_replies = Assert<
+  Assignable<Field<ApiCast, 'replies'>, { count: number }>
+>;
+export type _F_cast_reactions = Assert<
+  Assignable<Field<ApiCast, 'reactions'>, { count: number }>
+>;
+export type _F_cast_recasts = Assert<
+  Assignable<Field<ApiCast, 'recasts'>, { count: number }>
+>;
 
 // ApiCastEmbeds — the arrays the embed classifier reads.
-export type _F_emb_images = Assert<Assignable<Field<ApiCastEmbeds, 'images'>, unknown[]>>;
-export type _F_emb_urls = Assert<Assignable<Field<ApiCastEmbeds, 'urls'>, unknown[]>>;
-export type _F_emb_videos = Assert<Assignable<Field<ApiCastEmbeds, 'videos'>, unknown[]>>;
-export type _F_emb_casts = Assert<Assignable<Field<ApiCastEmbeds, 'casts'>, unknown[]>>;
-export type _F_emb_snap = Assert<Assignable<Field<ApiCastEmbeds, 'snap'>, unknown[]>>;
-export type _F_emb_txs = Assert<Assignable<Field<ApiCastEmbeds, 'transactions'>, unknown[]>>;
-export type _F_emb_invites = Assert<Assignable<Field<ApiCastEmbeds, 'groupInvites'>, unknown[]>>;
+export type _F_emb_images = Assert<
+  Assignable<Field<ApiCastEmbeds, 'images'>, unknown[]>
+>;
+export type _F_emb_urls = Assert<
+  Assignable<Field<ApiCastEmbeds, 'urls'>, unknown[]>
+>;
+export type _F_emb_videos = Assert<
+  Assignable<Field<ApiCastEmbeds, 'videos'>, unknown[]>
+>;
+export type _F_emb_casts = Assert<
+  Assignable<Field<ApiCastEmbeds, 'casts'>, unknown[]>
+>;
+export type _F_emb_snap = Assert<
+  Assignable<Field<ApiCastEmbeds, 'snap'>, unknown[]>
+>;
+export type _F_emb_txs = Assert<
+  Assignable<Field<ApiCastEmbeds, 'transactions'>, unknown[]>
+>;
+export type _F_emb_invites = Assert<
+  Assignable<Field<ApiCastEmbeds, 'groupInvites'>, unknown[]>
+>;
 
 // ApiCastUrlEmbed — a link that is really a token or an NFT.
 type RealUrlEmbed = Field<ApiCastEmbeds, 'urls'>[number];
 export type _F_url_token = Assert<Assignable<RealUrlEmbed['token'], unknown>>;
-export type _F_url_tokenV2 = Assert<Assignable<RealUrlEmbed['tokenV2'], unknown>>;
+export type _F_url_tokenV2 = Assert<
+  Assignable<RealUrlEmbed['tokenV2'], unknown>
+>;
 export type _F_url_asset = Assert<Assignable<RealUrlEmbed['asset'], unknown>>;
-export type _F_url_collection = Assert<Assignable<RealUrlEmbed['collection'], unknown>>;
+export type _F_url_collection = Assert<
+  Assignable<RealUrlEmbed['collection'], unknown>
+>;
 
 // ---------------------------------------------------------------------------
 // The functions accept real values

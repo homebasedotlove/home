@@ -14,7 +14,7 @@ Home is an attempt to unlock it.
 | [`docs/research/`](docs/research/reference-client-audit.md) | What the reference client leaves on the table, with citations |
 | [`docs/design/`](docs/design/README.md) | Principles, the six customization axes, the four signature interactions, information architecture, roadmap |
 | [`docs/integration/`](docs/integration/wiring-into-a-fork.md) | The six call sites that connect the kernel to a fork of `farcasterxyz/client` |
-| [`packages/personalization/`](packages/personalization) | The engine, implemented and tested |
+| [`packages/home-personalization/`](packages/home-personalization) | The engine, implemented and tested |
 
 **Start with** [the audit](docs/research/reference-client-audit.md) for why, then
 [the design](docs/design/README.md) for what.
@@ -46,34 +46,47 @@ So Home:
 - **Lets a session end.** Budgets, quiet hours, and a catch-up feed with a
   bottom. No incumbent will ship this; that is the point.
 
-## The kernel
+## The code
 
-[`packages/personalization`](packages/personalization) implements all of it as
-pure TypeScript with **no dependencies** — no React, no React Native, no API
-client, no storage engine. It runs identically on iOS, on the web, and in
-`node --test`.
+Three packages, no runtime dependencies, pinned to the same Node the reference
+client uses (20.19.5) and built with its prettier config and tsconfig shape.
 
-```
-src/reasons/      the include-reason taxonomy, named for humans
-src/feedspec/     FeedSpec, validation hardened against untrusted links, share codecs
-src/pipeline/     filter → rank → report, pure and synchronous, receipts for everything
-src/theme/        Oklab colour maths, seed → palette, enforced WCAG contrast
-src/boundaries/   session budgets, quiet hours, the finite feed
-src/prefs/        one settings document, migration that survives hostile input
-```
+| | |
+| --- | --- |
+| [`home-personalization`](packages/home-personalization) | The kernel: reasons, FeedSpec, the filter/rank pipeline, Oklab theming, boundaries, preferences. No React, no API client, no storage engine. |
+| [`farcaster-adapter`](packages/farcaster-adapter) | The type boundary, and the replacement for the reference client's feed `flatMap`. |
+| [`home-client-core`](packages/home-client-core) | Everything between storage and the screen, with no screen. |
 
 ```bash
-cd packages/personalization
-node --test 'test/*.test.ts'    # 88 tests, no install step
+pnpm install
+pnpm check:all                          # format, typecheck, build, test, compat
+pnpm --filter home-client-core demo     # watch the whole mechanism run
 ```
 
-Requires Node 22.6+ for native TypeScript execution.
+The demo drives a cold start, a reader tapping a why-chip, a mute expiring after
+a week, a session budget winding down, catch-up ending the feed, and a config
+moving to a new device — printing the feed at each step. Every claim in
+[`docs/design`](docs/design/README.md) is observable there without a simulator,
+an API key, or a phone.
+
+### Staying compatible
+
+```bash
+SNAPSHOT=../client pnpm verify:compat
+```
+
+Compiles the adapter against the snapshot's own generated `api.ts`, asserting
+the shape of all 34 fields it reads plus exact equality on the two enumerations
+Home mirrors. `pnpm verify:compat:drift` then mutates upstream eleven ways and
+fails if any goes undetected — a compatibility check that cannot fail is worse
+than no check. Both run in CI.
 
 ## Status
 
-Design and kernel are done and tested. The client itself is not built yet — the
-next step is a fork of [`farcasterxyz/client`](https://github.com/farcasterxyz/client)
-with the kernel wired in at the [six call
+The design, the kernel, the adapter, and the client core are done: 204 tests,
+green against snapshot `b6922e2`. The React layer is not built yet — the next
+step is a fork of [`farcasterxyz/client`](https://github.com/farcasterxyz/client)
+with `home-client-core` wired in at the [six call
 sites](docs/integration/wiring-into-a-fork.md), starting with the why-chip.
 
 ## License

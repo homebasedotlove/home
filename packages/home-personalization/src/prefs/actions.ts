@@ -13,14 +13,24 @@
  * changed", which is the whole product.
  */
 
-import type { FeedSpec, KeywordRule, MatchMode, SortSpec } from '../feedspec/types';
+import type {
+  FeedSpec,
+  KeywordRule,
+  MatchMode,
+  SortSpec,
+} from '../feedspec/types';
 import { LIMITS } from '../feedspec/validate';
 import type { ReasonGroup } from '../reasons';
 import type { AuthorList, CastAction, Preferences, TabId } from './index';
 
-const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const clamp = (n: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, n));
 
-function replaceFeed(prefs: Preferences, id: string, fn: (f: FeedSpec) => FeedSpec): Preferences {
+function replaceFeed(
+  prefs: Preferences,
+  id: string,
+  fn: (f: FeedSpec) => FeedSpec,
+): Preferences {
   return {
     ...prefs,
     feeds: prefs.feeds.map((f) => (f.id === id ? fn(f) : f)),
@@ -72,7 +82,9 @@ export function nudgeReason(
   return replaceFeed(prefs, feedId, (feed) => {
     const current = feed.sort.weights[group] ?? 1;
     const next = clamp(
-      Math.round((current + (direction === 'up' ? NUDGE_STEP : -NUDGE_STEP)) * 10) / 10,
+      Math.round(
+        (current + (direction === 'up' ? NUDGE_STEP : -NUDGE_STEP)) * 10,
+      ) / 10,
       0,
       GROUP_WEIGHT_CEILING[group],
     );
@@ -96,7 +108,13 @@ export function muteReasonGroup(
   return replaceFeed(prefs, feedId, (feed) =>
     feed.sift.mutedGroups.includes(group)
       ? feed
-      : { ...feed, sift: { ...feed.sift, mutedGroups: [...feed.sift.mutedGroups, group] } },
+      : {
+          ...feed,
+          sift: {
+            ...feed.sift,
+            mutedGroups: [...feed.sift.mutedGroups, group],
+          },
+        },
   );
 }
 
@@ -107,7 +125,10 @@ export function unmuteReasonGroup(
 ): Preferences {
   return replaceFeed(prefs, feedId, (feed) => ({
     ...feed,
-    sift: { ...feed.sift, mutedGroups: feed.sift.mutedGroups.filter((g) => g !== group) },
+    sift: {
+      ...feed.sift,
+      mutedGroups: feed.sift.mutedGroups.filter((g) => g !== group),
+    },
   }));
 }
 
@@ -126,14 +147,22 @@ export function muteKeyword(
   prefs: Preferences,
   feedId: string,
   pattern: string,
-  options: { mode?: MatchMode; forMs?: number; now?: number; note?: string } = {},
+  options: {
+    mode?: MatchMode;
+    forMs?: number;
+    now?: number;
+    note?: string;
+  } = {},
 ): Preferences {
   const trimmed = pattern.trim().slice(0, LIMITS.keywordChars);
   if (!trimmed) return prefs;
   return replaceFeed(prefs, feedId, (feed) => {
     // Word matching by default. Substring muting is the setting that makes
     // people give up on keyword filters, so it has to be chosen, not inherited.
-    const rule: KeywordRule = { pattern: trimmed, mode: options.mode ?? 'word' };
+    const rule: KeywordRule = {
+      pattern: trimmed,
+      mode: options.mode ?? 'word',
+    };
     if (options.forMs !== undefined) {
       rule.expiresAt = (options.now ?? Date.now()) + options.forMs;
     }
@@ -145,10 +174,17 @@ export function muteKeyword(
   });
 }
 
-export function unmuteKeyword(prefs: Preferences, feedId: string, pattern: string): Preferences {
+export function unmuteKeyword(
+  prefs: Preferences,
+  feedId: string,
+  pattern: string,
+): Preferences {
   return replaceFeed(prefs, feedId, (feed) => ({
     ...feed,
-    sift: { ...feed.sift, keywords: feed.sift.keywords.filter((k) => k.pattern !== pattern) },
+    sift: {
+      ...feed.sift,
+      keywords: feed.sift.keywords.filter((k) => k.pattern !== pattern),
+    },
   }));
 }
 
@@ -159,34 +195,58 @@ export function muteAuthor(
   options: { forMs?: number; now?: number; note?: string } = {},
 ): Preferences {
   return replaceFeed(prefs, feedId, (feed) => {
-    const rule = { fid, ...(options.forMs !== undefined
-      ? { expiresAt: (options.now ?? Date.now()) + options.forMs }
-      : {}),
-      ...(options.note ? { note: options.note.slice(0, 140) } : {}) };
+    const rule = {
+      fid,
+      ...(options.forMs !== undefined
+        ? { expiresAt: (options.now ?? Date.now()) + options.forMs }
+        : {}),
+      ...(options.note ? { note: options.note.slice(0, 140) } : {}),
+    };
     const without = feed.sift.authors.filter((a) => a.fid !== fid);
     return { ...feed, sift: { ...feed.sift, authors: [...without, rule] } };
   });
 }
 
-export function unmuteAuthor(prefs: Preferences, feedId: string, fid: number): Preferences {
+export function unmuteAuthor(
+  prefs: Preferences,
+  feedId: string,
+  fid: number,
+): Preferences {
   return replaceFeed(prefs, feedId, (feed) => ({
     ...feed,
-    sift: { ...feed.sift, authors: feed.sift.authors.filter((a) => a.fid !== fid) },
+    sift: {
+      ...feed.sift,
+      authors: feed.sift.authors.filter((a) => a.fid !== fid),
+    },
   }));
 }
 
-export function muteChannel(prefs: Preferences, feedId: string, key: string): Preferences {
+export function muteChannel(
+  prefs: Preferences,
+  feedId: string,
+  key: string,
+): Preferences {
   return replaceFeed(prefs, feedId, (feed) =>
     feed.sift.channels.includes(key)
       ? feed
-      : { ...feed, sift: { ...feed.sift, channels: [...feed.sift.channels, key] } },
+      : {
+          ...feed,
+          sift: { ...feed.sift, channels: [...feed.sift.channels, key] },
+        },
   );
 }
 
-export function unmuteChannel(prefs: Preferences, feedId: string, key: string): Preferences {
+export function unmuteChannel(
+  prefs: Preferences,
+  feedId: string,
+  key: string,
+): Preferences {
   return replaceFeed(prefs, feedId, (feed) => ({
     ...feed,
-    sift: { ...feed.sift, channels: feed.sift.channels.filter((c) => c !== key) },
+    sift: {
+      ...feed.sift,
+      channels: feed.sift.channels.filter((c) => c !== key),
+    },
   }));
 }
 
@@ -225,11 +285,17 @@ export function removeFeed(prefs: Preferences, id: string): Preferences {
   const feeds = prefs.feeds.filter((f) => f.id !== id);
   const feedOrder = prefs.feedOrder.filter((f) => f !== id);
   const activeFeedId =
-    prefs.activeFeedId === id ? (feedOrder[0] ?? feeds[0]!.id) : prefs.activeFeedId;
+    prefs.activeFeedId === id
+      ? (feedOrder[0] ?? feeds[0]!.id)
+      : prefs.activeFeedId;
   return { ...prefs, feeds, feedOrder, activeFeedId };
 }
 
-export function duplicateFeed(prefs: Preferences, id: string, name?: string): Preferences {
+export function duplicateFeed(
+  prefs: Preferences,
+  id: string,
+  name?: string,
+): Preferences {
   const feed = getFeed(prefs, id);
   if (!feed) return prefs;
   return addFeed(prefs, {
@@ -239,15 +305,24 @@ export function duplicateFeed(prefs: Preferences, id: string, name?: string): Pr
   });
 }
 
-export function renameFeed(prefs: Preferences, id: string, name: string): Preferences {
+export function renameFeed(
+  prefs: Preferences,
+  id: string,
+  name: string,
+): Preferences {
   const trimmed = name.trim().slice(0, LIMITS.nameChars);
   if (!trimmed) return prefs;
   return replaceFeed(prefs, id, (f) => ({ ...f, name: trimmed }));
 }
 
-export function reorderFeeds(prefs: Preferences, from: number, to: number): Preferences {
+export function reorderFeeds(
+  prefs: Preferences,
+  from: number,
+  to: number,
+): Preferences {
   const order = orderedFeeds(prefs).map((f) => f.id);
-  if (from < 0 || from >= order.length || to < 0 || to >= order.length) return prefs;
+  if (from < 0 || from >= order.length || to < 0 || to >= order.length)
+    return prefs;
   const next = [...order];
   const [moved] = next.splice(from, 1);
   if (moved === undefined) return prefs;
@@ -264,7 +339,12 @@ export function updateFeed(
   id: string,
   patch: Partial<Omit<FeedSpec, 'id' | 'version'>>,
 ): Preferences {
-  return replaceFeed(prefs, id, (f) => ({ ...f, ...patch, id: f.id, version: f.version }));
+  return replaceFeed(prefs, id, (f) => ({
+    ...f,
+    ...patch,
+    id: f.id,
+    version: f.version,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -285,16 +365,26 @@ export function removeList(prefs: Preferences, id: string): Preferences {
   return { ...prefs, lists: prefs.lists.filter((l) => l.id !== id) };
 }
 
-export function addToList(prefs: Preferences, listId: string, fid: number): Preferences {
+export function addToList(
+  prefs: Preferences,
+  listId: string,
+  fid: number,
+): Preferences {
   return {
     ...prefs,
     lists: prefs.lists.map((l) =>
-      l.id === listId && !l.fids.includes(fid) ? { ...l, fids: [...l.fids, fid] } : l,
+      l.id === listId && !l.fids.includes(fid)
+        ? { ...l, fids: [...l.fids, fid] }
+        : l,
     ),
   };
 }
 
-export function removeFromList(prefs: Preferences, listId: string, fid: number): Preferences {
+export function removeFromList(
+  prefs: Preferences,
+  listId: string,
+  fid: number,
+): Preferences {
   return {
     ...prefs,
     lists: prefs.lists.map((l) =>
@@ -307,7 +397,10 @@ export function removeFromList(prefs: Preferences, listId: string, fid: number):
 // Interaction
 // ---------------------------------------------------------------------------
 
-export function setActionBar(prefs: Preferences, actions: CastAction[]): Preferences {
+export function setActionBar(
+  prefs: Preferences,
+  actions: CastAction[],
+): Preferences {
   return actions.length > 0 ? { ...prefs, actionBar: actions } : prefs;
 }
 

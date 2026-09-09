@@ -48,7 +48,8 @@ export type BoundaryUsage = {
   nowMinute: number;
 };
 
-export type BoundaryStatus = 'open' | 'winding-down' | 'session-over' | 'day-over' | 'quiet';
+export type BoundaryStatus =
+  'open' | 'winding-down' | 'session-over' | 'day-over' | 'quiet';
 
 export type BoundaryState = {
   status: BoundaryStatus;
@@ -67,11 +68,16 @@ export function defaultBoundarySettings(): BoundarySettings {
 const MIN = 60_000;
 
 /** Handles windows that wrap past midnight, which most of them do. */
-export function isQuietNow(quiet: QuietHours | undefined, nowMinute: number): boolean {
+export function isQuietNow(
+  quiet: QuietHours | undefined,
+  nowMinute: number,
+): boolean {
   if (!quiet) return false;
   const { startMinute: s, endMinute: e } = quiet;
   if (s === e) return false;
-  return s < e ? nowMinute >= s && nowMinute < e : nowMinute >= s || nowMinute < e;
+  return s < e
+    ? nowMinute >= s && nowMinute < e
+    : nowMinute >= s || nowMinute < e;
 }
 
 /** Minutes after local midnight for a Date, in the runtime's local zone. */
@@ -94,7 +100,11 @@ export function evaluateBoundaries(
     };
   }
 
-  const budgets: { kind: 'session' | 'day'; limitMs: number; usedMs: number }[] = [];
+  const budgets: {
+    kind: 'session' | 'day';
+    limitMs: number;
+    usedMs: number;
+  }[] = [];
   if (settings.sessionBudgetMinutes) {
     budgets.push({
       kind: 'session',
@@ -103,7 +113,11 @@ export function evaluateBoundaries(
     });
   }
   if (settings.dailyBudgetMinutes) {
-    budgets.push({ kind: 'day', limitMs: settings.dailyBudgetMinutes * MIN, usedMs: usage.dayMs });
+    budgets.push({
+      kind: 'day',
+      limitMs: settings.dailyBudgetMinutes * MIN,
+      usedMs: usage.dayMs,
+    });
   }
   if (budgets.length === 0) return { status: 'open', desaturation: 0 };
 

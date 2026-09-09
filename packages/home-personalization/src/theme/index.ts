@@ -107,9 +107,11 @@ export function deriveTheme(seed: ThemeSeed): DerivedTheme {
   const success = seed.success ?? DEFAULTS.success[mode];
   const warning = seed.warning ?? DEFAULTS.warning[mode];
 
-  const onAccent = contrastRatio('#ffffff', seed.accent) >= contrastRatio('#000000', seed.accent)
-    ? '#ffffff'
-    : '#000000';
+  const onAccent =
+    contrastRatio('#ffffff', seed.accent) >=
+    contrastRatio('#000000', seed.accent)
+      ? '#ffffff'
+      : '#000000';
 
   const radius = seed.radius ?? 12;
   const fontScale = Math.min(1.4, Math.max(0.85, seed.fontScale ?? 1));
@@ -166,15 +168,23 @@ export type ThemeIssue = { field: string; message: string };
  * throwing: the theme editor shows them next to the offending swatch while the
  * reader keeps editing, instead of refusing the whole theme.
  */
-export function validateThemeSeed(input: unknown): { seed?: ThemeSeed; issues: ThemeIssue[] } {
+export function validateThemeSeed(input: unknown): {
+  seed?: ThemeSeed;
+  issues: ThemeIssue[];
+} {
   const issues: ThemeIssue[] = [];
   if (typeof input !== 'object' || input === null) {
     return { issues: [{ field: '', message: 'theme must be an object' }] };
   }
   const raw = input as Record<string, unknown>;
-  const hex = (v: unknown, field: string, required: boolean): string | undefined => {
+  const hex = (
+    v: unknown,
+    field: string,
+    required: boolean,
+  ): string | undefined => {
     if (typeof v !== 'string' || !parseHex(v)) {
-      if (required) issues.push({ field, message: 'must be a hex colour like #1a1a1a' });
+      if (required)
+        issues.push({ field, message: 'must be a hex colour like #1a1a1a' });
       return undefined;
     }
     return v;
@@ -185,7 +195,10 @@ export function validateThemeSeed(input: unknown): { seed?: ThemeSeed; issues: T
   const accent = hex(raw.accent, 'accent', true);
   const mode: ThemeMode = raw.mode === 'light' ? 'light' : 'dark';
   const id = typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : '';
-  const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 40) : '';
+  const name =
+    typeof raw.name === 'string' && raw.name.trim()
+      ? raw.name.trim().slice(0, 40)
+      : '';
   if (!id) issues.push({ field: 'id', message: 'required' });
   if (!name) issues.push({ field: 'name', message: 'required' });
   if (!background || !foreground || !accent) return { issues };
@@ -205,7 +218,8 @@ export function validateThemeSeed(input: unknown): { seed?: ThemeSeed; issues: T
     const f = raw.fonts as Record<string, unknown>;
     seed.fonts = {};
     for (const k of ['body', 'heading', 'mono'] as const) {
-      if (typeof f[k] === 'string') seed.fonts[k] = (f[k] as string).slice(0, 32);
+      if (typeof f[k] === 'string')
+        seed.fonts[k] = (f[k] as string).slice(0, 32);
     }
   }
 
@@ -214,13 +228,15 @@ export function validateThemeSeed(input: unknown): { seed?: ThemeSeed; issues: T
   if (contrastRatio(foreground, background) < WCAG_AA_TEXT) {
     issues.push({
       field: 'foreground',
-      message: 'too low-contrast to read; it will be darkened or lightened to stay legible',
+      message:
+        'too low-contrast to read; it will be darkened or lightened to stay legible',
     });
   }
   if (contrastRatio(accent, background) < WCAG_AA_LARGE) {
     issues.push({
       field: 'accent',
-      message: 'too close to the background; links will be adjusted to stay visible',
+      message:
+        'too close to the background; links will be adjusted to stay visible',
     });
   }
 

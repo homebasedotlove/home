@@ -31,11 +31,16 @@ export function interleaveByWeight<T>(parts: BlendPart<T>[], window = 10): T[] {
 
   const cursors = live.map(() => 0);
   const out: T[] = [];
-  const total = () => live.reduce((n, p, i) => n + (p.items.length - cursors[i]!), 0);
+  const total = () =>
+    live.reduce((n, p, i) => n + (p.items.length - cursors[i]!), 0);
 
   while (total() > 0) {
     const available = live
-      .map((p, i) => ({ i, left: p.items.length - cursors[i]!, weight: p.weight }))
+      .map((p, i) => ({
+        i,
+        left: p.items.length - cursors[i]!,
+        weight: p.weight,
+      }))
       .filter((a) => a.left > 0);
     const weightSum = available.reduce((n, a) => n + a.weight, 0);
     const slots = Math.min(window, total());
@@ -43,11 +48,19 @@ export function interleaveByWeight<T>(parts: BlendPart<T>[], window = 10): T[] {
     // Largest remainder: floor each share, then hand the leftover slots to the
     // parts that were rounded down hardest. Keeps proportions honest at small
     // window sizes, where plain rounding drifts badly.
-    const exact = available.map((a) => ({ ...a, share: (a.weight / weightSum) * slots }));
-    const alloc = exact.map((e) => ({ ...e, n: Math.min(e.left, Math.floor(e.share)) }));
+    const exact = available.map((a) => ({
+      ...a,
+      share: (a.weight / weightSum) * slots,
+    }));
+    const alloc = exact.map((e) => ({
+      ...e,
+      n: Math.min(e.left, Math.floor(e.share)),
+    }));
     let assigned = alloc.reduce((n, a) => n + a.n, 0);
     const byRemainder = [...alloc].sort(
-      (a, b) => b.share - Math.floor(b.share) - (a.share - Math.floor(a.share)) || a.i - b.i,
+      (a, b) =>
+        b.share - Math.floor(b.share) - (a.share - Math.floor(a.share)) ||
+        a.i - b.i,
     );
     let k = 0;
     while (assigned < slots && k < byRemainder.length * 4) {

@@ -57,7 +57,7 @@ what you are looking at right now.
 
 Drag a bar. The feed behind it re-orders live, under your thumb, at 60fps —
 which is why the
-[pipeline](../../packages/personalization/src/pipeline/index.ts) is pure and
+[pipeline](../../packages/home-personalization/src/pipeline/index.ts) is pure and
 synchronous and allocates no regexes.
 
 Release to keep it. There is a *Reset* affordance, and closing without releasing

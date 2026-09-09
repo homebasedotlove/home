@@ -47,7 +47,11 @@ describe('session accounting', () => {
     let s = enterForeground(newSession(T0), T0);
     s = enterBackground(s, T0 + 10 * MIN);
     s = enterForeground(s, T0 + 11 * MIN);
-    assert.equal(s.sessionMs, 10 * MIN, 'checking a notification is not a new session');
+    assert.equal(
+      s.sessionMs,
+      10 * MIN,
+      'checking a notification is not a new session',
+    );
   });
 
   test('a long absence starts a fresh sitting but keeps the daily total', () => {
@@ -82,7 +86,10 @@ describe('session accounting', () => {
 
   test('nowMinute is local, which is what quiet hours compare against', () => {
     const at = new Date(2026, 4, 20, 23, 30);
-    assert.equal(usageNow(newSession(at.getTime()), at.getTime(), at).nowMinute, 23 * 60 + 30);
+    assert.equal(
+      usageNow(newSession(at.getTime()), at.getTime(), at).nowMinute,
+      23 * 60 + 30,
+    );
   });
 
   test('the daily total resets on the local calendar day, not on a 24h timer', () => {
@@ -100,7 +107,10 @@ describe('session accounting', () => {
     const b = new Date(2026, 2, 9, 1, 30);
     assert.notEqual(localDayKey(a.getTime(), a), localDayKey(b.getTime(), b));
     const sameDayLater = new Date(2026, 2, 8, 23, 59);
-    assert.equal(localDayKey(a.getTime(), a), localDayKey(sameDayLater.getTime(), sameDayLater));
+    assert.equal(
+      localDayKey(a.getTime(), a),
+      localDayKey(sameDayLater.getTime(), sameDayLater),
+    );
   });
 
   test('markSeen only moves forward', () => {
@@ -115,7 +125,10 @@ describe('session accounting', () => {
     let s = enterForeground(newSession(T0), T0);
     s = enterBackground(s, T0 + 31 * MIN);
     const settings = { ...defaultBoundarySettings(), sessionBudgetMinutes: 30 };
-    const state = evaluateBoundaries(settings, usageNow(s, T0 + 31 * MIN, new Date(T0 + 31 * MIN)));
+    const state = evaluateBoundaries(
+      settings,
+      usageNow(s, T0 + 31 * MIN, new Date(T0 + 31 * MIN)),
+    );
     assert.equal(state.status, 'session-over');
   });
 });
@@ -125,7 +138,11 @@ describe('affinity', () => {
     let a = emptyAffinity(T0);
     a = recordInteraction(a, 7, 'reply', T0);
     const lookup = affinityLookup(a, T0);
-    assert.equal(affinityFactor(lookup(7), 0), 1, 'boost 0 means no effect at all');
+    assert.equal(
+      affinityFactor(lookup(7), 0),
+      1,
+      'boost 0 means no effect at all',
+    );
   });
 
   test('an untouched author has no opinion, which ranks neutral', () => {
@@ -146,7 +163,8 @@ describe('affinity', () => {
     let lurker = emptyAffinity(T0);
     lurker = recordInteraction(lurker, 1, 'like', T0);
     let poster = emptyAffinity(T0);
-    for (let i = 0; i < 50; i++) poster = recordInteraction(poster, 1, 'reply', T0);
+    for (let i = 0; i < 50; i++)
+      poster = recordInteraction(poster, 1, 'reply', T0);
     assert.equal(affinityLookup(lurker, T0)(1), affinityLookup(poster, T0)(1));
   });
 
@@ -155,7 +173,11 @@ describe('affinity', () => {
     const later = decayAffinity(a, T0 + AFFINITY_HALF_LIFE_MS);
     assert.ok(Math.abs(later.scores['7']! - 3 / 2) < 1e-9);
     const muchLater = decayAffinity(a, T0 + AFFINITY_HALF_LIFE_MS * 20);
-    assert.equal(muchLater.scores['7'], undefined, 'decayed into noise and dropped');
+    assert.equal(
+      muchLater.scores['7'],
+      undefined,
+      'decayed into noise and dropped',
+    );
   });
 
   test('the store cannot grow without bound', () => {

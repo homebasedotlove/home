@@ -58,7 +58,9 @@ export function groupReceipts(receipts: DropReceipt[]): ReceiptGroup[] {
   }
   // Most-hidden first: the rule doing the most work is the one worth reviewing,
   // and it is usually the one the reader has forgotten they set.
-  return [...groups.values()].sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  return [...groups.values()].sort(
+    (a, b) => b.count - a.count || a.key.localeCompare(b.key),
+  );
 }
 
 /** "14 casts hidden on this page." — or nothing at all when none were. */

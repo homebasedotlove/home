@@ -8,7 +8,12 @@
  */
 
 import { reasonGroup } from '../reasons/index';
-import type { DropReceipt, FeedItemView, PipelineContext, RankedQuality } from './types';
+import type {
+  DropReceipt,
+  FeedItemView,
+  PipelineContext,
+  RankedQuality,
+} from './types';
 import { RANKED_QUALITIES } from './types';
 import type { SiftRules } from '../feedspec/types';
 import { compileKeywordRules, firstMatch, isExpired } from './match';
@@ -59,30 +64,55 @@ export function sift(
     detail: string,
     rule?: string,
   ) => {
-    const receipt: DropReceipt = { itemId: item.id, authorFid: item.authorFid, cause, detail };
+    const receipt: DropReceipt = {
+      itemId: item.id,
+      authorFid: item.authorFid,
+      cause,
+      detail,
+    };
     if (rule !== undefined) receipt.rule = rule;
     receipts.push(receipt);
   };
 
   for (const item of items) {
     if (mutedAuthors.has(item.authorFid)) {
-      drop(item, 'muted-author', `You muted fid ${item.authorFid}.`, String(item.authorFid));
+      drop(
+        item,
+        'muted-author',
+        `You muted fid ${item.authorFid}.`,
+        String(item.authorFid),
+      );
       continue;
     }
 
     if (item.reason && mutedReasons.has(item.reason as never)) {
-      drop(item, 'muted-reason', `You turned off "${item.reason}".`, item.reason);
+      drop(
+        item,
+        'muted-reason',
+        `You turned off "${item.reason}".`,
+        item.reason,
+      );
       continue;
     }
 
     const group = item.reason ? reasonGroup(item.reason) : undefined;
     if (group && mutedGroups.has(group)) {
-      drop(item, 'muted-group', `You turned off the "${group}" category.`, group);
+      drop(
+        item,
+        'muted-group',
+        `You turned off the "${group}" category.`,
+        group,
+      );
       continue;
     }
 
     if (item.channelKey && mutedChannels.has(item.channelKey)) {
-      drop(item, 'muted-channel', `You muted /${item.channelKey}.`, item.channelKey);
+      drop(
+        item,
+        'muted-channel',
+        `You muted /${item.channelKey}.`,
+        item.channelKey,
+      );
       continue;
     }
 
@@ -97,7 +127,11 @@ export function sift(
     }
 
     if (rules.hideTextless && item.text.trim() === '') {
-      drop(item, 'hidden-textless', 'Casts with no text are hidden in this feed.');
+      drop(
+        item,
+        'hidden-textless',
+        'Casts with no text are hidden in this feed.',
+      );
       continue;
     }
 
@@ -121,7 +155,11 @@ export function sift(
       }
     }
 
-    if (rules.minScore !== undefined && item.score !== undefined && item.score < rules.minScore) {
+    if (
+      rules.minScore !== undefined &&
+      item.score !== undefined &&
+      item.score < rules.minScore
+    ) {
       drop(
         item,
         'min-score',

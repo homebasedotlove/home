@@ -1,12 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": [
+    "Typechecking config: sources and tests together, no emit.",
+    "Emit settings live in tsconfig.build.json rather than here, because",
+    "a rootDir inherited through extends cannot be unset by a derived",
+    "config, and workspace siblings resolved through paths sit outside it."
+  ],
   "compilerOptions": {
     "target": "ES2021",
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "declaration": true,
-    "declarationMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
@@ -15,9 +19,8 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
     "skipLibCheck": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

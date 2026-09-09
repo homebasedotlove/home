@@ -2,8 +2,8 @@
 
 The complete customization surface, organised so it can be reasoned about rather
 than listed. Each axis maps onto a field in
-[`FeedSpec`](../../packages/personalization/src/feedspec/types.ts) or
-[`Preferences`](../../packages/personalization/src/prefs/index.ts), so "what can
+[`FeedSpec`](../../packages/home-personalization/src/feedspec/types.ts) or
+[`Preferences`](../../packages/home-personalization/src/prefs/index.ts), so "what can
 I change" and "what is in the export file" are the same question.
 
 Legend: **▸ new** — absent from the reference client. **▸ better** — exists, but

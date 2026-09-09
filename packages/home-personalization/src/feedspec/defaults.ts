@@ -7,13 +7,7 @@
  * opinion here is visible in the same UI that can change it.
  */
 
-import type {
-  Density,
-  FeedSpec,
-  SiftRules,
-  SortSpec,
-  Source,
-} from './types';
+import type { Density, FeedSpec, SiftRules, SortSpec, Source } from './types';
 import { FEED_SPEC_VERSION } from './types';
 
 export function emptySift(): SiftRules {
@@ -65,16 +59,26 @@ export function makeFeedSpec(
  */
 export function starterFeeds(): FeedSpec[] {
   return [
-    makeFeedSpec('home', 'Home', { kind: 'home' }, {
-      icon: '🏠',
-      description: "The ranked feed, with its reasons showing.",
-      skin: { showWhyChips: true },
-    }),
-    makeFeedSpec('following', 'Following', { kind: 'following' }, {
-      icon: '👥',
-      description: 'Only people you follow, newest first. Nothing added.',
-      sort: { ...defaultSort(), mode: 'chronological', diversity: {} },
-    }),
+    makeFeedSpec(
+      'home',
+      'Home',
+      { kind: 'home' },
+      {
+        icon: '🏠',
+        description: 'The ranked feed, with its reasons showing.',
+        skin: { showWhyChips: true },
+      },
+    ),
+    makeFeedSpec(
+      'following',
+      'Following',
+      { kind: 'following' },
+      {
+        icon: '👥',
+        description: 'Only people you follow, newest first. Nothing added.',
+        sort: { ...defaultSort(), mode: 'chronological', diversity: {} },
+      },
+    ),
     makeFeedSpec(
       'quiet',
       'Quiet',

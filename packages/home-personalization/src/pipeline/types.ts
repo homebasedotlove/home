@@ -26,7 +26,14 @@ export const AUTHOR_QUALITIES = [
 export type AuthorQuality = (typeof AUTHOR_QUALITIES)[number];
 
 /** The subset that can serve as a floor, worst to best. */
-export const RANKED_QUALITIES = ['harmful', 'spam', 'automated', 'low', 'neutral', 'high'] as const;
+export const RANKED_QUALITIES = [
+  'harmful',
+  'spam',
+  'automated',
+  'low',
+  'neutral',
+  'high',
+] as const;
 
 export type RankedQuality = (typeof RANKED_QUALITIES)[number];
 
@@ -55,9 +62,14 @@ export type PipelineContext = {
   /**
    * On-device affinity in 0–1: how much this reader actually engages with an
    * author, computed from local interaction history that never leaves the
-   * device. Absent means "no opinion", which scores the same as neutral.
+   * device.
+   *
+   * Returns undefined for an author the reader has no history with — which is
+   * most of them, and is not the same as a score of 0. `affinityFactor` maps
+   * that to a multiplier of exactly 1, so an unknown author is ranked as the
+   * server ranked them rather than penalised for being unfamiliar.
    */
-  affinity?: (fid: number) => number;
+  affinity?: (fid: number) => number | undefined;
 };
 
 /** Why one item was removed. The reader can see and undo every one of these. */

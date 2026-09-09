@@ -27,7 +27,10 @@ describe('colour maths', () => {
 
   test('oklab round-trips within a rounding step', () => {
     for (const hex of ['#7c6cff', '#f4ecd8', '#0a0e0a', '#ff0000', '#00ff88']) {
-      assert.equal(toHex(oklabToRgb(rgbToOklab(parseHex(hex)!))), hex.toLowerCase());
+      assert.equal(
+        toHex(oklabToRgb(rgbToOklab(parseHex(hex)!))),
+        hex.toLowerCase(),
+      );
     }
   });
 
@@ -37,7 +40,10 @@ describe('colour maths', () => {
     assert.notEqual(midpoint, naive);
     // Oklab keeps the midpoint of two vivid colours vivid rather than grey.
     const lab = rgbToOklab(parseHex(midpoint)!);
-    assert.ok(Math.hypot(lab.a, lab.b) > 0.02, `midpoint went grey: ${midpoint}`);
+    assert.ok(
+      Math.hypot(lab.a, lab.b) > 0.02,
+      `midpoint went grey: ${midpoint}`,
+    );
   });
 
   test('mix endpoints are exact', () => {
@@ -63,7 +69,10 @@ describe('ensureContrast', () => {
 
   test('rescues low-contrast pairs in both directions', () => {
     const onWhite = ensureContrast('#ffe600', '#ffffff');
-    assert.ok(contrastRatio(onWhite, '#ffffff') >= WCAG_AA_TEXT, `got ${contrastRatio(onWhite, '#ffffff')}`);
+    assert.ok(
+      contrastRatio(onWhite, '#ffffff') >= WCAG_AA_TEXT,
+      `got ${contrastRatio(onWhite, '#ffffff')}`,
+    );
 
     const onBlack = ensureContrast('#101010', '#000000');
     assert.ok(contrastRatio(onBlack, '#000000') >= WCAG_AA_TEXT);
@@ -75,7 +84,10 @@ describe('ensureContrast', () => {
     const after = rgbToOklab(parseHex(fixed)!);
     const hueBefore = Math.atan2(before.b, before.a);
     const hueAfter = Math.atan2(after.b, after.a);
-    assert.ok(Math.abs(hueBefore - hueAfter) < 0.25, 'the reader still gets their yellow');
+    assert.ok(
+      Math.abs(hueBefore - hueAfter) < 0.25,
+      'the reader still gets their yellow',
+    );
   });
 });
 
@@ -83,14 +95,30 @@ describe('deriveTheme', () => {
   test('every preset produces readable text on its own surfaces', () => {
     for (const preset of THEME_PRESETS) {
       const t = deriveTheme(preset);
-      for (const key of ['primary', 'secondary', 'accent', 'danger', 'success', 'warning'] as const) {
+      for (const key of [
+        'primary',
+        'secondary',
+        'accent',
+        'danger',
+        'success',
+        'warning',
+      ] as const) {
         const ratio = contrastRatio(t.text[key], t.background.default);
-        assert.ok(ratio >= WCAG_AA_TEXT, `${preset.id}.text.${key} was ${ratio.toFixed(2)}`);
+        assert.ok(
+          ratio >= WCAG_AA_TEXT,
+          `${preset.id}.text.${key} was ${ratio.toFixed(2)}`,
+        );
       }
       const tertiary = contrastRatio(t.text.tertiary, t.background.default);
-      assert.ok(tertiary >= WCAG_AA_LARGE, `${preset.id}.text.tertiary was ${tertiary.toFixed(2)}`);
+      assert.ok(
+        tertiary >= WCAG_AA_LARGE,
+        `${preset.id}.text.tertiary was ${tertiary.toFixed(2)}`,
+      );
       const onAccent = contrastRatio(t.text.onAccent, t.background.accent);
-      assert.ok(onAccent >= WCAG_AA_LARGE, `${preset.id} button label was ${onAccent.toFixed(2)}`);
+      assert.ok(
+        onAccent >= WCAG_AA_LARGE,
+        `${preset.id} button label was ${onAccent.toFixed(2)}`,
+      );
     }
   });
 
@@ -103,16 +131,26 @@ describe('deriveTheme', () => {
       foreground: '#fafafa',
       accent: '#fffde0',
     });
-    assert.ok(contrastRatio(t.text.primary, t.background.default) >= WCAG_AA_TEXT);
-    assert.ok(contrastRatio(t.text.accent, t.background.default) >= WCAG_AA_TEXT);
+    assert.ok(
+      contrastRatio(t.text.primary, t.background.default) >= WCAG_AA_TEXT,
+    );
+    assert.ok(
+      contrastRatio(t.text.accent, t.background.default) >= WCAG_AA_TEXT,
+    );
   });
 
   test('elevation moves away from the page in both modes', () => {
     const dark = deriveTheme(THEME_PRESETS.find((p) => p.mode === 'dark')!);
     const light = deriveTheme(THEME_PRESETS.find((p) => p.mode === 'light')!);
     const lum = (h: string) => contrastRatio(h, '#000000');
-    assert.ok(lum(dark.background.elevated) > lum(dark.background.default), 'dark elevates lighter');
-    assert.ok(lum(light.background.elevated) < lum(light.background.default), 'light elevates darker');
+    assert.ok(
+      lum(dark.background.elevated) > lum(dark.background.default),
+      'dark elevates lighter',
+    );
+    assert.ok(
+      lum(light.background.elevated) < lum(light.background.default),
+      'light elevates darker',
+    );
   });
 
   test('radius and font scale derive and clamp', () => {

@@ -44,7 +44,15 @@ export const CAST_ACTIONS = [
 ] as const;
 export type CastAction = (typeof CAST_ACTIONS)[number];
 
-export const TABS = ['feeds', 'explore', 'notifications', 'messages', 'wallet', 'apps', 'you'] as const;
+export const TABS = [
+  'feeds',
+  'explore',
+  'notifications',
+  'messages',
+  'wallet',
+  'apps',
+  'you',
+] as const;
 export type TabId = (typeof TABS)[number];
 
 export type Gestures = {
@@ -67,7 +75,12 @@ export type Preferences = {
   lightThemeId: string;
   darkThemeId: string;
   /** Defaults for every feed that does not override them. */
-  skin: Required<Pick<SkinOverrides, 'density' | 'media' | 'hideCounts' | 'showWhyChips' | 'absoluteTimestamps'>>;
+  skin: Required<
+    Pick<
+      SkinOverrides,
+      'density' | 'media' | 'hideCounts' | 'showWhyChips' | 'absoluteTimestamps'
+    >
+  >;
   boundaries: BoundarySettings;
   /** Ordered cast-row actions. First four are shown inline; the rest go in the menu. */
   actionBar: CastAction[];
@@ -96,7 +109,15 @@ export function defaultPreferences(): Preferences {
       absoluteTimestamps: false,
     },
     boundaries: defaultBoundarySettings(),
-    actionBar: ['reply', 'recast', 'like', 'bookmark', 'share', 'why', 'copy-link'],
+    actionBar: [
+      'reply',
+      'recast',
+      'like',
+      'bookmark',
+      'share',
+      'why',
+      'copy-link',
+    ],
     gestures: {
       swipeLeft: 'bookmark',
       swipeRight: 'reply',
@@ -144,7 +165,8 @@ export type LoadResult = {
 
 export function loadPreferences(store: KVStore): LoadResult {
   const raw = store.getString(PREFERENCES_KEY);
-  if (!raw) return { preferences: defaultPreferences(), usedDefaults: true, notes: [] };
+  if (!raw)
+    return { preferences: defaultPreferences(), usedDefaults: true, notes: [] };
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -179,7 +201,11 @@ export function migratePreferences(input: unknown): LoadResult {
   const notes: string[] = [];
   const defaults = defaultPreferences();
   if (typeof input !== 'object' || input === null) {
-    return { preferences: defaults, usedDefaults: true, notes: ['Settings were not an object.'] };
+    return {
+      preferences: defaults,
+      usedDefaults: true,
+      notes: ['Settings were not an object.'],
+    };
   }
   const raw = input as Record<string, unknown>;
   const prefs: Preferences = { ...defaults };
@@ -198,14 +224,19 @@ export function migratePreferences(input: unknown): LoadResult {
     for (const [i, f] of raw.feeds.entries()) {
       const result = validateFeedSpec(f);
       if (result.ok) feeds.push(result.spec);
-      else notes.push(`Feed ${i + 1} was skipped: ${result.issues[0]?.message ?? 'invalid'}.`);
+      else
+        notes.push(
+          `Feed ${i + 1} was skipped: ${result.issues[0]?.message ?? 'invalid'}.`,
+        );
     }
     if (feeds.length > 0) prefs.feeds = feeds;
   }
 
   const feedIds = new Set(prefs.feeds.map((f) => f.id));
   prefs.feedOrder = Array.isArray(raw.feedOrder)
-    ? (raw.feedOrder.filter((id): id is string => typeof id === 'string' && feedIds.has(id)))
+    ? raw.feedOrder.filter(
+        (id): id is string => typeof id === 'string' && feedIds.has(id),
+      )
     : prefs.feeds.map((f) => f.id);
   for (const f of prefs.feeds) {
     if (!prefs.feedOrder.includes(f.id)) prefs.feedOrder.push(f.id);
@@ -236,27 +267,41 @@ export function migratePreferences(input: unknown): LoadResult {
   if (typeof raw.darkThemeId === 'string' && themeIds.has(raw.darkThemeId)) {
     prefs.darkThemeId = raw.darkThemeId;
   }
-  if (typeof raw.followSystemTheme === 'boolean') prefs.followSystemTheme = raw.followSystemTheme;
+  if (typeof raw.followSystemTheme === 'boolean')
+    prefs.followSystemTheme = raw.followSystemTheme;
 
   if (Array.isArray(raw.lists)) {
     prefs.lists = raw.lists
-      .filter((l): l is Record<string, unknown> => typeof l === 'object' && l !== null)
+      .filter(
+        (l): l is Record<string, unknown> =>
+          typeof l === 'object' && l !== null,
+      )
       .map((l) => ({
         id: String(l.id ?? '').slice(0, 64),
         name: String(l.name ?? '').slice(0, 40),
-        ...(typeof l.icon === 'string' ? { icon: [...l.icon].slice(0, 2).join('') } : {}),
+        ...(typeof l.icon === 'string'
+          ? { icon: [...l.icon].slice(0, 2).join('') }
+          : {}),
         fids: Array.isArray(l.fids)
-          ? l.fids.filter((n): n is number => typeof n === 'number' && n > 0).slice(0, 5000)
+          ? l.fids
+              .filter((n): n is number => typeof n === 'number' && n > 0)
+              .slice(0, 5000)
           : [],
       }))
       .filter((l) => l.id && l.name);
   }
 
   if (typeof raw.skin === 'object' && raw.skin !== null) {
-    prefs.skin = { ...prefs.skin, ...(raw.skin as Partial<Preferences['skin']>) };
+    prefs.skin = {
+      ...prefs.skin,
+      ...(raw.skin as Partial<Preferences['skin']>),
+    };
   }
   if (typeof raw.boundaries === 'object' && raw.boundaries !== null) {
-    prefs.boundaries = { ...prefs.boundaries, ...(raw.boundaries as Partial<BoundarySettings>) };
+    prefs.boundaries = {
+      ...prefs.boundaries,
+      ...(raw.boundaries as Partial<BoundarySettings>),
+    };
   }
   if (Array.isArray(raw.actionBar)) {
     const actions = raw.actionBar.filter((a): a is CastAction =>
@@ -267,7 +312,9 @@ export function migratePreferences(input: unknown): LoadResult {
   if (typeof raw.gestures === 'object' && raw.gestures !== null) {
     const g = raw.gestures as Record<string, unknown>;
     const pick = (v: unknown, fallback: CastAction): CastAction =>
-      (CAST_ACTIONS as readonly string[]).includes(v as string) ? (v as CastAction) : fallback;
+      (CAST_ACTIONS as readonly string[]).includes(v as string)
+        ? (v as CastAction)
+        : fallback;
     prefs.gestures = {
       swipeLeft: pick(g.swipeLeft, defaults.gestures.swipeLeft),
       swipeRight: pick(g.swipeRight, defaults.gestures.swipeRight),
@@ -276,12 +323,17 @@ export function migratePreferences(input: unknown): LoadResult {
     };
   }
   if (Array.isArray(raw.tabs)) {
-    const tabs = raw.tabs.filter((t): t is TabId => (TABS as readonly string[]).includes(t as string));
+    const tabs = raw.tabs.filter((t): t is TabId =>
+      (TABS as readonly string[]).includes(t as string),
+    );
     // Below two tabs the bar stops being a navigation control; above five it
     // stops being tappable. Out-of-range configurations fall back rather than
     // producing an unusable app.
     if (tabs.length >= 2 && tabs.length <= 5) prefs.tabs = tabs;
-    else if (tabs.length > 0) notes.push('Tab bar needs between 2 and 5 tabs; the default set was kept.');
+    else if (tabs.length > 0)
+      notes.push(
+        'Tab bar needs between 2 and 5 tabs; the default set was kept.',
+      );
   }
 
   prefs.version = PREFERENCES_VERSION;
