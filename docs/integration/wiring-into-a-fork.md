@@ -276,3 +276,33 @@ simulator:
 Keep it that way. When a ranking or filtering bug appears it should be
 reproducible as a fixture in that suite, not as a tap sequence on a phone. The
 React layer added in the steps above should contain nothing but rendering.
+
+---
+
+## Running the fork itself
+
+Getting a fork of the client onto an iOS Simulator is a separate problem with a
+separate, well-made runbook:
+[`danromero/farcaster-client-agent-guide`](https://github.com/danromero/farcaster-client-agent-guide).
+It covers preflight, the credential-free launch guard, and the failure
+signatures you will otherwise rediscover. It assumes this layout:
+
+```text
+workspace/
+├── client/                        # the fork, with these packages copied in
+├── home/                          # this repository
+└── farcaster-client-agent-guide/  # the runbook
+```
+
+`verify-compat.sh` looks for `../client` among its default checkout locations,
+so from that layout the compatibility check needs no configuration:
+
+```bash
+cd home && pnpm verify:compat
+```
+
+Two things that guide is right about and worth repeating here: launch success
+and production-feature access are different milestones, and credential warnings
+are not launch failures. Everything in this repository is on the near side of
+that line — it needs no credentials, because it re-reads data the API already
+returns.

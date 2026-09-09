@@ -15,9 +15,14 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here"
 
 snapshot="${SNAPSHOT:-}"
+# Sibling-checkout conventions, in order of specificity. `../client` is the
+# layout danromero/farcaster-client-agent-guide assumes, so an agent following
+# that runbook finds the snapshot with no extra configuration.
 default_checkouts=(
   "$here/.snapshot"
+  "$here/../../../client"
   "$here/../../../farcasterxyz/client"
+  "$here/../../../../client"
 )
 
 if [ -z "$snapshot" ]; then

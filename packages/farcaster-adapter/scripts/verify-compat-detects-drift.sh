@@ -17,7 +17,7 @@ cd "$here"
 
 snapshot="${SNAPSHOT:-}"
 if [ -z "$snapshot" ]; then
-  for candidate in "$here/.snapshot" "$here/../../../farcasterxyz/client"; do
+  for candidate in "$here/.snapshot" "$here/../../../client" "$here/../../../farcasterxyz/client" "$here/../../../../client"; do
     [ -f "$candidate/packages/farcaster-client-data/src/types/api.ts" ] && snapshot="$candidate" && break
   done
 fi
