@@ -21,6 +21,7 @@ does.
 | [`signature-interactions.md`](signature-interactions.md) | The four moments that make the client feel different |
 | [`information-architecture.md`](information-architecture.md) | Where every control lives, and why settings screens come last |
 | [`roadmap.md`](roadmap.md) | What to build first, and how to tell if it worked |
+| [`legible-feed.html`](legible-feed.html) | The visual spec, with a working mix dial — [published here](https://claude.ai/code/artifact/b4b7eae9-44ec-4198-9660-bc8161314756) |
 
 The evidence these are responding to is in
 [`../research/reference-client-audit.md`](../research/reference-client-audit.md).

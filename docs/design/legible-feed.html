@@ -1,0 +1,983 @@
+<title>The Legible Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --ground: #F7F7F5;
+  --raise: #FFFFFF;
+  --sink: #EFEFEC;
+  --ink: #14171A;
+  --ink-2: #4A5054;
+  --ink-3: #767C80;
+  --rule: #DEDEDA;
+  --rule-2: #C9C9C4;
+  --ember: #C24A18;
+  --ember-soft: #F6E4DA;
+
+  --r-direct: #1F7F73;
+  --r-network: #3D7B99;
+  --r-discovery: #4E6FB5;
+  --r-promoted: #7C7A84;
+
+  --app-bg: #FFFFFF;
+  --app-ink: #14171A;
+  --app-ink-2: #6C7378;
+  --app-rule: #E6E6E2;
+
+  --shadow: 0 1px 2px rgba(20,23,26,.06), 0 8px 24px -12px rgba(20,23,26,.18);
+
+  --measure: 66ch;
+  --s1: 6px; --s2: 12px; --s3: 20px; --s4: 32px; --s5: 52px; --s6: 84px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0F1113;
+    --raise: #171A1D;
+    --sink: #0A0C0E;
+    --ink: #E8E9EA;
+    --ink-2: #A2A9AE;
+    --ink-3: #757C82;
+    --rule: #262A2E;
+    --rule-2: #363B40;
+    --ember: #EE7440;
+    --ember-soft: #2E1B12;
+
+    --r-direct: #3FB6A6;
+    --r-network: #5EA8C9;
+    --r-discovery: #7A97DE;
+    --r-promoted: #9A98A3;
+
+    --app-bg: #171A1D;
+    --app-ink: #E8E9EA;
+    --app-ink-2: #8B9297;
+    --app-rule: #282C30;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0F1113;
+  --raise: #171A1D;
+  --sink: #0A0C0E;
+  --ink: #E8E9EA;
+  --ink-2: #A2A9AE;
+  --ink-3: #757C82;
+  --rule: #262A2E;
+  --rule-2: #363B40;
+  --ember: #EE7440;
+  --ember-soft: #2E1B12;
+
+  --r-direct: #3FB6A6;
+  --r-network: #5EA8C9;
+  --r-discovery: #7A97DE;
+  --r-promoted: #9A98A3;
+
+  --app-bg: #171A1D;
+  --app-ink: #E8E9EA;
+  --app-ink-2: #8B9297;
+  --app-rule: #282C30;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 var(--s3); }
+.col { max-width: var(--measure); }
+
+h1, h2, h3, .disp {
+  font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+code, .mono {
+  font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: .88em;
+}
+code {
+  background: var(--sink);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: .08em .34em;
+  color: var(--ink-2);
+}
+
+a { color: var(--ember); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- masthead ---------- */
+
+.mast {
+  border-bottom: 1px solid var(--rule);
+  padding: var(--s5) 0 var(--s4);
+}
+.mast-grid { display: grid; gap: var(--s3); }
+.mast h1 { font-size: clamp(40px, 7vw, 68px); font-weight: 700; }
+.mast .sub {
+  font-size: clamp(18px, 2.2vw, 21px);
+  color: var(--ink-2);
+  max-width: 54ch;
+  margin: 0;
+}
+.mast-meta {
+  display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px; color: var(--ink-3);
+  padding-top: var(--s2);
+}
+
+/* ---------- sections ---------- */
+
+section { padding: var(--s6) 0; border-bottom: 1px solid var(--rule); }
+section:last-of-type { border-bottom: 0; }
+.sec-head { display: grid; gap: var(--s2); margin-bottom: var(--s4); }
+.sec-head h2 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 600; }
+p { margin: 0 0 var(--s3); }
+p:last-child { margin-bottom: 0; }
+.lede { font-size: 19px; color: var(--ink-2); }
+
+/* ---------- the gap: evidence figures ---------- */
+
+.gap-list { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.gap-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  gap: var(--s2) var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+.gap-fig {
+  font-family: Archivo, sans-serif;
+  font-weight: 600;
+  font-size: clamp(26px, 3.6vw, 38px);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1;
+}
+.gap-fig small { font-size: .5em; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.gap-row p { margin: 0; font-size: 16px; color: var(--ink-2); }
+.gap-row p b { color: var(--ink); font-weight: 600; }
+.gap-cite {
+  display: block; margin-top: 6px;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-3);
+}
+
+/* ---------- demo ---------- */
+
+.demo {
+  background: var(--raise);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.demo-head {
+  display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: space-between; align-items: baseline;
+  padding: var(--s3);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sink);
+}
+.demo-head h3 { font-size: 17px; font-weight: 600; }
+.demo-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+@media (max-width: 860px) { .demo-body { grid-template-columns: 1fr; } }
+
+.feed { border-right: 1px solid var(--rule); background: var(--app-bg); min-width: 0; }
+@media (max-width: 860px) { .feed { border-right: 0; border-bottom: 1px solid var(--rule); } }
+
+.feed-inner {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--app-ink);
+  font-size: 14px;
+  line-height: 1.45;
+  max-height: 560px;
+  overflow-y: auto;
+}
+.cast {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  padding: 14px var(--s3);
+  border-bottom: 1px solid var(--app-rule);
+  transition: background .18s ease;
+}
+.cast.moved { background: var(--ember-soft); }
+.av {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: Archivo, sans-serif; font-weight: 600; font-size: 13px;
+  color: #fff;
+}
+.cast-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 3px; }
+.cast-name { font-weight: 600; font-size: 14px; }
+.cast-handle, .cast-time { color: var(--app-ink-2); font-size: 13px; }
+.cast-text { margin: 0 0 8px; }
+
+.why {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 7px 3px 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+}
+.why:hover { background: var(--sink); }
+.why .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.why[data-g="direct"] { color: var(--r-direct); }
+.why[data-g="network"] { color: var(--r-network); }
+.why[data-g="discovery"] { color: var(--r-discovery); }
+.why[data-g="promoted"] { color: var(--r-promoted); }
+
+/* ---------- dial ---------- */
+
+.dial { padding: var(--s3); display: grid; gap: var(--s3); align-content: start; }
+.dial h4 { font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.dial-hint { font-size: 14px; color: var(--ink-2); margin: 0; }
+
+.bar { display: flex; height: 26px; border-radius: 3px; overflow: hidden; border: 1px solid var(--rule); }
+.bar span { transition: width .35s cubic-bezier(.4,0,.2,1); min-width: 0; }
+
+.sliders { display: grid; gap: var(--s2); }
+.slider-row { display: grid; gap: 5px; }
+.slider-top {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2);
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2);
+}
+.slider-top .nm { display: inline-flex; align-items: center; gap: 7px; letter-spacing: .04em; text-transform: uppercase; }
+.slider-top .sw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.slider-top .val { font-variant-numeric: tabular-nums; color: var(--ink); }
+input[type=range] { width: 100%; accent-color: var(--ember); margin: 0; height: 20px; }
+input[type=range]:disabled { opacity: .45; }
+.dial-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.cap-note { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); margin: 3px 0 0; }
+.cap-note em { color: var(--ink-2); font-style: italic; }
+
+.btn {
+  font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600;
+  padding: 7px 13px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--rule-2); background: var(--raise); color: var(--ink);
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn-p { background: var(--ember); border-color: var(--ember); color: #fff; }
+.btn-p:hover { filter: brightness(1.06); }
+.note { font-size: 13px; color: var(--ink-3); margin: 0; }
+
+/* ---------- sheet ---------- */
+
+dialog {
+  border: 1px solid var(--rule-2);
+  border-radius: 5px;
+  background: var(--raise);
+  color: var(--ink);
+  padding: 0;
+  max-width: 400px;
+  width: calc(100% - 32px);
+  box-shadow: var(--shadow);
+}
+dialog::backdrop { background: rgba(10,12,14,.55); }
+.sheet { padding: var(--s3); display: grid; gap: var(--s2); }
+.sheet .lbl { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.sheet h3 { font-size: 20px; font-weight: 600; }
+.sheet p { font-size: 15px; color: var(--ink-2); margin: 0; }
+.sheet .score {
+  font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink-3);
+  padding: 8px 10px; background: var(--sink); border-radius: 3px; border: 1px solid var(--rule);
+}
+.sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+
+/* ---------- axes ---------- */
+
+.axes { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.axis {
+  display: grid;
+  grid-template-columns: 28px minmax(140px, 200px) 1fr;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+@media (max-width: 700px) { .axis { grid-template-columns: 28px 1fr; } .axis .axis-body { grid-column: 2; } }
+.axis-n {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-3);
+  font-variant-numeric: tabular-nums; padding-top: 3px;
+}
+.axis h3 { font-size: 17px; font-weight: 600; }
+.axis h3 em { font-style: normal; color: var(--ink-3); font-weight: 500; }
+.axis-body p { font-size: 15.5px; color: var(--ink-2); margin: 0 0 8px; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag {
+  font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  padding: 2px 6px; border-radius: 3px;
+  border: 1px solid var(--rule-2); color: var(--ink-3);
+}
+.tag.new { color: var(--ember); border-color: var(--ember); }
+
+/* ---------- moments ---------- */
+
+.moments { display: grid; gap: var(--s4); }
+.moment {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  gap: var(--s4); align-items: start;
+  padding-top: var(--s4); border-top: 1px solid var(--rule);
+}
+.moment:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 780px) { .moment { grid-template-columns: 1fr; } }
+.moment h3 { font-size: 21px; font-weight: 600; margin-bottom: 8px; }
+.moment p { font-size: 16px; color: var(--ink-2); }
+
+.card {
+  background: var(--app-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: var(--s3);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13.5px;
+  color: var(--app-ink);
+  line-height: 1.45;
+}
+.receipt { display: grid; gap: 10px; }
+.receipt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.receipt-row + .receipt-row { border-top: 1px solid var(--app-rule); padding-top: 10px; }
+.receipt-rule { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+.receipt-meta { color: var(--app-ink-2); font-size: 12px; }
+.mini { font-size: 11.5px; font-family: Archivo, sans-serif; font-weight: 600; padding: 4px 9px; border: 1px solid var(--app-rule); border-radius: 3px; background: none; color: var(--app-ink); cursor: pointer; }
+.mini:hover { border-color: var(--ink-3); }
+
+.winddown { display: grid; gap: 12px; text-align: center; padding: var(--s4) var(--s3); }
+.winddown .big { font-family: Archivo, sans-serif; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.winddown .sm { color: var(--app-ink-2); font-size: 13px; }
+.fade-strip { height: 5px; border-radius: 3px; background: linear-gradient(90deg, var(--r-direct), var(--r-network), var(--r-promoted) 78%, var(--app-rule)); }
+
+/* ---------- roadmap ---------- */
+
+.road { display: grid; gap: 0; border-top: 1px solid var(--rule); counter-reset: m; }
+.road-item {
+  display: grid; grid-template-columns: 62px 1fr; gap: var(--s3);
+  padding: var(--s3) 0; border-bottom: 1px solid var(--rule);
+}
+.road-m {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-3);
+  letter-spacing: .05em;
+}
+.road-item h3 { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+.road-item p { font-size: 15.5px; color: var(--ink-2); margin: 0; }
+.road-item .done { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); display: block; margin-top: 7px; }
+.road-item .done b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- pull ---------- */
+
+.pull {
+  border-left: 2px solid var(--ember);
+  padding: 2px 0 2px var(--s3);
+  margin: var(--s4) 0;
+  font-size: 20px;
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+.foot { padding: var(--s5) 0 var(--s6); }
+.foot p { font-size: 15px; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="mast-grid col">
+      <p class="eyebrow">Design spec · Home</p>
+      <h1>The Legible Feed</h1>
+      <p class="sub">A Farcaster client built on one bet: the explanation of your feed and the control over it should be the same object.</p>
+      <div class="mast-meta">
+        <span>homebasedotlove/home</span>
+        <span>Audit target: farcasterxyz/client @ b6922e2</span>
+        <span>Kernel: 90 tests, 0 dependencies</span>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">The finding</p>
+      <h2>The server already explains itself. The client isn&rsquo;t listening.</h2>
+    </div>
+    <div class="col">
+      <p class="lede">Every item in the Farcaster home feed arrives with a <code>meta</code> block naming why it&rsquo;s there &mdash; a ten-member <code>includeReason</code> union, a ranking score, an author quality tier. The reference client forwards that to an analytics event and shows the reader nothing.</p>
+      <p>Search the snapshot for what happens to <code>includeReason</code> and you find six call sites, all of them attaching it to a tracking payload. <code>meta.score</code> and <code>meta.authorQuality</code> have zero non-type references anywhere in the repository.</p>
+      <p>That&rsquo;s the wedge. Feed transparency is normally a backend project. Here it&rsquo;s a rendering change against a field that&rsquo;s already in the payload.</p>
+    </div>
+
+    <div class="gap-list col" style="margin-top: var(--s4)">
+      <div class="gap-row">
+        <div class="gap-fig">117<small>/149</small></div>
+        <p><b>user preference fields are notification toggles.</b> What&rsquo;s left for the reading experience: two feed choices and one three-position reply filter.
+          <span class="gap-cite">api.ts:649 &mdash; ApiUserPreferences</span></p>
+      </div>
+      <div class="gap-row">
+        <div class="gap-fig">797<small>&nbsp;&rarr;&nbsp;3</small></div>
+        <p><b>colour tokens behind three theme buttons.</b> The design system can express anything; the product exposes Light, Dark, System.
+          <span class="gap-cite">theme/colors.ts &mdash; AppThemeNames.ts</span></p>
+      </div>
+      <div class="gap-row">
+        <div class="gap-fig">10<small>&nbsp;&rarr;&nbsp;0</small></div>
+        <p><b>ranking reasons sent, none shown.</b> Following, follow-of-follow, recasted-by-following, popular, high-quality-unfollowed, snap-promoted, and four more.
+          <span class="gap-cite">api.ts:5330 &mdash; ApiCastFeedIncludeReason</span></p>
+      </div>
+      <div class="gap-row">
+        <div class="gap-fig">1<small>&nbsp;line</small></div>
+        <p><b>&ldquo;Restart your app to see your updated default feed!&rdquo;</b> The tell. Preferences are a server round-trip plus a cache purge, so every customization built on them inherits the latency.
+          <span class="gap-cite">FeedsScreen.tsx:72</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">The thesis, running</p>
+      <h2>The explanation is the control</h2>
+      <p class="lede">Transparency without control is a shrug. So in Home they&rsquo;re the same object: the chip that says <em>Popular</em> is the button that turns Popular down. Drag the weights and watch the feed re-rank &mdash; this runs the same normalise &rarr; weight &rarr; decay maths as the shipping kernel.</p>
+    </div>
+
+    <div class="demo">
+      <div class="demo-head">
+        <h3>Home &mdash; mix dial</h3>
+        <p class="note">Pull the feed past refresh to open this. Sample casts; real pipeline.</p>
+      </div>
+      <div class="demo-body">
+        <div class="feed"><div class="feed-inner" id="feed"></div></div>
+        <div class="dial">
+          <div>
+            <h4>Your feed right now</h4>
+            <p class="dial-hint">Composition of what&rsquo;s visible, by where it came from.</p>
+          </div>
+          <div class="bar" id="bar" role="img" aria-label="Feed composition by reason group"></div>
+          <div class="sliders" id="sliders"></div>
+          <div class="dial-actions">
+            <button class="btn btn-p" type="button" id="reset">Reset to server order</button>
+            <button class="btn" type="button" id="chron">Chronological</button>
+          </div>
+          <p class="note" id="status">Server order &mdash; ranked as sent.</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">Where controls live</p>
+      <h2>A settings screen is a repair shop, not a showroom</h2>
+    </div>
+    <div class="col">
+      <p>The failure mode of customizable software is a settings screen with two hundred toggles that nobody opens. The reference client is already partway there. So the organising decision in Home is <em>where a control lives</em>, not just what it does.</p>
+      <p>Six gestures in the feed reach roughly 80% of the surface: tap a why-chip, pull past refresh, long-press a cast, tap &ldquo;N hidden&rdquo;, long-press a feed tab, pinch for density. None require knowing a settings screen exists. Settings is where you go to see what you&rsquo;ve accumulated and undo it.</p>
+    </div>
+    <blockquote class="pull disp">Every automatic decision Home makes about a reader&rsquo;s feed is visible, named, attributable, and reversible &mdash; from the feed itself.</blockquote>
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">The surface</p>
+      <h2>Six axes</h2>
+      <p class="lede">Each maps onto a field in one serialisable document, so &ldquo;what can I change&rdquo; and &ldquo;what&rsquo;s in the export file&rdquo; are the same question.</p>
+    </div>
+
+    <div class="axes">
+      <div class="axis">
+        <div class="axis-n">01</div>
+        <h3>Source <em>&mdash; where casts come from</em></h3>
+        <div class="axis-body">
+          <p>Lists, saved searches and blends are what power users leave for. A blend is the honest control: the complaint about algorithmic feeds is rarely &ldquo;no discovery&rdquo;, it&rsquo;s &ldquo;discovery ate my feed&rdquo;.</p>
+          <div class="tags"><span class="tag">home</span><span class="tag">following</span><span class="tag">channel</span><span class="tag new">list</span><span class="tag new">search</span><span class="tag new">blend</span></div>
+        </div>
+      </div>
+      <div class="axis">
+        <div class="axis-n">02</div>
+        <h3>Sift <em>&mdash; what gets removed</em></h3>
+        <div class="axis-body">
+          <p>Every removal produces a receipt. Keyword mutes respect word boundaries in Unicode, so muting <code>ai</code> stops hitting <em>said</em>, <em>chain</em> and <em>detail</em> &mdash; and still works on Japanese, which <code>\b</code> does not.</p>
+          <div class="tags"><span class="tag new">mute by reason</span><span class="tag new">expiring mutes</span><span class="tag new">word boundaries</span><span class="tag new">embed kinds</span><span class="tag new">quality floor</span></div>
+        </div>
+      </div>
+      <div class="axis">
+        <div class="axis-n">03</div>
+        <h3>Sort <em>&mdash; what comes first</em></h3>
+        <div class="axis-body">
+          <p>Scores are rank-normalised onto an open interval before weights apply, so a slider means the same thing next week and no item is immune to it. Raw engagement counts are deliberately not an input.</p>
+          <div class="tags"><span class="tag">server</span><span class="tag new">chronological</span><span class="tag new">weighted</span><span class="tag new">half-life</span><span class="tag new">diversity caps</span></div>
+        </div>
+      </div>
+      <div class="axis">
+        <div class="axis-n">04</div>
+        <h3>Skin <em>&mdash; how it looks</em></h3>
+        <div class="axis-body">
+          <p>A theme is ten decisions, not 797 tokens and not three presets. Every derived colour is contrast-checked against the surface it lands on and nudged along the lightness axis until it clears AA, hue preserved. You cannot build a theme you cannot read &mdash; which is what makes it safe to let people build any theme.</p>
+          <div class="tags"><span class="tag new">density</span><span class="tag new">font scale</span><span class="tag new">seed themes</span><span class="tag new">counts off</span><span class="tag new">per-feed skins</span></div>
+        </div>
+      </div>
+      <div class="axis">
+        <div class="axis-n">05</div>
+        <h3>Motion <em>&mdash; how it behaves</em></h3>
+        <div class="axis-body">
+          <p>The reference client gave the horizontal gesture to the pager, leaving the cast row with none. Home gives the row back its gestures and lets you pick the tabs you actually open.</p>
+          <div class="tags"><span class="tag new">action bar order</span><span class="tag new">4 gestures</span><span class="tag new">tab composition</span><span class="tag new">web shortcuts</span></div>
+        </div>
+      </div>
+      <div class="axis">
+        <div class="axis-n">06</div>
+        <h3>Boundaries <em>&mdash; how long it lasts</em></h3>
+        <div class="axis-body">
+          <p>The axis no ad-funded client will ship, because a session that ends on purpose is revenue left on the table. An independent client has no conflict here, which makes it the clearest place to be structurally better.</p>
+          <div class="tags"><span class="tag new">budgets</span><span class="tag new">quiet hours</span><span class="tag new">wind-down</span><span class="tag new">catch-up feed</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">Four moments</p>
+      <h2>Each one takes a decision the software was making silently, names it, and hands over the handle</h2>
+    </div>
+
+    <div class="moments">
+      <div class="moment">
+        <div>
+          <h3>The why-chip names the ranker&rsquo;s decision</h3>
+          <p>On every cast in a ranked feed, in the metadata line. In a Following or List feed there&rsquo;s nothing to explain, so no chip appears &mdash; the absence is itself information. Tap it and the sheet above opens.</p>
+          <p>It costs one render change against a field the client already receives, and it teaches the entire mental model without a word of onboarding copy: <em>your feed is made of named parts, and you own the parts.</em></p>
+        </div>
+        <div class="card">
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <span class="why" data-g="direct" role="img" aria-label="Following"><span class="dot"></span>Following</span>
+            <span class="why" data-g="network" role="img" aria-label="Recasted"><span class="dot"></span>Recasted</span>
+            <span class="why" data-g="discovery" role="img" aria-label="Popular in slash design"><span class="dot"></span>Popular in /design</span>
+            <span class="why" data-g="promoted" role="img" aria-label="Promoted"><span class="dot"></span>Promoted</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="moment">
+        <div>
+          <h3>Receipts name the filter&rsquo;s decisions</h3>
+          <p>An unauditable filter is indistinguishable from a bug. Readers who suspect their client is quietly eating posts stop trusting the filters they set themselves &mdash; and then stop setting them.</p>
+          <p>The ledger is what makes aggressive muting safe enough to be worth doing. It also solves the mute-expiry problem: when rules lapse, Home surfaces them once rather than silently reopening the floodgates.</p>
+        </div>
+        <div class="card receipt">
+          <div style="font-family:Archivo,sans-serif;font-weight:600">14 casts hidden on this page</div>
+          <div class="receipt-row">
+            <div>
+              <div class="receipt-rule">&ldquo;election&rdquo;</div>
+              <div class="receipt-meta">word match &middot; expires in 5 days &middot; 8 hidden</div>
+            </div>
+            <button class="mini" type="button">Unmute</button>
+          </div>
+          <div class="receipt-row">
+            <div>
+              <div class="receipt-rule">Suggested</div>
+              <div class="receipt-meta">reason muted &middot; 4 hidden</div>
+            </div>
+            <button class="mini" type="button">Turn back on</button>
+          </div>
+          <div class="receipt-row">
+            <div>
+              <div class="receipt-rule">@dwr.eth</div>
+              <div class="receipt-meta">author muted 3 weeks ago &middot; 2 hidden</div>
+            </div>
+            <button class="mini" type="button">Unmute</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="moment">
+        <div>
+          <h3>Wind-down names the decision to keep going</h3>
+          <p>Past 75% of a budget, colour drains from the interface. Not a modal, not a lock &mdash; a gradient is noticeable without demanding a decision, and impossible to dismiss into meaninglessness.</p>
+          <p>Paired with catch-up mode, this is the sharpest thing Home does. Catch-up shows everything since your last visit and then <em>ends</em>. A feed with a bottom. The copy states a fact and never scolds.</p>
+        </div>
+        <div class="card">
+          <div class="winddown">
+            <div class="fade-strip"></div>
+            <div class="big">That&rsquo;s 30 minutes. Good place to stop.</div>
+            <div class="sm">You&rsquo;re caught up on Following. There are 40 older casts below if you want them.</div>
+            <div><button class="mini" type="button">Keep reading</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">Build order</p>
+      <h2>Each milestone ships alone and convinces alone</h2>
+      <p class="lede">No foundation-laying phase that pays off three milestones later. Steps one and two are the product; everything after is depth.</p>
+    </div>
+
+    <div class="road">
+      <div class="road-item">
+        <div class="road-m">M1</div>
+        <div>
+          <h3>Legibility &mdash; the feed explains itself</h3>
+          <p>The adapter, why-chips, the reason sheet, the preferences provider, export and import. One render change against a field the API already sends. No backend work, no new fetch code.</p>
+          <span class="done"><b>Done when</b> a reader can tap any cast, learn truthfully why it&rsquo;s there, and act on the answer without leaving the feed.</span>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-m">M2</div>
+        <div>
+          <h3>Control &mdash; the explanation becomes the handle</h3>
+          <p>The pipeline at the <code>flatItems</code> seam, sift and sort, receipts, the mix dial. Ship receipts <em>with</em> filtering, never after.</p>
+          <span class="done"><b>Watch</b> the ratio of mutes created to mutes reverted. Near-zero reversion means readers are afraid to experiment.</span>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-m">M3</div>
+        <div>
+          <h3>Composition &mdash; feeds become things you make</h3>
+          <p>FeedSpec-backed tabs, the feed editor with live preview, lists and searches and blends, share links, an import preview that shows what you&rsquo;re accepting.</p>
+          <span class="done"><b>Watch</b> how many readers open a feed someone else built. That&rsquo;s the number that says taste became portable.</span>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-m">M4</div>
+        <div>
+          <h3>Appearance &mdash; the palette opens</h3>
+          <p>Seed themes through <code>getTheme</code>, the ten-role to 797-token mapping, density and font scale, per-feed skins. The largest mechanical change and the most parallelisable.</p>
+          <span class="done"><b>Done when</b> a reader can build a theme they&rsquo;d share, and cannot build one they can&rsquo;t read.</span>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-m">M5</div>
+        <div>
+          <h3>Boundaries &mdash; the app takes the reader&rsquo;s side</h3>
+          <p>Budgets, quiet hours, wind-down, the finite catch-up feed. Last because a session limiter on a mediocre feed reads as an apology; on a feed the reader built themselves it reads as respect.</p>
+          <span class="done"><b>Done when</b> a reader can reach the end of their feed.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head col">
+      <p class="eyebrow">Status</p>
+      <h2>What exists today</h2>
+    </div>
+    <div class="col">
+      <p>The design and the engine are done. <code>packages/personalization</code> implements all six axes as pure TypeScript with no dependencies &mdash; no React, no React Native, no API client, no storage engine &mdash; so it runs identically on iOS, on the web, and in <code>node --test</code>. Ninety tests, typechecked strict.</p>
+      <p>Writing it surfaced three things worth keeping: the rank normaliser has to map onto an <em>open</em> interval or the lowest-scored item is immune to every weight; share links carry user-authored regular expressions, so the validator rejects quantified groups outright rather than risk a frozen feed on someone else&rsquo;s phone; and <code>ApiUserQuality</code> is seven values, not three, with <code>unranked</code> exempt from any floor &mdash; a quality filter that silently hid every unrated account would mostly hide new ones.</p>
+      <p>Not built yet: the client. Next step is a fork of the reference snapshot with the kernel wired in at six call sites, starting with the why-chip.</p>
+    </div>
+  </section>
+
+  <footer class="foot col">
+    <p>Evidence for every claim above cites <span class="mono">farcasterxyz/client</span> at snapshot <span class="mono">b6922e2</span>. Full audit, design docs and integration guide live in the repository.</p>
+  </footer>
+</div>
+
+<dialog id="sheet">
+  <div class="sheet">
+    <span class="lbl" id="sheet-lbl"></span>
+    <h3 id="sheet-title"></h3>
+    <p id="sheet-why"></p>
+    <div class="score" id="sheet-score"></div>
+    <div class="sheet-actions">
+      <button class="btn" type="button" data-act="less">Less of this</button>
+      <button class="btn" type="button" data-act="none">None of this</button>
+      <button class="btn" type="button" data-act="more" id="act-more">More of this</button>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn" type="button" data-act="close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  var GROUPS = [
+    { id: "direct",    label: "People you follow", css: "--r-direct",    max: 3 },
+    { id: "network",   label: "Through your network", css: "--r-network", max: 3 },
+    { id: "discovery", label: "Discovery",         css: "--r-discovery", max: 3 },
+    { id: "promoted",  label: "Promoted",          css: "--r-promoted",  max: 1 }
+  ];
+
+  var REASONS = {
+    "following-author":       { group: "direct",    chip: "Following",          because: "you follow them" },
+    "recasted-by-following":  { group: "network",   chip: "Recasted",           because: "someone you follow recasted it" },
+    "has-reply-by-followed":  { group: "network",   chip: "Replied to",         because: "someone you follow replied to it" },
+    "follow-of-follow":       { group: "network",   chip: "Friend of a friend", because: "people you follow follow them" },
+    "popular-in-channel":     { group: "discovery", chip: "Popular in /design", because: "it is doing well in a channel you follow" },
+    "popular":                { group: "discovery", chip: "Popular",            because: "it is popular right now" },
+    "high-quality-unfollowed":{ group: "discovery", chip: "Suggested",          because: "we think you might want to follow them" },
+    "snap-promoted":          { group: "promoted",  chip: "Promoted",           because: "someone paid to put it here" }
+  };
+
+  var HOUR = 3600000;
+  var CASTS = [
+    { id:"a", name:"Linda Xie",     handle:"@linda", fid:123,   ago:0.4,  reason:"following-author",        score:0.62, text:"the thing nobody tells you about building on an open protocol is that your users can leave, and that is the feature" },
+    { id:"b", name:"Vitalik",       handle:"@vitalik.eth", fid:5650, ago:1.1, reason:"popular",             score:0.94, text:"wrote up why i think client diversity matters more for social than it does for consensus" },
+    { id:"c", name:"July",          handle:"@july", fid:4823,  ago:0.9,  reason:"recasted-by-following",   score:0.71, text:"shipped: /design now has a proper moderation queue. took four months and i would do it again" },
+    { id:"d", name:"Ted",           handle:"@ted", fid:239,    ago:2.3,  reason:"following-author",        score:0.44, text:"gm. 41 degrees and clear in brooklyn" },
+    { id:"e", name:"Copin",         handle:"@copin", fid:9021, ago:0.2,  reason:"snap-promoted",           score:0.55, text:"Trade perps with 1-click on Base. Zero gas for your first 10 swaps." },
+    { id:"f", name:"Aoife N.",      handle:"@aoife", fid:1177, ago:5.5,  reason:"popular-in-channel",      score:0.83, text:"a small taxonomy of feed anxiety, and which of them are actually the client's fault" },
+    { id:"g", name:"Sam",           handle:"@samantha", fid:762, ago:1.8, reason:"high-quality-unfollowed", score:0.68, text:"unpopular opinion: infinite scroll is not a feature anyone requested, it is the absence of a stopping cue" },
+    { id:"h", name:"Nounish Dev",   handle:"@nounishdev", fid:3390, ago:3.1, reason:"follow-of-follow",    score:0.51, text:"open sourced the whole indexer. 40k casts/sec on a single box, no kafka, sorry" },
+    { id:"i", name:"Maya",          handle:"@maya", fid:88,    ago:0.6,  reason:"following-author",        score:0.35, text:"reading week. no takes, just links" },
+    { id:"j", name:"Priya R.",      handle:"@priya", fid:2044, ago:7.2,  reason:"has-reply-by-followed",   score:0.77, text:"the ranking score is right there in the payload. every single client throws it away" },
+    { id:"k", name:"Fred",          handle:"@fredwilson", fid:474, ago:4.4, reason:"popular",              score:0.88, text:"three things i got wrong about decentralized social, and one i still think i'm right about" },
+    { id:"l", name:"Ren",           handle:"@ren", fid:6612,   ago:1.4,  reason:"high-quality-unfollowed", score:0.59, text:"built a keyword muter that actually respects word boundaries. muting 'ai' no longer eats 'said'" }
+  ];
+
+  var AVATAR_HUES = [188, 12, 262, 152, 32, 210, 300, 96];
+  function avatarStyle(fid) {
+    var h = AVATAR_HUES[fid % AVATAR_HUES.length];
+    return "background: hsl(" + h + " 42% 42%)";
+  }
+  function initials(name) {
+    return name.split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase();
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function ago(h) {
+    if (h < 1) return Math.round(h * 60) + "m";
+    if (h < 24) return Math.round(h) + "h";
+    return Math.round(h / 24) + "d";
+  }
+
+  var weights = { direct: 1, network: 1, discovery: 1, promoted: 1 };
+  var muted = {};
+  var mode = "server";
+  var prevOrder = CASTS.map(function (c) { return c.id; });
+
+  // Rank-normalise onto an OPEN interval: (position + 1) / (n + 1). With a
+  // closed interval the lowest-scored item lands on exactly 0, and zero times
+  // any weight is still zero, so a slider would visibly move and silently do
+  // nothing for that item. Same rule as the shipping kernel.
+  function normalise(items) {
+    var sorted = items.slice().sort(function (a, b) { return a.score - b.score; });
+    var map = {};
+    var denom = sorted.length + 1;
+    var i = 0;
+    while (i < sorted.length) {
+      var j = i;
+      while (j + 1 < sorted.length && sorted[j + 1].score === sorted[i].score) j++;
+      var value = ((i + j) / 2 + 1) / denom;
+      for (var k = i; k <= j; k++) map[sorted[k].id] = value;
+      i = j + 1;
+    }
+    return map;
+  }
+
+  function visible() {
+    return CASTS.filter(function (c) { return !muted[REASONS[c.reason].group]; });
+  }
+
+  function ranked() {
+    var items = visible();
+    if (mode === "chron") {
+      return items.slice().sort(function (a, b) { return a.ago - b.ago; });
+    }
+    if (mode === "server") return items.slice();
+    var norm = normalise(items);
+    return items.slice().sort(function (a, b) {
+      return score(b, norm) - score(a, norm) || a.ago - b.ago;
+    });
+  }
+
+  function score(c, norm) {
+    var w = weights[REASONS[c.reason].group];
+    var recency = Math.pow(0.5, c.ago / 6);
+    return norm[c.id] * w * recency;
+  }
+
+  var feedEl = document.getElementById("feed");
+  var barEl = document.getElementById("bar");
+  var statusEl = document.getElementById("status");
+
+  function render() {
+    var items = ranked();
+    var order = items.map(function (c) { return c.id; });
+
+    feedEl.innerHTML = items.map(function (c) {
+      var r = REASONS[c.reason];
+      var idx = order.indexOf(c.id);
+      var was = prevOrder.indexOf(c.id);
+      var moved = was !== -1 && was !== idx;
+      return '<article class="cast' + (moved ? " moved" : "") + '">' +
+        '<div class="av" style="' + avatarStyle(c.fid) + '" aria-hidden="true">' + esc(initials(c.name)) + "</div>" +
+        '<div><div class="cast-head">' +
+          '<span class="cast-name">' + esc(c.name) + "</span>" +
+          '<span class="cast-handle">' + esc(c.handle) + "</span>" +
+          '<span class="cast-time">&middot; ' + ago(c.ago) + "</span>" +
+        "</div>" +
+        '<p class="cast-text">' + esc(c.text) + "</p>" +
+        '<button class="why" data-g="' + r.group + '" data-id="' + c.id + '" type="button">' +
+          '<span class="dot"></span>' + esc(r.chip) + "</button>" +
+        "</div></article>";
+    }).join("");
+
+    if (!items.length) {
+      feedEl.innerHTML = '<div style="padding:32px 20px;font-family:-apple-system,sans-serif;color:var(--app-ink-2);font-size:14px">' +
+        "Every category is turned off, so there is nothing to show. That is a real state, and a client should say so rather than spin.</div>";
+    }
+
+    prevOrder = order;
+    setTimeout(function () {
+      Array.prototype.forEach.call(feedEl.querySelectorAll(".moved"), function (el) { el.classList.remove("moved"); });
+    }, 700);
+
+    renderBar(items);
+  }
+
+  function renderBar(items) {
+    var counts = {};
+    GROUPS.forEach(function (g) { counts[g.id] = 0; });
+    items.forEach(function (c) { counts[REASONS[c.reason].group]++; });
+    var total = items.length || 1;
+    barEl.innerHTML = GROUPS.map(function (g) {
+      var pct = (counts[g.id] / total) * 100;
+      if (!pct) return "";
+      return '<span style="width:' + pct.toFixed(1) + "%;background:var(" + g.css + ')" title="' +
+        esc(g.label) + " " + Math.round(pct) + '%"></span>';
+    }).join("");
+    barEl.setAttribute("aria-label", "Feed composition: " + GROUPS.map(function (g) {
+      return g.label + " " + Math.round((counts[g.id] / total) * 100) + "%";
+    }).join(", "));
+  }
+
+  var slidersEl = document.getElementById("sliders");
+  slidersEl.innerHTML = GROUPS.map(function (g) {
+    return '<div class="slider-row">' +
+      '<div class="slider-top"><span class="nm"><span class="sw" style="background:var(' + g.css + ')"></span>' +
+      esc(g.label) + '</span><span class="val" id="v-' + g.id + '">1.0&times;</span></div>' +
+      '<input type="range" id="s-' + g.id + '" min="0" max="3" step="0.1" value="1" ' +
+      'aria-label="' + esc(g.label) + ' weight" aria-valuemax="' + g.max + '">' +
+      (g.max < 3 ? '<p class="cap-note">Capped at 1&times;. This dial only turns one way &mdash; a client that lets you turn the ad weight <em>up</em> is not being honest about whose interest it serves.</p>' : "") +
+      "</div>";
+  }).join("");
+
+  GROUPS.forEach(function (g) {
+    var input = document.getElementById("s-" + g.id);
+    input.addEventListener("input", function () {
+      var v = Math.min(parseFloat(input.value), g.max);
+      if (v !== parseFloat(input.value)) input.value = String(v);
+      weights[g.id] = v;
+      document.getElementById("v-" + g.id).textContent = v.toFixed(1) + "×";
+      muted[g.id] = false;
+      mode = "weighted";
+      statusEl.textContent = "Weighted — your mix, re-ranked live.";
+      render();
+    });
+  });
+
+  function setWeight(group, value) {
+    weights[group] = value;
+    var input = document.getElementById("s-" + group);
+    input.value = String(value);
+    document.getElementById("v-" + group).textContent = value.toFixed(1) + "×";
+  }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    mode = "server";
+    muted = {};
+    GROUPS.forEach(function (g) { setWeight(g.id, 1); });
+    statusEl.textContent = "Server order — ranked as sent.";
+    render();
+  });
+
+  document.getElementById("chron").addEventListener("click", function () {
+    mode = "chron";
+    muted = {};
+    statusEl.textContent = "Chronological — newest first, nothing ranked.";
+    render();
+  });
+
+  // The sheet: the explanation and the control, same object.
+  var sheet = document.getElementById("sheet");
+  var current = null;
+
+  feedEl.addEventListener("click", function (e) {
+    var btn = e.target.closest(".why");
+    if (!btn) return;
+    var cast = CASTS.filter(function (c) { return c.id === btn.getAttribute("data-id"); })[0];
+    if (!cast) return;
+    current = cast;
+    var r = REASONS[cast.reason];
+    document.getElementById("sheet-lbl").textContent = r.chip;
+    document.getElementById("sheet-lbl").style.color = "var(--r-" + r.group + ")";
+    document.getElementById("sheet-title").textContent = r.chip;
+    document.getElementById("sheet-why").textContent = "You're seeing this because " + r.because + ".";
+    var norm = normalise(visible());
+    document.getElementById("sheet-score").textContent =
+      "meta.includeReason  →  " + cast.reason + "\n" +
+      "meta.score          →  " + cast.score.toFixed(2) + "  (rank " + (norm[cast.id] || 0.5).toFixed(2) + " in this batch)";
+    document.getElementById("sheet-score").style.whiteSpace = "pre";
+    document.getElementById("sheet-score").style.overflowX = "auto";
+    var more = document.getElementById("act-more");
+    // Promoted can be reduced or removed, never amplified.
+    more.style.display = r.group === "promoted" ? "none" : "";
+    sheet.showModal();
+  });
+
+  sheet.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-act]");
+    if (!btn || !current) return;
+    var group = REASONS[current.reason].group;
+    var act = btn.getAttribute("data-act");
+    if (act === "less") {
+      mode = "weighted";
+      setWeight(group, Math.max(0, Math.round((weights[group] - 0.4) * 10) / 10));
+      statusEl.textContent = "Turned " + REASONS[current.reason].chip + " down.";
+    } else if (act === "more") {
+      mode = "weighted";
+      var cap = GROUPS.filter(function (g) { return g.id === group; })[0].max;
+      setWeight(group, Math.min(cap, Math.round((weights[group] + 0.4) * 10) / 10));
+      statusEl.textContent = "Turned " + REASONS[current.reason].chip + " up.";
+    } else if (act === "none") {
+      muted[group] = true;
+      statusEl.textContent = GROUPS.filter(function (g) { return g.id === group; })[0].label +
+        " is off. Reset brings it back.";
+    }
+    sheet.close();
+    if (act !== "close") render();
+  });
+
+  render();
+})();
+</script>

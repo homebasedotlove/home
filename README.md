@@ -19,6 +19,11 @@ Home is an attempt to unlock it.
 **Start with** [the audit](docs/research/reference-client-audit.md) for why, then
 [the design](docs/design/README.md) for what.
 
+There is also a visual design spec with a **working mix dial** — drag the
+weights and watch a sample feed re-rank using the same maths as the kernel:
+[The Legible Feed](https://claude.ai/code/artifact/b4b7eae9-44ec-4198-9660-bc8161314756)
+(source: [`docs/design/legible-feed.html`](docs/design/legible-feed.html)).
+
 ## The short version
 
 The Farcaster API already tells the client *why* every cast is in your feed —
