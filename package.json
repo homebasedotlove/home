@@ -1,0 +1,27 @@
+{
+  "name": "home",
+  "version": "0.0.0",
+  "description": "A Farcaster client where the explanation of your feed is also the control over it.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm --filter './packages/**' build",
+    "check:all": "pnpm typecheck && pnpm test && pnpm verify:compat",
+    "clean": "pnpm --filter '*' --parallel clean",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",
+    "test": "pnpm --filter '*' --parallel --aggregate-output test",
+    "typecheck": "pnpm --filter '*' --parallel --aggregate-output typecheck",
+    "verify:compat": "pnpm --filter farcaster-adapter verify:compat",
+    "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.8.1"
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": [
+    "Standalone on purpose: it does not extend tsconfig.json.",
+    "This config compiles files from three roots (this package, the kernel, and",
+    "an out-of-tree snapshot checkout), and inheriting rootDir/exclude from the",
+    "build config silently excluded the very files being asserted."
+  ],
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "home-personalization": ["../home-personalization/src/index.ts"],
+      "farcaster-client-data-types": [
+        "${SNAPSHOT}/packages/farcaster-client-data/src/types/api.ts"
+      ]
+    }
+  },
+  "include": ["src/**/*.ts", "compat/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test"]
+}

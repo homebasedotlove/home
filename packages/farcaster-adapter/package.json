@@ -1,0 +1,32 @@
+{
+  "name": "farcaster-adapter",
+  "version": "0.0.0",
+  "description": "Maps the Farcaster client API onto Home's personalization kernel, and replaces the reference client's feed flatMap.",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "src/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json}\" --config ../../.prettierrc.js --ignore-path ../../.prettierignore",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify:compat": "bash scripts/verify-compat.sh",
+    "verify:compat:drift": "bash scripts/verify-compat-detects-drift.sh"
+  },
+  "dependencies": {
+    "home-personalization": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.1.1"
+  }
+}
