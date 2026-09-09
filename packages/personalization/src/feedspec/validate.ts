@@ -8,6 +8,8 @@
  * spec is not the reader importing it.
  */
 
+import { RANKED_QUALITIES } from '../pipeline/types.ts';
+import type { RankedQuality } from '../pipeline/types.ts';
 import { REASON_GROUPS, REASON_TYPES } from '../reasons/index.ts';
 import type {
   AuthorRule,
@@ -309,8 +311,8 @@ function validateSift(
     hideRecasts: s.hideRecasts === true,
     hideTextless: s.hideTextless === true,
     mutedEmbedKinds: strArray(s.mutedEmbedKinds, undefined, 32),
-    ...(s.minAuthorQuality === 'low' || s.minAuthorQuality === 'medium' || s.minAuthorQuality === 'high'
-      ? { minAuthorQuality: s.minAuthorQuality }
+    ...((RANKED_QUALITIES as readonly string[]).includes(s.minAuthorQuality as string)
+      ? { minAuthorQuality: s.minAuthorQuality as RankedQuality }
       : {}),
     ...(isFiniteNumber(s.minScore) ? { minScore: s.minScore } : {}),
   };

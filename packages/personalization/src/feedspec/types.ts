@@ -16,6 +16,7 @@
  *   second source of truth, so "export my setup" is always honest.
  */
 
+import type { RankedQuality } from '../pipeline/types.ts';
 import type { ReasonGroup, ReasonType } from '../reasons/index.ts';
 
 export const FEED_SPEC_VERSION = 1;
@@ -107,8 +108,11 @@ export type SiftRules = {
   hideTextless: boolean;
   /** Embed kinds to drop, e.g. 'token', 'mini-app', 'video', 'image'. */
   mutedEmbedKinds: string[];
-  /** Drop casts from accounts the server scores below this quality tier. */
-  minAuthorQuality?: 'low' | 'medium' | 'high';
+  /**
+   * Drop casts from accounts the server rates below this tier. Accounts the
+   * server has not rated (`unranked`) are never dropped by this rule.
+   */
+  minAuthorQuality?: RankedQuality;
   /**
    * Drop casts whose server ranking score falls below this. Useful as a
    * blunt "less filler" control once a reader has seen what scores look like.

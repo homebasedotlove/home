@@ -104,11 +104,36 @@ describe('sift', () => {
   test('quality and score floors', () => {
     const items = [
       item({ id: 'lo', authorQuality: 'low', score: 0.9 }),
+      item({ id: 'spam', authorQuality: 'spam', score: 0.9 }),
       item({ id: 'hi', authorQuality: 'high', score: 0.9 }),
       item({ id: 'weak', authorQuality: 'high', score: 0.1 }),
     ];
-    const { kept } = sift(items, { ...emptySift(), minAuthorQuality: 'medium', minScore: 0.5 }, ctx);
+    const { kept } = sift(items, { ...emptySift(), minAuthorQuality: 'neutral', minScore: 0.5 }, ctx);
     assert.deepEqual(kept.map((i) => i.id), ['hi']);
+  });
+
+  test('a quality floor never hides accounts the server has not rated', () => {
+    const items = [
+      item({ id: 'new', authorQuality: 'unranked' }),
+      item({ id: 'nosignal' }),
+      item({ id: 'bad', authorQuality: 'spam' }),
+    ];
+    const { kept, receipts } = sift(items, { ...emptySift(), minAuthorQuality: 'high' }, ctx);
+    assert.deepEqual(kept.map((i) => i.id), ['new', 'nosignal']);
+    assert.equal(receipts[0]!.cause, 'author-quality');
+  });
+
+  test('the quality tiers are ordered as the API defines them', () => {
+    const items = [
+      item({ id: 'harmful', authorQuality: 'harmful' }),
+      item({ id: 'spam', authorQuality: 'spam' }),
+      item({ id: 'automated', authorQuality: 'automated' }),
+      item({ id: 'low', authorQuality: 'low' }),
+      item({ id: 'neutral', authorQuality: 'neutral' }),
+      item({ id: 'high', authorQuality: 'high' }),
+    ];
+    const { kept } = sift(items, { ...emptySift(), minAuthorQuality: 'low' }, ctx);
+    assert.deepEqual(kept.map((i) => i.id), ['low', 'neutral', 'high']);
   });
 
   test('structural hides', () => {

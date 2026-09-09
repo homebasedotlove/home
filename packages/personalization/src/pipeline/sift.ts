@@ -8,11 +8,26 @@
  */
 
 import { reasonGroup } from '../reasons/index.ts';
-import type { AuthorQuality, DropReceipt, FeedItemView, PipelineContext } from './types.ts';
+import type { DropReceipt, FeedItemView, PipelineContext, RankedQuality } from './types.ts';
+import { RANKED_QUALITIES } from './types.ts';
 import type { SiftRules } from '../feedspec/types.ts';
 import { compileKeywordRules, firstMatch, isExpired } from './match.ts';
 
-const QUALITY_RANK: Record<AuthorQuality, number> = { low: 0, medium: 1, high: 2 };
+/**
+ * `unranked` is deliberately absent, so it never fails a floor. A quality
+ * filter that silently hides every account the server has not scored yet would
+ * mostly hide new accounts — an invisible harm the reader did not ask for and
+ * could not diagnose.
+ */
+const QUALITY_RANK: Partial<Record<string, number>> = Object.fromEntries(
+  RANKED_QUALITIES.map((q, i) => [q, i]),
+);
+
+function belowQualityFloor(quality: string, floor: RankedQuality): boolean {
+  const rank = QUALITY_RANK[quality];
+  if (rank === undefined) return false; // unranked or unknown: not a judgement
+  return rank < QUALITY_RANK[floor]!;
+}
 
 export type SiftResult = {
   kept: FeedItemView[];
@@ -95,11 +110,11 @@ export function sift(
     }
 
     if (rules.minAuthorQuality && item.authorQuality) {
-      if (QUALITY_RANK[item.authorQuality] < QUALITY_RANK[rules.minAuthorQuality]) {
+      if (belowQualityFloor(item.authorQuality, rules.minAuthorQuality)) {
         drop(
           item,
           'author-quality',
-          `Author quality is ${item.authorQuality}; this feed asks for ${rules.minAuthorQuality} or better.`,
+          `Author is rated ${item.authorQuality}; this feed asks for ${rules.minAuthorQuality} or better.`,
           rules.minAuthorQuality,
         );
         continue;

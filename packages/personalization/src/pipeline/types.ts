@@ -8,7 +8,27 @@
  * about forty lines, and is the only file that has to change.
  */
 
-export type AuthorQuality = 'low' | 'medium' | 'high';
+/**
+ * Mirrors `ApiUserQuality`. Not a three-tier ladder: `spam`, `harmful`, and
+ * `automated` are separate judgements, and `unranked` means the server has no
+ * opinion yet — which is the normal state of a new account, not a bad one.
+ */
+export const AUTHOR_QUALITIES = [
+  'harmful',
+  'spam',
+  'automated',
+  'low',
+  'neutral',
+  'high',
+  'unranked',
+] as const;
+
+export type AuthorQuality = (typeof AUTHOR_QUALITIES)[number];
+
+/** The subset that can serve as a floor, worst to best. */
+export const RANKED_QUALITIES = ['harmful', 'spam', 'automated', 'low', 'neutral', 'high'] as const;
+
+export type RankedQuality = (typeof RANKED_QUALITIES)[number];
 
 export type FeedItemView = {
   id: string;
