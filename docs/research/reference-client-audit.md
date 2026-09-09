@@ -9,11 +9,11 @@ valuable levers it already has are wired to nothing.
 
 ## The one-paragraph version
 
-The server tells the client *why* every cast is in your feed. The client
-forwards that answer to an analytics event and shows you nothing. Meanwhile the
-settings surface offers 117 notification toggles and three themes. The gap
-between what the client knows and what it lets you decide is the entire product
-opportunity.
+The server tells the client *why* every cast is in your feed. The client shows
+that answer only if you go looking for it — in a menu, one cast at a time, for
+eight of the ten reasons, as text you cannot act on. Meanwhile the settings
+surface offers 117 notification toggles and three themes. The gap between what
+the client knows and what it lets you decide is the entire product opportunity.
 
 ---
 
@@ -48,18 +48,39 @@ machine-readable answer to "why am I seeing this":
 | `high-quality-unfollowed` | the ranker thinks you might follow them |
 | `snap-promoted` | someone paid to put it there |
 
-Search the codebase for what happens to that field. In the web app it is read in
-`ProfileContent.tsx`, `Avatar.tsx`, `Reactions.tsx`, `Recasts.tsx`,
-`Replies.tsx`, and `Bookmarks.tsx` — in every case to attach `includeReason` to
-an **analytics event**. It is never rendered. It never filters. It never ranks.
+Search the codebase for what happens to that field and you find two things.
 
-`meta.score` and `meta.authorQuality` have **zero** non-type references in the
-entire repository. The server computes a ranking score for every cast, ships it
-over the wire, and the client drops it on the floor.
+**Most call sites are analytics.** `ProfileContent.tsx`, `Avatar.tsx`,
+`Reactions.tsx`, `Recasts.tsx`, `Replies.tsx` and `Bookmarks.tsx` all attach
+`includeReason` to a tracking event.
 
-**This is the wedge.** Feed transparency is usually a research project requiring
-new backend work. Here it is a rendering change against a field that is already
-in the payload.
+**One is a real label.** `SourceLabel.tsx` exists on both platforms and turns
+the reason into a sentence — *"Recasted by people you follow"*, *"Trending"*,
+*"This cast is similar to casts you engaged with."* Credit where it is due: the
+reference client is not hiding the ranker. But three things limit it, and each
+one is a design decision this client makes differently:
+
+1. **It is not on the cast.** On mobile it renders inside `CastInfoPrompt`; on
+   web inside the `CastMenuActions` popover. You have to already suspect
+   something and open a menu, one cast at a time. Nothing about the feed as a
+   whole is visible.
+2. **It covers eight of ten reasons.** `following-author` and
+   `evergreen-following-author` fall through to `undefined` and render nothing —
+   so the single most common case in the feed is silent.
+3. **It is passive.** Neither implementation contains a single `onPress`,
+   `Pressable` or `onClick`. It is a caption, not a control. Learning why a cast
+   is there leaves you with no way to change it, which is precisely the gap
+   Meta's own research on "Why am I seeing this post?" identified: transparency
+   without corresponding controls is not enough.
+
+`meta.score` and `meta.authorQuality`, meanwhile, have **zero** non-type
+references in the entire repository. The server computes a ranking score for
+every cast, ships it over the wire, and the client drops it on the floor.
+
+**This is the wedge.** Not that the reason data is unused — it is partly used —
+but that it is used as a caption in a menu rather than as the handle on the
+feed. Closing that gap needs no backend work: the field is already in the
+payload, and the label already knows how to say it.
 
 Prior art is unambiguous about why this matters: when Facebook shipped "Why am I
 seeing this post?", their own research found [transparency into ranking wasn't

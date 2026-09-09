@@ -1,15 +1,17 @@
 /**
  * The include-reason taxonomy.
  *
- * The Farcaster client API already attaches `meta.includeReason` to every home
- * feed item, explaining why the server put it in front of you. The reference
- * client forwards that value to analytics and never shows it to the person it
- * describes (see docs/research/reference-client-audit.md).
+ * The Farcaster client API attaches `meta.includeReason` to every home feed
+ * item, explaining why the server put it in front of you. The reference client
+ * does surface this — `SourceLabel.tsx` turns eight of the ten reasons into a
+ * sentence — but only inside a menu you have to open, one cast at a time, as
+ * text with no `onPress` on it (see docs/research/reference-client-audit.md).
  *
- * This module turns that field into the backbone of the product: a stable set
- * of categories that can be named in the UI, weighted by the reader, and
- * muted outright. Everything downstream — the why-chip, the mix dial, the
- * feed receipts — reads from here, so the vocabulary stays consistent.
+ * This module turns the same field into the backbone of the product: a stable
+ * set of categories that can be named on the cast, weighted by the reader, and
+ * muted outright. Everything downstream — the why-chip, the mix dial, the feed
+ * receipts — reads from here, so the vocabulary stays consistent, and every
+ * reason has copy rather than eight of ten.
  */
 
 /** Reason type strings as they arrive from the API. */

@@ -28,7 +28,8 @@ weights and watch a sample feed re-rank using the same maths as the kernel:
 
 The Farcaster API already tells the client *why* every cast is in your feed —
 a ten-member `includeReason` union, plus a ranking score, on every item. The
-reference client forwards that to an analytics event and shows you nothing. It
+reference client shows that only in a menu, one cast at a time, for eight of the
+ten reasons, as text you cannot act on — and drops the score entirely. It
 also ships 797 colour tokens behind three theme buttons, and 117 notification
 toggles against two feed choices.
 
