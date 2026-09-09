@@ -192,13 +192,32 @@ export function shareUrl(
   return `${origin.replace(/\/$/, '')}/f/${encodeShare(spec)}`;
 }
 
+/**
+ * The payload after the *last* `/<marker>/` in a URL.
+ *
+ * Anchoring to the first match breaks any origin whose own path contains the
+ * marker: `https://example.com/f/app/f/<payload>` would hand back "app", so a
+ * link this module had just produced would fail to parse. The payload is always
+ * last, so read from the end.
+ */
+export function lastPathSegmentAfter(
+  url: string,
+  marker: string,
+): string | undefined {
+  const needle = `/${marker}/`;
+  const at = url.lastIndexOf(needle);
+  if (at === -1) return undefined;
+  const match = /^[A-Za-z0-9\-_]+/.exec(url.slice(at + needle.length));
+  return match ? match[0] : undefined;
+}
+
 export function parseShareUrl(url: string): DecodeResult {
-  const m = /\/f\/([A-Za-z0-9\-_]+)/.exec(url);
-  if (!m || !m[1]) {
+  const payload = lastPathSegmentAfter(url, 'f');
+  if (!payload) {
     return {
       ok: false,
       issues: [{ path: '', message: 'no feed payload found in that link' }],
     };
   }
-  return decodeShare(m[1]);
+  return decodeShare(payload);
 }

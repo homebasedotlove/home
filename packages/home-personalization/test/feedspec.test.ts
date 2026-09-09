@@ -305,3 +305,32 @@ describe('share links', () => {
     if (r.ok) assert.equal(r.spec.sort.weights.direct, LIMITS.maxWeight);
   });
 });
+
+describe('share urls with awkward origins', () => {
+  test('a payload is read from the last marker, not the first', () => {
+    const spec = starterFeeds()[0]!;
+    // An origin whose own path contains the marker.
+    const url = shareUrl(spec, 'https://example.com/f/app');
+    const parsed = parseShareUrl(url);
+    assert.equal(
+      parsed.ok,
+      true,
+      'a link this module just produced must parse',
+    );
+    if (parsed.ok) assert.equal(parsed.spec.id, spec.id);
+  });
+
+  test('trailing path or query after the payload does not break it', () => {
+    const spec = starterFeeds()[1]!;
+    const encoded = encodeShare(spec);
+    for (const url of [
+      `https://home.app/f/${encoded}?ref=cast`,
+      `https://home.app/f/${encoded}/preview`,
+      `https://home.app/f/${encoded}#top`,
+    ]) {
+      const parsed = parseShareUrl(url);
+      assert.equal(parsed.ok, true, url);
+      if (parsed.ok) assert.equal(parsed.spec.id, spec.id);
+    }
+  });
+});

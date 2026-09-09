@@ -15,6 +15,10 @@ import {
   validateThemeSeed,
   WCAG_AA_LARGE,
   WCAG_AA_TEXT,
+  encodeThemeShare,
+  decodeThemeShare,
+  themeShareUrl,
+  parseThemeShareUrl,
 } from '../src/theme/index';
 
 describe('colour maths', () => {
@@ -204,5 +208,87 @@ describe('theme validation', () => {
     });
     assert.equal(seed!.radius, 28);
     assert.equal(seed!.fontScale, 0.85);
+  });
+});
+
+describe('theme share links', () => {
+  test('round-trips every seed field', () => {
+    const seed = {
+      id: 'mine',
+      name: 'Mine',
+      mode: 'dark' as const,
+      background: '#101418',
+      foreground: '#e8eef4',
+      accent: '#ff8a3d',
+      danger: '#ff5a5a',
+      radius: 4,
+      fontScale: 1.1,
+      fonts: { body: 'mono' },
+    };
+    const decoded = decodeThemeShare(encodeThemeShare(seed));
+    assert.equal(decoded.ok, true);
+    if (decoded.ok) assert.deepEqual(decoded.seed, seed);
+  });
+
+  test('a plain theme fits in a short link', () => {
+    assert.ok(encodeThemeShare(THEME_PRESETS[0]!).length < 160);
+  });
+
+  test('url form round-trips and rejects junk', () => {
+    const parsed = parseThemeShareUrl(
+      themeShareUrl(THEME_PRESETS[2]!, 'https://home.app/'),
+    );
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.equal(parsed.seed.id, 'terminal');
+    assert.equal(parseThemeShareUrl('https://home.app/about').ok, false);
+    assert.equal(decodeThemeShare('!!!not-base64!!!').ok, false);
+  });
+
+  test('an unreadable imported theme is accepted and repaired, with a warning', () => {
+    const link = encodeThemeShare({
+      id: 'bad',
+      name: 'Bad',
+      mode: 'light',
+      background: '#ffffff',
+      foreground: '#fbfbfb',
+      accent: '#fefefe',
+    });
+    const decoded = decodeThemeShare(link);
+    assert.equal(decoded.ok, true, 'a stranger cannot hand you a broken app');
+    if (!decoded.ok) return;
+    assert.ok(decoded.issues.length > 0, 'and the reader is told what changed');
+    const derived = deriveTheme(decoded.seed);
+    assert.ok(
+      contrastRatio(derived.text.primary, derived.background.default) >=
+        WCAG_AA_TEXT,
+    );
+    assert.ok(
+      contrastRatio(derived.text.accent, derived.background.default) >=
+        WCAG_AA_TEXT,
+    );
+  });
+
+  test('a malformed theme is refused outright', () => {
+    const link = encodeThemeShare({ id: '', name: '', mode: 'dark' } as never);
+    assert.equal(decodeThemeShare(link).ok, false);
+  });
+});
+
+describe('theme urls with awkward origins', () => {
+  test('a payload is read from the last marker, not the first', () => {
+    const seed = THEME_PRESETS[1]!;
+    const parsed = parseThemeShareUrl(
+      themeShareUrl(seed, 'https://example.com/t/app'),
+    );
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.equal(parsed.seed.id, seed.id);
+  });
+
+  test('a query string after the payload is ignored', () => {
+    const seed = THEME_PRESETS[3]!;
+    const url = `${themeShareUrl(seed)}?from=cast`;
+    const parsed = parseThemeShareUrl(url);
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.equal(parsed.seed.id, seed.id);
   });
 });

@@ -15,6 +15,9 @@
 
 import type { CastFeedItemLike } from 'farcaster-adapter';
 import { personalizeMixedFeed } from 'farcaster-adapter';
+
+import type { LeafFetcher, SourceError } from './sources';
+import { fetchForSpec } from './sources';
 import type {
   AffinityState,
   BoundaryState,
@@ -54,10 +57,14 @@ import {
 } from 'home-personalization';
 
 /**
- * Where casts come from. Pluggable so the core can be driven by the real API
- * client, by fixtures, or by a recorded session, without knowing which.
+ * Where casts come from.
+ *
+ * A fetcher only ever sees a *leaf* source with lists already resolved to fids;
+ * blending, de-duplication and list lookup happen in `sources.ts`. Pluggable so
+ * the core can be driven by the real API client, by fixtures, or by a recorded
+ * session, without knowing which.
  */
-export type FeedFetcher = (spec: FeedSpec) => Promise<CastFeedItemLike[]>;
+export type FeedFetcher = LeafFetcher;
 
 export type Clock = () => number;
 
@@ -86,6 +93,12 @@ export type RenderedFeed = {
   caughtUp: boolean;
   /** Catch-up withheld older casts the reader could still ask for. */
   moreAvailable: boolean;
+  /**
+   * Parts of a blend that failed to load. The feed still rendered from what did
+   * — but a 70/30 blend silently serving 100% of its minority source is a lie,
+   * so this is for the reader, not just the log.
+   */
+  sourceErrors: SourceError[];
 };
 
 const AFFINITY_KEY = 'home.affinity.v1';
@@ -202,7 +215,8 @@ export class HomeClient {
     const spec =
       (feedId ? getFeed(this.prefs, feedId) : undefined) ?? this.activeFeed;
     const now = this.now();
-    const page = await this.fetchFeed(spec);
+    const fetched = await fetchForSpec(spec, this.prefs, this.fetchFeed);
+    const page = fetched.items;
 
     // Affinity is only consulted when the reader has turned the boost on, so
     // the store is never read for a feed that would ignore it.
@@ -244,6 +258,7 @@ export class HomeClient {
       boundary: this.boundaryState,
       caughtUp: catchUp.caughtUp,
       moreAvailable: catchUp.hasMore,
+      sourceErrors: fetched.errors,
     };
   }
 

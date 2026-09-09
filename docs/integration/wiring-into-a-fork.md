@@ -180,23 +180,47 @@ how a reader sorts their own feed.
 
 **`apps/farcaster-mobile/src/components/HomeFeedPagers/Pagers.tsx:38–82`**
 hard-codes `HOME_FEED` and `FOLLOWING_FEED` and appends favourited channels.
-Replace with `preferences.feedOrder.map(id => feedsById[id])`.
+Replace with `client.feeds`, which is `feedOrder` resolved.
 
-`Feed.tsx` then takes a `FeedSpec` rather than a `feedKey`/`feedType` pair, and
-resolves the fetch from `spec.source`:
+`Feed.tsx` then takes a `FeedSpec` rather than a `feedKey`/`feedType` pair —
+and the fetch it needs is *narrower* than you might expect, because the core
+already composes. Implement one `LeafFetcher`:
 
-| `source.kind` | Fetch |
-| --- | --- |
-| `home`, `following` | `useMixedFeedItems({ feedKey: kind, feedType: 'default' })` — unchanged |
-| `channel` | same hook, `feedKey: channelKey` |
-| `search` | `searchCasts({ q: source.query })`, paged |
-| `list` | fan out over the list's fids, or one search, then merge |
-| `blend` | fetch each part, interleave at normalised weights, then one pipeline pass |
+```ts
+const fetchLeaf: LeafFetcher = async (source, spec) => {
+  switch (source.kind) {
+    case 'home':
+    case 'following':
+      return fetchFeedItems({ feedKey: source.kind, feedType: 'default' });
+    case 'channel':
+      return fetchFeedItems({ feedKey: source.channelKey, feedType: 'channel' });
+    case 'search':
+      return searchCasts({ q: source.query });
+    case 'list':
+      // Already resolved to fids by the core; a deleted list arrives empty.
+      return fetchCastsByAuthors(source.fids);
+  }
+};
+```
 
-Only `search`, `list`, and `blend` need new fetch code, and all three use
-endpoints that already exist.
+`blend` is deliberately absent from that switch, and list resolution is
+deliberately not your problem. `fetchForSpec` handles both:
 
----
+- **Blend parts are fetched concurrently and interleaved** at a window sized so
+  the proportion is right in the first ten casts and the minority source still
+  appears early.
+- **A part that fails degrades the feed rather than emptying it.** The failures
+  come back on `RenderedFeed.sourceErrors` so the UI can say which source is
+  missing — a 70/30 blend silently serving 100% of one source is a lie.
+- **Every part failing throws `AllSourcesFailedError`.** This matters more than
+  it looks: an empty page in catch-up mode renders as *"you're all caught up"*,
+  so an offline blend that resolved to `[]` would tell the reader a comforting
+  falsehood about the network.
+- **Zero-weight parts are not fetched at all**, so turning a source down to
+  nothing stops costing a request on every refresh.
+
+Only `search` and `list` need new fetch code, and both use endpoints that
+already exist.
 
 ## 6. Boundaries
 
@@ -240,14 +264,14 @@ without a simulator, an API key, or a phone.
 
 ## Testing across the seam
 
-204 tests across the three packages, all in `vitest run`, none needing a
+229 tests across the three packages, all in `vitest run`, none needing a
 simulator:
 
 | | |
 | --- | --- |
-| `home-personalization` | 162 — the pipeline, themes, boundaries, preferences |
+| `home-personalization` | 171 — the pipeline, themes, boundaries, preferences, share links |
 | `farcaster-adapter` | 21 — adaptation, embed classification, the seam |
-| `home-client-core` | 21 — the end-to-end journey above, asserted |
+| `home-client-core` | 37 — source resolution, and the end-to-end journey above |
 
 Keep it that way. When a ranking or filtering bug appears it should be
 reproducible as a fixture in that suite, not as a tap sequence on a phone. The

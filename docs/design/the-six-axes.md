@@ -105,6 +105,9 @@ Plus:
 - **Absolute timestamps** **▸ new**
 - **Per-feed skin overrides** **▸ new** — a Quiet feed can be calmer than the
   rest of the app without changing the app
+- **Theme share links** **▸ new** — ten decisions fit in a URL. An imported
+  theme cannot be unreadable, because the palette is repaired rather than
+  trusted, so the worst a stranger's link can do is look ugly.
 
 ## Axis 5 — Motion: how it behaves
 

@@ -8,8 +8,6 @@
  * takes hundreds of items to converge and looks wrong the whole time.
  */
 
-import type { FeedItemView } from './types';
-
 export type BlendPart<T> = {
   weight: number;
   items: T[];
@@ -106,9 +104,16 @@ export function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return out;
 }
 
-export function blendFeeds(
-  parts: BlendPart<FeedItemView>[],
+/**
+ * Interleave and de-duplicate in one step.
+ *
+ * Generic over anything with an id rather than over `FeedItemView`: blending
+ * happens before adaptation, on whatever the fetcher returned, and a function
+ * that only needs an id should not demand a whole feed item.
+ */
+export function blendFeeds<T extends { id: string }>(
+  parts: BlendPart<T>[],
   window = 10,
-): FeedItemView[] {
+): T[] {
   return dedupeById(interleaveByWeight(parts, window));
 }
