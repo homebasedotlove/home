@@ -65,10 +65,21 @@ slice it reads locally (`src/apiShapes.ts`) rather than importing
 
 ## 2. The feed pipeline — the one important change
 
-**`packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useMixedFeedItems.ts:311`**
+There are **two** seams, not one, and an earlier version of this guide named
+only the first:
 
-The reference client flattens pages into a render list with a plain `flatMap`.
-That memo is the seam. Replace it with `personalizeMixedFeed`:
+| App | File | Sites |
+| --- | --- | --- |
+| mobile | `…/feedItems/useMixedFeedItems.ts` | `:311` |
+| web | `…/feedItems/useFeedItems.ts` | `:332` and `:646` |
+
+The web hook is the simpler of the two: it hands back a plain
+`ApiCastFeedItem[]` with `suggestedUsers` already separated, so there are no
+interstitials to preserve. The mobile hook returns a `MixedFeedItem` union where
+suggestion and trending-topic rows are interleaved with casts.
+
+Both flatten pages into a render list with a plain `flatMap`. That memo is the
+seam. Replace it with `personalizeMixedFeed`:
 
 ```ts
 import { personalizeMixedFeed } from 'farcaster-adapter';
@@ -104,6 +115,14 @@ yourself:
 `runFeedPipeline` underneath is pure and synchronous, so the same call powers
 the feed editor's live preview over a cached page. One code path, no second
 implementation.
+
+On web, `isCast` is just `() => true` and `getCast` is `(item) => item`; the
+mixed-union handling costs nothing when there is no union.
+
+A working version of this patch — applied, built and tested against snapshot
+`b6922e2` — is in
+[`reference-patch/`](reference-patch/README.md), along with the why-chip it
+feeds and that component's tests.
 
 ## 3. The theme provider
 

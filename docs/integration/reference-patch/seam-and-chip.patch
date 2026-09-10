@@ -1,0 +1,110 @@
+diff --git a/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx b/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx
+index aa7411c..9a14d84 100644
+--- a/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx
++++ b/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx
+@@ -26,6 +26,7 @@ import { CastTranslationTopHat } from '~/components/casts/CastTranslationTopHat'
+ import { DeletedCast } from '~/components/casts/DeletedCast';
+ import { FeedItemTopHat } from '~/components/casts/FeedItemTopHat';
+ import { IncludeReasonTopHat } from '~/components/casts/IncludeReasonTopHat';
++import { HomeWhyChip } from '~/components/casts/HomeWhyChip';
+ import { PinLabel } from '~/components/casts/PinLabel';
+ import { ShowMore } from '~/components/casts/ShowMore';
+ import { Threadline } from '~/components/casts/Threadline';
+@@ -109,6 +110,11 @@ const UnfocusedCastContent: FC<UnfocusedCastProps> = memo(
+       topHat,
+       showMemberBadge = false,
+       isHighlighted = false,
++      // Home: both already threaded through castUtils.ts; the reference client
++      // renders `includeReason` for two of ten reasons and never reads `score`
++      // outside an admin page.
++      includeReason,
++      score,
+     } = context;
+ 
+     const [showFullCastBody, setShowFullCastBody] = useState(false);
+@@ -347,6 +353,11 @@ const UnfocusedCastContent: FC<UnfocusedCastProps> = memo(
+           </div>
+           {!isAppsDialog && <Threadline threadPosition={threadPosition} />}
+           <div className="relative flex flex-col">
++            {/* Home: every reason gets a chip, and the chip is the control.
++                The upstream top hat covered two of ten and did nothing. */}
++            {includeReason && (
++              <HomeWhyChip includeReason={includeReason} score={score} />
++            )}
+             {includeReasonTopHatType && (
+               <IncludeReasonTopHat
+                 includeReasonType={includeReasonTopHatType}
+diff --git a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
+index 1a8e26d..58070e9 100644
+--- a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
++++ b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
+@@ -17,6 +17,21 @@ import partialRight from 'lodash/partialRight';
+ import values from 'lodash/values';
+ import { useCallback, useMemo, useRef } from 'react';
+ 
++import { personalizeMixedFeed } from 'farcaster-adapter';
++import { makeFeedSpec, emptySift, defaultSort } from 'home-personalization';
++
++// Stand-in for `preferences.feeds[activeFeedId]`. Demotes discovery, lifts the
++// people you follow, and drops promoted casts entirely — the state a reader
++// reaches by tapping two why-chips.
++const homeFeedSpec = makeFeedSpec('home', 'Home', { kind: 'home' }, {
++  sift: { ...emptySift(), mutedGroups: ['promoted'] },
++  sort: {
++    ...defaultSort(),
++    mode: 'weighted',
++    weights: { direct: 3, network: 1, discovery: 0.3 },
++  },
++});
++
+ import { useFarcasterApiClient } from '../../../../providers/FarcasterApiClientProvider';
+ import { useInternalEventing } from '../../../../providers/InternalEventingProvider';
+ import { usePurged } from '../../../../providers/PurgedProvider';
+@@ -333,9 +348,22 @@ const useFeedItems = ({
+     const userSuggestions =
+       data?.pages.flatMap((page) => page.result.suggestedUsers || []) || [];
+ 
++    // Home: filter and re-rank by the reader's own rules before anything
++    // renders. `feedItems` keeps its element type, so every component
++    // downstream is untouched; `receipts` and `mix` are new.
++    const personalized = personalizeMixedFeed(uniqFeedItems, {
++      isCast: () => true,
++      getCast: (item) => item,
++      spec: homeFeedSpec,
++      context: { now: Date.now() },
++    });
++
+     return {
+       ...rest,
+-      feedItems: uniqFeedItems,
++      feedItems: personalized.items as ApiCastFeedItem[],
++      homeReceipts: personalized.receipts,
++      homeMix: personalized.mix,
++      homeHiddenCount: personalized.hiddenCount,
+       fetchPreviousPage,
+       fetchNextPage,
+       onEndReached,
+@@ -644,9 +672,22 @@ const useNonSuspenseFeedItems = ({
+     const userSuggestions =
+       data?.pages.flatMap((page) => page.result.suggestedUsers || []) || [];
+ 
++    // Home: filter and re-rank by the reader's own rules before anything
++    // renders. `feedItems` keeps its element type, so every component
++    // downstream is untouched; `receipts` and `mix` are new.
++    const personalized = personalizeMixedFeed(uniqFeedItems, {
++      isCast: () => true,
++      getCast: (item) => item,
++      spec: homeFeedSpec,
++      context: { now: Date.now() },
++    });
++
+     return {
+       ...rest,
+-      feedItems: uniqFeedItems,
++      feedItems: personalized.items as ApiCastFeedItem[],
++      homeReceipts: personalized.receipts,
++      homeMix: personalized.mix,
++      homeHiddenCount: personalized.hiddenCount,
+       fetchPreviousPage,
+       fetchNextPage,
+       onEndReached,

@@ -10,6 +10,6 @@
     "paths": {}
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"],
-  "_comment": "Emit config. Overrides paths with {} so workspace siblings resolve to their built dist/*.d.ts through the pnpm symlink, the way a real build orders them, rather than to source outside this package rootDir. An override is required: a key inherited through extends cannot be removed."
+  "exclude": ["node_modules", "dist", "test", "src/cli.ts"],
+  "_comment": "Emit config. Overrides paths with {} so workspace siblings resolve to their built dist/*.d.ts through the pnpm symlink, the way a real build orders them, rather than to source outside this package rootDir. An override is required: a key inherited through extends cannot be removed. src/cli.ts is excluded because it is a demo script, not library surface: it needs node globals, and shipping it made the package fail to build inside a fork whose install does not resolve @types/node for it."
 }

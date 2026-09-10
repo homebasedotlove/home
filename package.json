@@ -6,14 +6,15 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm --filter './packages/**' build",
-    "check:all": "pnpm format:check && pnpm typecheck && pnpm build && pnpm test && pnpm verify:compat && pnpm verify:compat:drift",
+    "check:all": "pnpm format:check && pnpm typecheck && pnpm build && pnpm test && pnpm verify:compat && pnpm verify:compat:drift && pnpm audit:claims",
     "clean": "pnpm --filter '*' --parallel clean",
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\" --config .prettierrc.js",
     "test": "pnpm --filter '*' --parallel --aggregate-output test",
     "typecheck": "pnpm --filter '*' --parallel --aggregate-output typecheck",
     "verify:compat": "pnpm --filter farcaster-adapter verify:compat",
-    "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift"
+    "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift",
+    "audit:claims": "python3 scripts/audit_claims.py"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

@@ -32,3 +32,8 @@ jobs:
       # that matters: a compatibility check that cannot fail is worse than none.
       - run: pnpm verify:compat
       - run: pnpm verify:compat:drift
+
+      # The numbers this project argues from — 117 of 149 preference fields,
+      # 797 colour tokens, 47 placeholders, a seam at a named line — are the
+      # first things to rot when upstream regenerates the snapshot.
+      - run: pnpm audit:claims

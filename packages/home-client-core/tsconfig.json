@@ -23,7 +23,8 @@
     "paths": {
       "home-personalization": ["../home-personalization/src/index.ts"],
       "farcaster-adapter": ["../farcaster-adapter/src/index.ts"]
-    }
+    },
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]
