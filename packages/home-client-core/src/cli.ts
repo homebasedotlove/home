@@ -19,6 +19,7 @@ import {
   muteReasonGroup,
   nudgeReason,
   reasonGroup,
+  GROUP_LABELS,
   PREFERENCES_KEY,
 } from 'home-personalization';
 import type { KVStore } from 'home-personalization';
@@ -77,7 +78,7 @@ function printFeed(feed: RenderedFeed, limit = 6) {
   const bar = Object.entries(feed.mix.byGroup)
     .map(
       ([g, n]) =>
-        `${GROUP_COLOR[g] ?? ''}${g} ${Math.round((n / feed.mix.total) * 100)}%${RESET}`,
+        `${GROUP_COLOR[g] ?? ''}${GROUP_LABELS[g as keyof typeof GROUP_LABELS] ?? g} ${Math.round((n / feed.mix.total) * 100)}%${RESET}`,
     )
     .join('  ');
   console.log(`\n  mix: ${bar || `${DIM}empty${RESET}`}`);

@@ -167,3 +167,18 @@ export const GROUP_LABELS: Record<ReasonGroup, string> = {
   discovery: 'Discovery',
   promoted: 'Promoted',
 };
+
+/**
+ * Hard ceiling on a reason group's weight, wherever the weight comes from.
+ *
+ * Promoted content can be reduced or removed, never amplified. This lives
+ * beside the group definitions rather than in the UI actions because a share
+ * link is also a way to set a weight, and a validator that clamped every group
+ * to the same maximum let an imported feed turn the ad dial up.
+ */
+export const GROUP_WEIGHT_CEILING: Record<ReasonGroup, number> = {
+  direct: 4,
+  network: 4,
+  discovery: 4,
+  promoted: 1,
+};

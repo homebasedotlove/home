@@ -19,12 +19,11 @@ import type {
   MatchMode,
   SortSpec,
 } from '../feedspec/types';
-import { LIMITS } from '../feedspec/validate';
+import { isProbablySafeRegex, LIMITS } from '../feedspec/validate';
 import type { ReasonGroup } from '../reasons';
+import { GROUP_WEIGHT_CEILING } from '../reasons';
+import { clamp } from '../util/numbers';
 import type { AuthorList, CastAction, Preferences, TabId } from './index';
-
-const clamp = (n: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, n));
 
 function replaceFeed(
   prefs: Preferences,
@@ -61,17 +60,6 @@ export function orderedFeeds(prefs: Preferences): FeedSpec[] {
 
 /** How far one Less / More tap moves a weight. */
 export const NUDGE_STEP = 0.4;
-
-/**
- * Promoted content can be reduced or removed, never amplified. Enforced here
- * rather than only in the UI, so the cap holds however the action is reached.
- */
-export const GROUP_WEIGHT_CEILING: Record<ReasonGroup, number> = {
-  direct: LIMITS.maxWeight,
-  network: LIMITS.maxWeight,
-  discovery: LIMITS.maxWeight,
-  promoted: 1,
-};
 
 export function nudgeReason(
   prefs: Preferences,
@@ -156,6 +144,11 @@ export function muteKeyword(
 ): Preferences {
   const trimmed = pattern.trim().slice(0, LIMITS.keywordChars);
   if (!trimmed) return prefs;
+  // The ReDoS guard used to run only on import. A reader-typed `(a+)+$` went
+  // straight to the pipeline and froze every render until the next cold start.
+  // Refused here, same as the last feed cannot be deleted; the sheet can call
+  // `isProbablySafeRegex` first to say why.
+  if (options.mode === 'regex' && !isProbablySafeRegex(trimmed)) return prefs;
   return replaceFeed(prefs, feedId, (feed) => {
     // Word matching by default. Substring muting is the setting that makes
     // people give up on keyword filters, so it has to be chosen, not inherited.

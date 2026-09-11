@@ -13,6 +13,8 @@
  * with the returned state, and "keep reading" is always available.
  */
 
+import { isFiniteNumber } from '../util/numbers';
+
 export type QuietHours = {
   /** Minutes after local midnight, 0–1439. */
   startMinute: number;
@@ -60,6 +62,56 @@ export type BoundaryState = {
   /** One plain sentence for the reader. Never a scold. */
   message?: string;
 };
+
+/** Longest budget that still means anything: a full day. */
+const MAX_BUDGET_MINUTES = 24 * 60;
+
+/**
+ * Validate boundary settings from any untrusted source.
+ *
+ * Without this, an imported preferences file carrying
+ * `quietHours: { startMinute: -5, endMinute: 9999 }` put the app into
+ * permanent quiet hours, and a budget of `"twenty"` became NaN arithmetic.
+ * Feeds and themes were already validated on import; this closes the gap.
+ * Bad fields fall back to the defaults individually rather than rejecting the
+ * whole block, matching how every other validator here behaves.
+ */
+export function validateBoundarySettings(raw: unknown): BoundarySettings {
+  const out = defaultBoundarySettings();
+  if (typeof raw !== 'object' || raw === null) return out;
+  const b = raw as Record<string, unknown>;
+
+  const minutes = (v: unknown): number | undefined =>
+    isFiniteNumber(v) && v >= 1
+      ? Math.min(MAX_BUDGET_MINUTES, Math.round(v))
+      : undefined;
+  const minuteOfDay = (v: unknown): number | undefined =>
+    typeof v === 'number' &&
+    Number.isInteger(v) &&
+    v >= 0 &&
+    v < MAX_BUDGET_MINUTES
+      ? v
+      : undefined;
+
+  if (typeof b.catchUp === 'boolean') out.catchUp = b.catchUp;
+  if (typeof b.windDown === 'boolean') out.windDown = b.windDown;
+
+  const session = minutes(b.sessionBudgetMinutes);
+  if (session !== undefined) out.sessionBudgetMinutes = session;
+  const daily = minutes(b.dailyBudgetMinutes);
+  if (daily !== undefined) out.dailyBudgetMinutes = daily;
+
+  if (typeof b.quietHours === 'object' && b.quietHours !== null) {
+    const q = b.quietHours as Record<string, unknown>;
+    const startMinute = minuteOfDay(q.startMinute);
+    const endMinute = minuteOfDay(q.endMinute);
+    // Both or neither: a half-specified window has no meaning.
+    if (startMinute !== undefined && endMinute !== undefined) {
+      out.quietHours = { startMinute, endMinute };
+    }
+  }
+  return out;
+}
 
 export function defaultBoundarySettings(): BoundarySettings {
   return { catchUp: false, windDown: false };

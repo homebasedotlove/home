@@ -14,7 +14,7 @@
     "typecheck": "pnpm --filter '*' --parallel --aggregate-output typecheck",
     "verify:compat": "pnpm --filter farcaster-adapter verify:compat",
     "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift",
-    "audit:claims": "python3 scripts/audit_claims.py"
+    "audit:claims": "node scripts/audit-claims.mjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

@@ -36,25 +36,30 @@ mutated="$work/packages/farcaster-client-data/src/types/api.ts"
 # removal applied only inside that type's declaration.
 run_case() {
   local label="$1" type_name="$2" from="$3" to="$4" expect="$5"
-  python3 - "$api" "$mutated" "$type_name" "$from" "$to" <<'PY'
-import re, sys
-src, dst, type_name, frm, to = sys.argv[1:6]
-lines = open(src).read().split('\n')
-start = next(
-    i for i, l in enumerate(lines)
-    if re.match(rf'^export (type|interface) {re.escape(type_name)}\b', l)
-)
-end = next(i for i in range(start + 1, len(lines)) if lines[i].startswith('};') or lines[i] == '}')
-hit = False
-for i in range(start, end + 1):
-    if frm in lines[i]:
-        lines[i] = lines[i].replace(frm, to)
-        hit = True
-        break
-if not hit:
-    raise SystemExit(f'drift fixture stale: {frm!r} not found in {type_name}')
-open(dst, 'w').write('\n'.join(lines))
-PY
+  # Mutate the first line inside the named type declaration that contains
+  # `from`. Node rather than python3: this repo declares Node and pnpm only,
+  # and a second runtime for a fixture mutation is what the audit rewrite
+  # removed everywhere else.
+  node - "$api" "$mutated" "$type_name" "$from" "$to" <<'JS'
+const { readFileSync, writeFileSync } = require('node:fs');
+const [src, dst, typeName, from, to] = process.argv.slice(2);
+const lines = readFileSync(src, 'utf8').split('\n');
+const escaped = typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const start = lines.findIndex((l) => new RegExp(`^export (type|interface) ${escaped}\\b`).test(l));
+if (start === -1) throw new Error(`type not found: ${typeName}`);
+let end = lines.findIndex((l, i) => i > start && (l.startsWith('};') || l === '}'));
+if (end === -1) end = lines.length - 1;
+let hit = false;
+for (let i = start; i <= end; i++) {
+  if (lines[i].includes(from)) {
+    lines[i] = lines[i].replace(from, to);
+    hit = true;
+    break;
+  }
+}
+if (!hit) throw new Error(`drift fixture stale: ${JSON.stringify(from)} not found in ${typeName}`);
+writeFileSync(dst, lines.join('\n'));
+JS
 
   local status=pass
   SNAPSHOT="$work" bash "$here/scripts/verify-compat.sh" >/dev/null 2>&1 || status=caught

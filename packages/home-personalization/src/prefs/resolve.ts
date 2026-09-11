@@ -121,7 +121,3 @@ export function typeScale(density: Density, fontScale: number): TypeScale {
     bodyLineHeight: Math.round(body * metrics.lineHeightScale * 2) / 2,
   };
 }
-
-export function densityMetrics(density: Density) {
-  return DENSITY_METRICS[density];
-}

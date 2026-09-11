@@ -99,6 +99,20 @@ describe('regex safety', () => {
       'sequential, not nested',
     );
   });
+
+  test('validates with the flag the pipeline compiles with', () => {
+    // Each of these is a legal pattern without `u` and a syntax error with
+    // it. Accepted here, they compiled to nothing in the pipeline: a rule the
+    // reader could see in their settings that never fired.
+    assert.equal(isProbablySafeRegex('foo{bar'), false);
+    assert.equal(isProbablySafeRegex('a]b'), false);
+    assert.equal(isProbablySafeRegex('x\\-y'), false);
+    assert.equal(
+      isProbablySafeRegex('\\p{L}+'),
+      true,
+      'and what only `u` makes possible is allowed',
+    );
+  });
 });
 
 describe('validation', () => {
@@ -176,6 +190,62 @@ describe('validation', () => {
       assert.equal(r.spec.sort.diversity.maxPerAuthor, 50);
       assert.equal(r.spec.sort.diversity.window, 5);
     }
+  });
+
+  test('promoted is capped at neutral however hard an imported spec pushes', () => {
+    const r = validateFeedSpec({
+      version: 1,
+      id: 'x',
+      name: 'X',
+      source: { kind: 'home' },
+      sort: { mode: 'weighted', weights: { promoted: 4, direct: 4 } },
+    });
+    assert.equal(r.ok, true);
+    if (r.ok) {
+      assert.equal(r.spec.sort.weights.promoted, 1, 'neutral, never a boost');
+      assert.equal(
+        r.spec.sort.weights.direct,
+        LIMITS.maxWeight,
+        'the global ceiling still applies to the rest',
+      );
+      assert.deepEqual(
+        r.warnings.map((w) => w.path),
+        ['sort.weights.promoted'],
+      );
+    }
+  });
+
+  test('junk inside a rule list is skipped, never thrown', () => {
+    const base = { version: 1, id: 'x', name: 'X', source: { kind: 'home' } };
+    const keywords = validateFeedSpec({
+      ...base,
+      sift: { keywords: [null, { pattern: 'ok', mode: 'word' }] },
+    });
+    assert.equal(keywords.ok, true);
+    if (keywords.ok) {
+      assert.deepEqual(
+        keywords.spec.sift.keywords.map((k) => k.pattern),
+        ['ok'],
+      );
+      assert.equal(keywords.warnings.length, 1, 'and the skip is reported');
+    }
+
+    const authors = validateFeedSpec({ ...base, sift: { authors: [null, 7] } });
+    assert.equal(authors.ok, true);
+    if (authors.ok) assert.deepEqual(authors.spec.sift.authors, []);
+
+    const parts = validateFeedSpec({
+      ...base,
+      source: { kind: 'blend', parts: [null] },
+    });
+    assert.equal(parts.ok, false, 'a blend of nothing is refused, not thrown');
+
+    // The same shapes arrive over a link from a stranger.
+    assert.doesNotThrow(() =>
+      decodeShare(
+        b64urlEncode(JSON.stringify({ ...base, sift: { keywords: [null] } })),
+      ),
+    );
   });
 
   test('truncates long strings and multi-glyph icons', () => {
@@ -278,6 +348,33 @@ describe('share links', () => {
     assert.equal('sift' in compacted, false);
     assert.equal('sort' in compacted, false);
     assert.ok(encodeShare(plain).length < 120);
+  });
+
+  test('a link that omits the default diversity block decodes back to it', () => {
+    const spec = makeFeedSpec(
+      'w',
+      'Weighted',
+      { kind: 'home' },
+      { sort: { ...defaultSort(), mode: 'weighted', weights: { direct: 2 } } },
+    );
+    const compacted = compactSpec(spec) as { sort: Record<string, unknown> };
+    assert.equal('diversity' in compacted.sort, false, 'not spelled out');
+    const decoded = decodeShare(encodeShare(spec));
+    assert.equal(decoded.ok, true);
+    if (decoded.ok) {
+      assert.deepEqual(decoded.spec.sort.diversity, defaultSort().diversity);
+    }
+
+    // Whereas an explicit "no caps" survives as itself.
+    const uncapped = makeFeedSpec(
+      'u',
+      'Uncapped',
+      { kind: 'home' },
+      { sort: { ...defaultSort(), diversity: {} } },
+    );
+    const back = decodeShare(encodeShare(uncapped));
+    assert.equal(back.ok, true);
+    if (back.ok) assert.deepEqual(back.spec.sort.diversity, {});
   });
 
   test('url form round-trips and rejects junk', () => {

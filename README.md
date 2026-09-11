@@ -86,11 +86,14 @@ than no check. Both run in CI.
 
 ## Status
 
-The design, the kernel, the adapter, and the client core are done: 204 tests,
-green against snapshot `b6922e2`. The React layer is not built yet — the next
-step is a fork of [`farcasterxyz/client`](https://github.com/farcasterxyz/client)
-with `home-client-core` wired in at the [six call
-sites](docs/integration/wiring-into-a-fork.md), starting with the why-chip.
+The design, the kernel, the adapter, and the client core are done: 257 tests,
+green against snapshot `b6922e2` on the client's pinned Node 20.19.5. The feed
+seam and the why-chip have been wired into a fork of
+[`farcasterxyz/client`](https://github.com/farcasterxyz/client), built under its
+toolchain, and proven on its compiled output — see the [reference
+patch](docs/integration/reference-patch/README.md). The React layer beyond that
+chip is not built yet; the remaining [call
+sites](docs/integration/wiring-into-a-fork.md) are the next step.
 
 ## License
 

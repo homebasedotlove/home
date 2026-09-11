@@ -35,11 +35,14 @@ if [ -z "$snapshot" ]; then
 fi
 
 if [ -z "$snapshot" ]; then
+  # A full single-commit clone, not a sparse one. The compat check itself only
+  # needs the generated types, but scripts/audit-claims.mjs reads fifteen other
+  # files out of the same checkout, and a sparse tree made it crash in CI. The
+  # tree is ~120 MB without node_modules; one clone serves both.
   echo "No snapshot found. Cloning farcasterxyz/client into .snapshot ..."
   rm -rf "$here/.snapshot"
-  GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --sparse \
+  GIT_LFS_SKIP_SMUDGE=1 git clone --quiet --depth 1 \
     https://github.com/farcasterxyz/client "$here/.snapshot"
-  git -C "$here/.snapshot" sparse-checkout set packages/farcaster-client-data/src/types
   snapshot="$here/.snapshot"
 fi
 

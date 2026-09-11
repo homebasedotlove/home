@@ -422,7 +422,7 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
       <div class="mast-meta">
         <span>homebasedotlove/home</span>
         <span>Audit target: farcasterxyz/client @ b6922e2</span>
-        <span>Kernel: 90 tests, 0 dependencies</span>
+        <span>Kernel: 195 tests, 0 dependencies</span>
       </div>
     </div>
   </header>
@@ -430,11 +430,11 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
   <section>
     <div class="sec-head col">
       <p class="eyebrow">The finding</p>
-      <h2>The server already explains itself. The client isn&rsquo;t listening.</h2>
+      <h2>The server already explains itself. The client files it under a menu.</h2>
     </div>
     <div class="col">
-      <p class="lede">Every item in the Farcaster home feed arrives with a <code>meta</code> block naming why it&rsquo;s there &mdash; a ten-member <code>includeReason</code> union, a ranking score, an author quality tier. The reference client forwards that to an analytics event and shows the reader nothing.</p>
-      <p>Search the snapshot for what happens to <code>includeReason</code> and you find six call sites, all of them attaching it to a tracking payload. <code>meta.score</code> and <code>meta.authorQuality</code> have zero non-type references anywhere in the repository.</p>
+      <p class="lede">Every item in the Farcaster home feed arrives with a <code>meta</code> block naming why it&rsquo;s there &mdash; a ten-member <code>includeReason</code> union, a ranking score, an author quality tier. The reference client turns it into a caption in a menu, one cast at a time, with nothing to do about it.</p>
+      <p>Search the snapshot for what happens to <code>includeReason</code> and you find six call sites attaching it to a tracking payload, one label that gives eight of the ten reasons a sentence inside a menu, and one web-only top hat that puts two above the row. None of them can be tapped, and the most common reason of all &mdash; you follow them &mdash; gets no words anywhere. <code>meta.score</code> reaches one internal admin page and no reader; <code>meta.authorQuality</code> has zero non-type references anywhere in the repository.</p>
       <p>That&rsquo;s the wedge. Feed transparency is normally a backend project. Here it&rsquo;s a rendering change against a field that&rsquo;s already in the payload.</p>
     </div>
 
@@ -450,8 +450,8 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
           <span class="gap-cite">theme/colors.ts &mdash; AppThemeNames.ts</span></p>
       </div>
       <div class="gap-row">
-        <div class="gap-fig">10<small>&nbsp;&rarr;&nbsp;0</small></div>
-        <p><b>ranking reasons sent, none shown.</b> Following, follow-of-follow, recasted-by-following, popular, high-quality-unfollowed, snap-promoted, and four more.
+        <div class="gap-fig">10<small>&nbsp;&rarr;&nbsp;0&nbsp;tappable</small></div>
+        <p><b>ranking reasons sent, none is a control.</b> Eight get a caption in a menu, two get a passive label on the web row, and the most common one &mdash; you follow them &mdash; gets nothing.
           <span class="gap-cite">api.ts:5330 &mdash; ApiCastFeedIncludeReason</span></p>
       </div>
       <div class="gap-row">
@@ -695,9 +695,9 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
       <h2>What exists today</h2>
     </div>
     <div class="col">
-      <p>The design and the engine are done. <code>packages/personalization</code> implements all six axes as pure TypeScript with no dependencies &mdash; no React, no React Native, no API client, no storage engine &mdash; so it runs identically on iOS, on the web, and in <code>node --test</code>. Ninety tests, typechecked strict.</p>
+      <p>The design and the engine are done. <code>packages/home-personalization</code> implements all six axes as pure TypeScript with no dependencies &mdash; no React, no React Native, no API client, no storage engine &mdash; so it runs identically on iOS, on the web, and under <code>vitest</code>. 195 tests, typechecked strict.</p>
       <p>Writing it surfaced three things worth keeping: the rank normaliser has to map onto an <em>open</em> interval or the lowest-scored item is immune to every weight; share links carry user-authored regular expressions, so the validator rejects quantified groups outright rather than risk a frozen feed on someone else&rsquo;s phone; and <code>ApiUserQuality</code> is seven values, not three, with <code>unranked</code> exempt from any floor &mdash; a quality filter that silently hid every unrated account would mostly hide new ones.</p>
-      <p>Not built yet: the client. Next step is a fork of the reference snapshot with the kernel wired in at six call sites, starting with the why-chip.</p>
+      <p>Since then: an adapter typechecked against the reference client&rsquo;s generated API types, a client core that runs the whole journey without a screen, and the feed seam and why-chip wired into a fork of the reference snapshot and proven on its compiled output. The client beyond that chip is not built yet.</p>
     </div>
   </section>
 

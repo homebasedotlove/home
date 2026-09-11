@@ -27,7 +27,7 @@ You will also need `"home-personalization"` and `"farcaster-adapter"` as
 
 | | |
 | --- | --- |
-| `useFeedItems.ts` | The seam. Both flatten sites, at `:332` and `:646`. |
+| `useFeedItems.ts` | The seam. Both flatten sites, at `:332` and `:643`. |
 | `UnfocusedCast.tsx` | Two lines: destructure `includeReason` and `score` from the cast context, and render the chip in the same slot as the existing top hat. |
 | `HomeWhyChip.tsx` | The chip and its sheet. 114 lines. |
 | `HomeWhyChip.test.tsx` | Five assertions, run in the client's own vitest + jsdom. |

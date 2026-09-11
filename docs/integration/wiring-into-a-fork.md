@@ -71,7 +71,7 @@ only the first:
 | App | File | Sites |
 | --- | --- | --- |
 | mobile | `…/feedItems/useMixedFeedItems.ts` | `:311` |
-| web | `…/feedItems/useFeedItems.ts` | `:332` and `:646` |
+| web | `…/feedItems/useFeedItems.ts` | `:332` and `:643` |
 
 The web hook is the simpler of the two: it hands back a plain
 `ApiCastFeedItem[]` with `suggestedUsers` already separated, so there are no
@@ -283,14 +283,14 @@ without a simulator, an API key, or a phone.
 
 ## Testing across the seam
 
-229 tests across the three packages, all in `vitest run`, none needing a
+257 tests across the three packages, all in `vitest run`, none needing a
 simulator:
 
 | | |
 | --- | --- |
-| `home-personalization` | 171 — the pipeline, themes, boundaries, preferences, share links |
-| `farcaster-adapter` | 21 — adaptation, embed classification, the seam |
-| `home-client-core` | 37 — source resolution, and the end-to-end journey above |
+| `home-personalization` | 195 — the pipeline, themes, boundaries, preferences, share links |
+| `farcaster-adapter` | 21 — adaptation, embed classification, the seam; plus 7 opt-in assertions against a built client checkout |
+| `home-client-core` | 41 — source resolution, and the end-to-end journey above |
 
 Keep it that way. When a ranking or filtering bug appears it should be
 reproducible as a fixture in that suite, not as a tap sequence on a phone. The

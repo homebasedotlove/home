@@ -17,6 +17,8 @@
  *   would pin a reader to whatever they cared about a year ago.
  */
 
+import { isFiniteNumber } from '../util/numbers';
+
 export type InteractionKind =
   'like' | 'recast' | 'reply' | 'open-profile' | 'dwell';
 
@@ -124,4 +126,25 @@ export function topAuthors(
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([fid]) => Number(fid));
+}
+
+/**
+ * Shape check for state read back from storage. `Object.entries` on a string
+ * yields its characters, so a corrupted `scores: "nope"` did not crash — it
+ * silently decayed to nothing, which is the wrong kind of luck to rely on.
+ */
+export function isAffinityState(v: unknown): v is AffinityState {
+  if (typeof v !== 'object' || v === null) return false;
+  const a = v as Record<string, unknown>;
+  if (!isFiniteNumber(a.updatedAt)) return false;
+  if (
+    typeof a.scores !== 'object' ||
+    a.scores === null ||
+    Array.isArray(a.scores)
+  ) {
+    return false;
+  }
+  return Object.values(a.scores as Record<string, unknown>).every(
+    (n) => isFiniteNumber(n) && n >= 0,
+  );
 }

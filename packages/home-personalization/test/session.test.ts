@@ -5,6 +5,7 @@ import {
   affinityLookup,
   decayAffinity,
   emptyAffinity,
+  isAffinityState,
   recordInteraction,
   topAuthors,
   AFFINITY_HALF_LIFE_MS,
@@ -13,9 +14,11 @@ import {
 import {
   enterBackground,
   enterForeground,
+  isSessionState,
   localDayKey,
   markSeen,
   newSession,
+  restoreSession,
   usageNow,
   NEW_SESSION_AFTER_MS,
 } from '../src/boundaries/session';
@@ -121,6 +124,36 @@ describe('session accounting', () => {
     assert.equal(s.lastSeenMs, 900);
   });
 
+  test('a stretch the process never closed is dropped on restore, not billed', () => {
+    let s = enterForeground(newSession(T0), T0);
+    s = enterBackground(s, T0 + 5 * MIN);
+    s = enterForeground(s, T0 + 6 * MIN);
+    // ...and the process dies here, so no background event ever lands.
+    const restored = restoreSession(s);
+    assert.equal(restored.activeSince, undefined);
+    assert.equal(restored.lastActiveAt, T0 + 6 * MIN);
+    assert.equal(
+      usageNow(restored, T0 + 180 * MIN).sessionMs,
+      5 * MIN,
+      'three hours of not reading are not three hours of reading',
+    );
+    assert.equal(
+      enterForeground(restored, T0 + 10 * MIN).sessionMs,
+      5 * MIN,
+      'a quick relaunch continues the sitting',
+    );
+    assert.equal(
+      enterForeground(restored, T0 + 6 * MIN + NEW_SESSION_AFTER_MS).sessionMs,
+      0,
+      'a long one starts a fresh sitting',
+    );
+    assert.equal(
+      restoreSession(restored),
+      restored,
+      'a cleanly closed session passes through untouched',
+    );
+  });
+
   test('feeds straight into evaluateBoundaries', () => {
     let s = enterForeground(newSession(T0), T0);
     s = enterBackground(s, T0 + 31 * MIN);
@@ -204,5 +237,64 @@ describe('affinity', () => {
     const lookup = affinityLookup(a, T0);
     assert.ok(affinityFactor(lookup(1), 0.5) > 1);
     assert.ok(affinityFactor(lookup(2), 0.5) >= 1);
+  });
+});
+
+describe('shape guards for stored state', () => {
+  test('isSessionState accepts what the reducer produces', () => {
+    let s = enterForeground(newSession(T0), T0);
+    assert.equal(isSessionState(s), true);
+    s = enterBackground(s, T0 + MIN);
+    s = markSeen(s, T0);
+    assert.equal(isSessionState(s), true);
+    assert.equal(
+      isSessionState(JSON.parse(JSON.stringify(s))),
+      true,
+      'survives a round-trip',
+    );
+  });
+
+  test('isSessionState rejects parseable garbage', () => {
+    assert.equal(isSessionState(null), false);
+    assert.equal(isSessionState('x'), false);
+    assert.equal(
+      isSessionState({ sessionMs: 'abc', dayMs: 0, dayKey: 20260101 }),
+      false,
+    );
+    assert.equal(
+      isSessionState({ sessionMs: -1, dayMs: 0, dayKey: 20260101 }),
+      false,
+    );
+    assert.equal(
+      isSessionState({
+        sessionMs: 0,
+        dayMs: 0,
+        dayKey: 20260101,
+        activeSince: 'now',
+      }),
+      false,
+    );
+    assert.equal(
+      isSessionState({ sessionMs: 0, dayMs: 0 }),
+      false,
+      'dayKey is required',
+    );
+  });
+
+  test('isAffinityState accepts what the store produces and rejects the rest', () => {
+    const good = recordInteraction(emptyAffinity(T0), 7, 'like', T0);
+    assert.equal(isAffinityState(good), true);
+    assert.equal(isAffinityState(JSON.parse(JSON.stringify(good))), true);
+    assert.equal(isAffinityState({ scores: 'nope', updatedAt: T0 }), false);
+    assert.equal(isAffinityState({ scores: [], updatedAt: T0 }), false);
+    assert.equal(
+      isAffinityState({ scores: { '7': 'x' }, updatedAt: T0 }),
+      false,
+    );
+    assert.equal(
+      isAffinityState({ scores: { '7': -1 }, updatedAt: T0 }),
+      false,
+    );
+    assert.equal(isAffinityState({ scores: {}, updatedAt: 'never' }), false);
   });
 });

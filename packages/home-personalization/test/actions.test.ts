@@ -7,11 +7,11 @@ import {
   addToList,
   duplicateFeed,
   getFeed,
-  GROUP_WEIGHT_CEILING,
   muteAuthor,
   muteChannel,
   muteKeyword,
   muteReasonGroup,
+  MUTE_DURATIONS,
   nudgeReason,
   orderedFeeds,
   removeFeed,
@@ -24,6 +24,7 @@ import {
   uniqueFeedId,
   upsertList,
 } from '../src/prefs/actions';
+import { GROUP_WEIGHT_CEILING } from '../src/reasons/index';
 import { makeFeedSpec } from '../src/feedspec/defaults';
 import { runFeedPipeline } from '../src/pipeline';
 import type { FeedItemView } from '../src/pipeline/types';
@@ -186,6 +187,19 @@ describe('mutes', () => {
     assert.equal(getFeed(prefs, 'home')!.sift.keywords.length, 0);
   });
 
+  test('a typed regex gets the same guard as an imported one', () => {
+    const before = defaultPreferences();
+    assert.equal(
+      muteKeyword(before, 'home', '(a+)+$', { mode: 'regex' }),
+      before,
+      'refused, and the document is untouched',
+    );
+    const after = muteKeyword(before, 'home', '^gm+$', { mode: 'regex' });
+    assert.deepEqual(getFeed(after, 'home')!.sift.keywords, [
+      { pattern: '^gm+$', mode: 'regex' },
+    ]);
+  });
+
   test('unmute removes the rule', () => {
     const prefs = unmuteKeyword(
       muteKeyword(defaultPreferences(), 'home', 'gm'),
@@ -322,5 +336,37 @@ describe('lists and tabs', () => {
       before.tabs,
     );
     assert.deepEqual(setTabs(before, ['feeds', 'you']).tabs, ['feeds', 'you']);
+  });
+});
+
+describe('mute durations', () => {
+  test('every preset produces the expiry the label promises', () => {
+    for (const { label, ms } of MUTE_DURATIONS) {
+      const prefs = muteKeyword(defaultPreferences(), 'home', 'x', {
+        ...(ms === undefined ? {} : { forMs: ms }),
+        now: NOW,
+      });
+      const rule = getFeed(prefs, 'home')!.sift.keywords[0]!;
+      if (ms === undefined) {
+        assert.equal(rule.expiresAt, undefined, `${label} never expires`);
+      } else {
+        assert.equal(rule.expiresAt, NOW + ms, label);
+      }
+    }
+  });
+
+  test('the presets are ordered shortest to forever, for the sheet', () => {
+    const finite: number[] = MUTE_DURATIONS.flatMap((d) =>
+      d.ms === undefined ? [] : [d.ms],
+    );
+    assert.deepEqual(
+      finite,
+      [...finite].sort((a, b) => a - b),
+    );
+    assert.equal(
+      MUTE_DURATIONS[MUTE_DURATIONS.length - 1]!.ms,
+      undefined,
+      'forever is last',
+    );
   });
 });

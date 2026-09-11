@@ -14,11 +14,14 @@
 
 import type { FeedSpec, MediaPolicy, SkinOverrides } from '../feedspec/types';
 import { starterFeeds } from '../feedspec/defaults';
-import { validateFeedSpec } from '../feedspec/validate';
+import { validateFeedSpec, validateSkinOverrides } from '../feedspec/validate';
 import type { ThemeSeed } from '../theme/index';
 import { THEME_PRESETS, validateThemeSeed } from '../theme/index';
 import type { BoundarySettings } from '../boundaries/index';
-import { defaultBoundarySettings } from '../boundaries/index';
+import {
+  defaultBoundarySettings,
+  validateBoundarySettings,
+} from '../boundaries/index';
 
 export const PREFERENCES_VERSION = 2;
 
@@ -291,18 +294,21 @@ export function migratePreferences(input: unknown): LoadResult {
       .filter((l) => l.id && l.name);
   }
 
-  if (typeof raw.skin === 'object' && raw.skin !== null) {
-    prefs.skin = {
-      ...prefs.skin,
-      ...(raw.skin as Partial<Preferences['skin']>),
-    };
-  }
-  if (typeof raw.boundaries === 'object' && raw.boundaries !== null) {
-    prefs.boundaries = {
-      ...prefs.boundaries,
-      ...(raw.boundaries as Partial<BoundarySettings>),
-    };
-  }
+  // Validated field by field, like feeds and themes: an unknown density or
+  // media policy falls back to the default instead of reaching the renderer.
+  const skin = validateSkinOverrides(raw.skin);
+  prefs.skin = {
+    density: skin.density ?? prefs.skin.density,
+    media: skin.media ?? prefs.skin.media,
+    hideCounts: skin.hideCounts ?? prefs.skin.hideCounts,
+    showWhyChips: skin.showWhyChips ?? prefs.skin.showWhyChips,
+    absoluteTimestamps:
+      skin.absoluteTimestamps ?? prefs.skin.absoluteTimestamps,
+  };
+  // Spreading this block verbatim let an imported file carry
+  // `sessionBudgetMinutes: "twenty"` and a quiet window of -5..9999 that
+  // never ended. A missing block validates to the defaults.
+  prefs.boundaries = validateBoundarySettings(raw.boundaries);
   if (Array.isArray(raw.actionBar)) {
     const actions = raw.actionBar.filter((a): a is CastAction =>
       (CAST_ACTIONS as readonly string[]).includes(a as string),

@@ -10,12 +10,18 @@
 
 import { RANKED_QUALITIES } from '../pipeline/types';
 import type { RankedQuality } from '../pipeline/types';
-import { REASON_GROUPS, REASON_TYPES } from '../reasons/index';
+import {
+  GROUP_WEIGHT_CEILING,
+  REASON_GROUPS,
+  REASON_TYPES,
+} from '../reasons/index';
+import { clamp, isFiniteNumber } from '../util/numbers';
 import type {
   AuthorRule,
   FeedSpec,
   KeywordRule,
   SiftRules,
+  SkinOverrides,
   SortSpec,
   Source,
 } from './types';
@@ -67,7 +73,11 @@ export function isProbablySafeRegex(source: string): boolean {
   // Back-references can turn a linear match into an exponential one.
   if (/\\[1-9]/.test(source)) return false;
   try {
-    new RegExp(source);
+    // The pipeline compiles with the `u` flag (see pipeline/match.ts). A
+    // pattern legal only without it — `foo{bar`, `a]b`, `x\\-y` — would pass
+    // here and then be silently dropped at compile time: a rule the reader can
+    // see in their settings that never fires. Validate with the same flag.
+    new RegExp(source, 'u');
   } catch {
     return false;
   }
@@ -143,13 +153,15 @@ export function isProbablySafeRegex(source: string): boolean {
   return true;
 }
 
-function isFiniteNumber(v: unknown): v is number {
-  return typeof v === 'number' && Number.isFinite(v);
-}
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+/**
+ * An array entry is whatever JSON allows. Casting a `null` and reading a
+ * property off it threw out of `decodeShare` for a hostile link, and out of
+ * `loadPreferences` for a stored document, which is a cold start that never
+ * recovers. Junk becomes an empty object and falls through the same "skipped"
+ * paths as any other malformed entry.
+ */
+const asRecord = (v: unknown): Record<string, unknown> =>
+  typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 
 function validateSource(
   source: unknown,
@@ -213,7 +225,7 @@ function validateSource(
         weight: number;
       }[] = [];
       s.parts.forEach((raw, i) => {
-        const p = raw as Record<string, unknown>;
+        const p = asRecord(raw);
         const inner = validateSource(
           p.source,
           `${path}.parts[${i}].source`,
@@ -256,7 +268,7 @@ function validateKeywords(
   }
   const out: KeywordRule[] = [];
   for (const [i, item] of raw.slice(0, LIMITS.keywordRules).entries()) {
-    const k = item as Record<string, unknown>;
+    const k = asRecord(item);
     if (typeof k.pattern !== 'string' || !k.pattern) {
       warnings.push({
         path: `${path}[${i}].pattern`,
@@ -298,7 +310,7 @@ function validateAuthors(
   if (!Array.isArray(raw)) return [];
   const out: AuthorRule[] = [];
   for (const item of raw.slice(0, LIMITS.authorRules)) {
-    const a = item as Record<string, unknown>;
+    const a = asRecord(item);
     if (!isFiniteNumber(a.fid) || a.fid <= 0) continue;
     const rule: AuthorRule = { fid: Math.floor(a.fid) };
     if (isFiniteNumber(a.expiresAt)) rule.expiresAt = a.expiresAt;
@@ -382,7 +394,12 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
     for (const [k, v] of Object.entries(s.weights as Record<string, unknown>)) {
       if (!(REASON_GROUPS as readonly string[]).includes(k)) continue;
       if (!isFiniteNumber(v)) continue;
-      const clamped = clamp(v, 0, LIMITS.maxWeight);
+      // Per group, not one global maximum: promoted caps at neutral.
+      const ceiling = Math.min(
+        LIMITS.maxWeight,
+        GROUP_WEIGHT_CEILING[k as keyof typeof GROUP_WEIGHT_CEILING],
+      );
+      const clamped = clamp(v, 0, ceiling);
       if (clamped !== v) {
         warnings.push({
           path: `sort.weights.${k}`,
@@ -391,29 +408,6 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
       }
       weights[k as keyof SortSpec['weights']] = clamped;
     }
-  }
-
-  const rawDiversity =
-    typeof s.diversity === 'object' && s.diversity !== null
-      ? (s.diversity as Record<string, unknown>)
-      : {};
-  const diversity: SortSpec['diversity'] = {};
-  if (isFiniteNumber(rawDiversity.maxPerAuthor)) {
-    diversity.maxPerAuthor = clamp(
-      Math.floor(rawDiversity.maxPerAuthor),
-      1,
-      50,
-    );
-  }
-  if (isFiniteNumber(rawDiversity.maxPerChannel)) {
-    diversity.maxPerChannel = clamp(
-      Math.floor(rawDiversity.maxPerChannel),
-      1,
-      50,
-    );
-  }
-  if (isFiniteNumber(rawDiversity.window)) {
-    diversity.window = clamp(Math.floor(rawDiversity.window), 5, 200);
   }
 
   return {
@@ -425,8 +419,30 @@ function validateSort(raw: unknown, warnings: ValidationIssue[]): SortSpec {
     affinityBoost: isFiniteNumber(s.affinityBoost)
       ? clamp(s.affinityBoost, 0, 1)
       : base.affinityBoost,
-    diversity,
+    // An absent key means "the default", so a compacted share link that
+    // omitted a default diversity block decodes back to it. A present-but-empty
+    // `{}` is an explicit "no caps" and is honoured as such.
+    diversity:
+      'diversity' in s ? validateDiversity(s.diversity) : base.diversity,
   };
+}
+
+function validateDiversity(raw: unknown): SortSpec['diversity'] {
+  const d =
+    typeof raw === 'object' && raw !== null
+      ? (raw as Record<string, unknown>)
+      : {};
+  const out: SortSpec['diversity'] = {};
+  if (isFiniteNumber(d.maxPerAuthor)) {
+    out.maxPerAuthor = clamp(Math.floor(d.maxPerAuthor), 1, 50);
+  }
+  if (isFiniteNumber(d.maxPerChannel)) {
+    out.maxPerChannel = clamp(Math.floor(d.maxPerChannel), 1, 50);
+  }
+  if (isFiniteNumber(d.window)) {
+    out.window = clamp(Math.floor(d.window), 5, 200);
+  }
+  return out;
 }
 
 export function validateFeedSpec(input: unknown): ValidationResult {
@@ -487,22 +503,38 @@ export function validateFeedSpec(input: unknown): ValidationResult {
   if (typeof raw.description === 'string' && raw.description.trim()) {
     spec.description = raw.description.trim().slice(0, LIMITS.descriptionChars);
   }
-  if (typeof raw.skin === 'object' && raw.skin !== null) {
-    const sk = raw.skin as Record<string, unknown>;
-    const skin: NonNullable<FeedSpec['skin']> = {};
-    if ((DENSITIES as readonly string[]).includes(sk.density as string)) {
-      skin.density = sk.density as NonNullable<FeedSpec['skin']>['density'];
-    }
-    if ((MEDIA_POLICIES as readonly string[]).includes(sk.media as string)) {
-      skin.media = sk.media as NonNullable<FeedSpec['skin']>['media'];
-    }
-    if (sk.hideCounts === true) skin.hideCounts = true;
-    if (sk.showWhyChips === true) skin.showWhyChips = true;
-    if (sk.absoluteTimestamps === true) skin.absoluteTimestamps = true;
-    if (typeof sk.themeId === 'string' && sk.themeId)
-      skin.themeId = sk.themeId.slice(0, 64);
-    if (Object.keys(skin).length > 0) spec.skin = skin;
-  }
+  const skin = validateSkinOverrides(raw.skin);
+  if (Object.keys(skin).length > 0) spec.skin = skin;
 
   return { ok: true, spec, warnings };
+}
+
+/**
+ * Validate a skin override block from any untrusted source.
+ *
+ * Shared by per-feed skins and the global skin in the preferences document, so
+ * both reject the same junk the same way. Booleans keep an explicit `false`:
+ * a feed that turns the why-chips off is a real override, not a missing one.
+ */
+export function validateSkinOverrides(raw: unknown): SkinOverrides {
+  const skin: SkinOverrides = {};
+  if (typeof raw !== 'object' || raw === null) return skin;
+  const sk = raw as Record<string, unknown>;
+  if ((DENSITIES as readonly string[]).includes(sk.density as string)) {
+    skin.density = sk.density as SkinOverrides['density'];
+  }
+  if ((MEDIA_POLICIES as readonly string[]).includes(sk.media as string)) {
+    skin.media = sk.media as SkinOverrides['media'];
+  }
+  for (const key of [
+    'hideCounts',
+    'showWhyChips',
+    'absoluteTimestamps',
+  ] as const) {
+    if (typeof sk[key] === 'boolean') skin[key] = sk[key] as boolean;
+  }
+  if (typeof sk.themeId === 'string' && sk.themeId) {
+    skin.themeId = sk.themeId.slice(0, 64);
+  }
+  return skin;
 }

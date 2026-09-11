@@ -44,6 +44,8 @@ import {
   expiredRules,
   getFeed,
   groupReceipts,
+  isAffinityState,
+  isSessionState,
   loadPreferences,
   markSeen,
   newSession,
@@ -51,6 +53,7 @@ import {
   recordInteraction,
   resolveSkin,
   resolveTheme,
+  restoreSession,
   savePreferences,
   summarizeReceipts,
   usageNow,
@@ -129,11 +132,12 @@ export class HomeClient {
     this.startupNotes = loaded.notes;
 
     const now = this.now();
-    this.session =
-      readJson<SessionState>(this.store, SESSION_KEY) ??
-      newSession(now, this.date(now));
+    const stored = readJson(this.store, SESSION_KEY, isSessionState);
+    this.session = stored
+      ? restoreSession(stored)
+      : newSession(now, this.date(now));
     this.affinity =
-      readJson<AffinityState>(this.store, AFFINITY_KEY) ?? emptyAffinity(now);
+      readJson(this.store, AFFINITY_KEY, isAffinityState) ?? emptyAffinity(now);
   }
 
   // -------------------------------------------------------------------------
@@ -279,13 +283,22 @@ export class HomeClient {
   }
 }
 
-function readJson<T>(store: KVStore, key: string): T | undefined {
+/**
+ * Read and shape-check one stored document. Parseable-but-wrong falls back
+ * exactly like unparseable does: a cold start must never inherit NaN from a
+ * previous build's bug or a half-written record.
+ */
+function readJson<T>(
+  store: KVStore,
+  key: string,
+  isValid: (v: unknown) => v is T,
+): T | undefined {
   const raw = store.getString(key);
   if (!raw) return undefined;
   try {
-    return JSON.parse(raw) as T;
+    const parsed: unknown = JSON.parse(raw);
+    return isValid(parsed) ? parsed : undefined;
   } catch {
-    // Corrupt storage must never brick a cold start; the caller falls back.
     return undefined;
   }
 }

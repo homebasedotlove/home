@@ -556,3 +556,88 @@ describe('end to end: the whole loop is stable', () => {
     );
   });
 });
+
+describe('end to end: storage that parses but is wrong', () => {
+  test('a corrupt session record falls back to a fresh one instead of NaN', async () => {
+    const store = device();
+    store.setString(
+      'home.session.v1',
+      JSON.stringify({
+        sessionMs: 'abc',
+        dayMs: null,
+        dayKey: 'x',
+        activeSince: 'now',
+      }),
+    );
+    const home = client(store, { ms: NOW });
+    home.update((p) => ({
+      ...p,
+      boundaries: { ...p.boundaries, sessionBudgetMinutes: 20 },
+    }));
+    const feed = await home.renderFeed();
+    assert.equal(feed.boundary.status, 'open');
+    assert.equal(feed.boundary.remainingMs, 20 * MIN, 'a real number, not NaN');
+  });
+
+  test('a corrupt affinity record is discarded and interactions still work', async () => {
+    const store = device();
+    store.setString(
+      'home.affinity.v1',
+      JSON.stringify({ scores: 'nope', updatedAt: 'never' }),
+    );
+    const home = client(store, { ms: NOW });
+    home.recordInteraction(239, 'reply');
+    const stored = JSON.parse(store.dump()['home.affinity.v1']!) as {
+      scores: Record<string, number>;
+    };
+    assert.equal(stored.scores['239'], 3, 'starts clean and records the reply');
+  });
+
+  test('a crash mid-sitting does not end the next session before it starts', async () => {
+    const store = device();
+    const at = { ms: NOW };
+    const before = client(store, at);
+    before.update((p) => ({
+      ...p,
+      boundaries: { ...p.boundaries, sessionBudgetMinutes: 20 },
+    }));
+    before.foreground();
+    // The process dies here: the open stretch is persisted, never closed.
+
+    at.ms = NOW + 3 * HOUR;
+    const after = client(store, at);
+    after.foreground();
+    const feed = await after.renderFeed();
+    assert.equal(feed.boundary.status, 'open');
+    assert.equal(
+      feed.boundary.remainingMs,
+      20 * MIN,
+      'the hours the phone sat in a pocket were not reading',
+    );
+  });
+
+  test('a quick relaunch after a crash continues the sitting', async () => {
+    const store = device();
+    const at = { ms: NOW };
+    const before = client(store, at);
+    before.update((p) => ({
+      ...p,
+      boundaries: { ...p.boundaries, sessionBudgetMinutes: 20 },
+    }));
+    before.foreground();
+    at.ms = NOW + 5 * MIN;
+    before.background();
+    at.ms = NOW + 6 * MIN;
+    before.foreground();
+    // Crash.
+
+    at.ms = NOW + 10 * MIN;
+    const after = client(store, at);
+    after.foreground();
+    assert.equal(
+      (await after.renderFeed()).boundary.remainingMs,
+      15 * MIN,
+      'the five completed minutes still count; the lost stretch does not',
+    );
+  });
+});

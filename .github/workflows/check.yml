@@ -35,5 +35,6 @@ jobs:
 
       # The numbers this project argues from — 117 of 149 preference fields,
       # 797 colour tokens, 47 placeholders, a seam at a named line — are the
-      # first things to rot when upstream regenerates the snapshot.
+      # first things to rot when upstream regenerates the snapshot. Reads the
+      # full checkout verify:compat cloned above; a sparse one made it crash.
       - run: pnpm audit:claims

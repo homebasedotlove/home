@@ -60,10 +60,12 @@ the reason into a sentence — *"Recasted by people you follow"*, *"Trending"*,
 reference client is not hiding the ranker. But three things limit it, and each
 one is a design decision this client makes differently:
 
-1. **It is not on the cast.** On mobile it renders inside `CastInfoPrompt`; on
-   web inside the `CastMenuActions` popover. You have to already suspect
-   something and open a menu, one cast at a time. Nothing about the feed as a
-   whole is visible.
+1. **It is mostly not on the cast.** On mobile it renders inside
+   `CastInfoPrompt`; on web inside the `CastMenuActions` popover. You have to
+   already suspect something and open a menu, one cast at a time. The one
+   exception is the web-only `IncludeReasonTopHat`, which puts two of the ten
+   reasons (`evergreen-following-author`, `high-quality-unfollowed`) above
+   the row. Nothing about the feed as a whole is visible.
 2. **It covers eight of ten reasons.** `following-author` and
    `evergreen-following-author` fall through to `undefined` and render nothing —
    so the single most common case in the feed is silent.
@@ -73,9 +75,11 @@ one is a design decision this client makes differently:
    Meta's own research on "Why am I seeing this post?" identified: transparency
    without corresponding controls is not enough.
 
-`meta.score` and `meta.authorQuality`, meanwhile, have **zero** non-type
-references in the entire repository. The server computes a ranking score for
-every cast, ships it over the wire, and the client drops it on the floor.
+`meta.authorQuality`, meanwhile, has **zero** non-type references in the
+entire repository, and `meta.score` reaches exactly one component: an internal
+admin feed-comparison page (`AdminFeedContent.tsx`). The server computes a
+ranking score for every cast, ships it over the wire, and no reader ever sees
+it.
 
 **This is the wedge.** Not that the reason data is unused — it is partly used —
 but that it is used as a caption in a menu rather than as the handle on the

@@ -62,6 +62,19 @@ describe('round-trip', () => {
     assert.match(r.notes[0]!, /could not be read/);
   });
 
+  test('junk inside a stored feed loads instead of throwing', () => {
+    // A hand-edited or half-written document. Before the guard this threw out
+    // of loadPreferences on every cold start, with no way to recover.
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.feeds[0].sift.keywords = [null];
+    raw.feeds[0].sift.authors = [null];
+    const store = memoryStore({ [PREFERENCES_KEY]: JSON.stringify(raw) });
+    const { preferences, usedDefaults } = loadPreferences(store);
+    assert.equal(usedDefaults, false);
+    assert.equal(preferences.feeds.length, 3, 'the feed survives');
+    assert.deepEqual(preferences.feeds[0]!.sift.keywords, []);
+  });
+
   test('export is human-readable and re-imports identically', () => {
     const prefs = defaultPreferences();
     const json = exportPreferences(prefs);
@@ -179,5 +192,83 @@ describe('migration', () => {
       assert.equal(r.preferences.version, PREFERENCES_VERSION);
     }
     assert.equal(importPreferences('<<<not json>>>').usedDefaults, true);
+  });
+});
+
+describe('imported skin and boundaries are validated, not trusted', () => {
+  test('a hostile quiet window cannot put the app into permanent quiet hours', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.boundaries = { quietHours: { startMinute: -5, endMinute: 9999 } };
+    const { preferences } = migratePreferences(raw);
+    assert.equal(preferences.boundaries.quietHours, undefined);
+  });
+
+  test('a string budget does not become NaN arithmetic', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.boundaries = { sessionBudgetMinutes: 'twenty', dailyBudgetMinutes: -3 };
+    const { preferences } = migratePreferences(raw);
+    assert.equal(preferences.boundaries.sessionBudgetMinutes, undefined);
+    assert.equal(preferences.boundaries.dailyBudgetMinutes, undefined);
+  });
+
+  test('valid boundaries survive, clamped to a day', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.boundaries = {
+      catchUp: true,
+      windDown: true,
+      sessionBudgetMinutes: 25.6,
+      dailyBudgetMinutes: 99999,
+      quietHours: { startMinute: 1380, endMinute: 420 },
+    };
+    const { preferences } = migratePreferences(raw);
+    assert.deepEqual(preferences.boundaries, {
+      catchUp: true,
+      windDown: true,
+      sessionBudgetMinutes: 26,
+      dailyBudgetMinutes: 1440,
+      quietHours: { startMinute: 1380, endMinute: 420 },
+    });
+  });
+
+  test('a half-specified quiet window is dropped, not guessed', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.boundaries = { quietHours: { startMinute: 60 } };
+    assert.equal(
+      migratePreferences(raw).preferences.boundaries.quietHours,
+      undefined,
+    );
+  });
+
+  test('unknown boundary fields are not persisted', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.boundaries = { evil: 1, catchUp: true };
+    const b = migratePreferences(raw).preferences.boundaries as Record<
+      string,
+      unknown
+    >;
+    assert.equal('evil' in b, false);
+  });
+
+  test('a hostile skin falls back field by field', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.skin = { density: 'gigantic', media: 42, hideCounts: 'maybe', evil: 1 };
+    const { preferences } = migratePreferences(raw);
+    const defaults = defaultPreferences().skin;
+    assert.equal(preferences.skin.density, defaults.density);
+    assert.equal(preferences.skin.media, defaults.media);
+    assert.equal(preferences.skin.hideCounts, defaults.hideCounts);
+    assert.equal('evil' in preferences.skin, false);
+  });
+
+  test('a valid skin is kept, including an explicit false', () => {
+    const raw = JSON.parse(exportPreferences(defaultPreferences()));
+    raw.skin = { density: 'dense', showWhyChips: false };
+    const { preferences } = migratePreferences(raw);
+    assert.equal(preferences.skin.density, 'dense');
+    assert.equal(
+      preferences.skin.showWhyChips,
+      false,
+      'false is a real choice',
+    );
   });
 });

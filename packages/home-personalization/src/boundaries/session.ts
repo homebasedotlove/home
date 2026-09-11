@@ -7,6 +7,8 @@
  * foreground and background transitions.
  */
 
+import { isFiniteNumber } from '../util/numbers';
+
 export type SessionState = {
   /** When the current foreground stretch began, or undefined if backgrounded. */
   activeSince?: number;
@@ -125,4 +127,44 @@ export function markSeen(
   if (state.lastSeenMs !== undefined && state.lastSeenMs >= timestampMs)
     return state;
   return { ...state, lastSeenMs: timestampMs };
+}
+
+const optionalFinite = (v: unknown): boolean =>
+  v === undefined || isFiniteNumber(v);
+
+/**
+ * Shape check for state read back from storage. JSON that parses is not JSON
+ * that is right: a session with `sessionMs: "abc"` produced NaN budgets that
+ * serialised as `null` and rendered as an open feed with no remaining time.
+ */
+export function isSessionState(v: unknown): v is SessionState {
+  if (typeof v !== 'object' || v === null) return false;
+  const s = v as Record<string, unknown>;
+  return (
+    isFiniteNumber(s.sessionMs) &&
+    s.sessionMs >= 0 &&
+    isFiniteNumber(s.dayMs) &&
+    s.dayMs >= 0 &&
+    isFiniteNumber(s.dayKey) &&
+    optionalFinite(s.activeSince) &&
+    optionalFinite(s.lastActiveAt) &&
+    optionalFinite(s.lastSeenMs)
+  );
+}
+
+/**
+ * Bring a persisted session back after a process restart.
+ *
+ * A stretch is only closed by `enterBackground`, so a crash, a force-quit, or
+ * an OS kill leaves `activeSince` set in storage. Read back verbatim, the next
+ * cold start counted the entire gap as reading and opened straight into
+ * "session over". The stretch is dropped instead, and its start becomes the
+ * last-active mark so the thirty-minute rule still decides whether this is
+ * the same sitting. The minutes before the crash are lost; the alternative,
+ * counting hours nobody was reading, is worse.
+ */
+export function restoreSession(state: SessionState): SessionState {
+  if (state.activeSince === undefined) return state;
+  const { activeSince, ...rest } = state;
+  return { ...rest, lastActiveAt: activeSince };
 }
