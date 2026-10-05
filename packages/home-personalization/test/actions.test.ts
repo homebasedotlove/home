@@ -356,72 +356,84 @@ describe('undo from the receipts ledger', () => {
   // and the item it fires on. The ledger must be able to reverse all of them.
   const cases: {
     cause: string;
+    label: string;
     setup: (p: Preferences) => Preferences;
     item: FeedItemView;
     gone: (s: SiftRules) => boolean;
   }[] = [
     {
       cause: 'muted-group',
+      label: 'Discovery',
       setup: (p) => muteReasonGroup(p, 'home', 'discovery'),
       item: base({}),
       gone: (s) => !s.mutedGroups.includes('discovery'),
     },
     {
       cause: 'muted-reason',
+      label: 'Popular',
       setup: (p) => withSift(p, { mutedReasons: ['popular'] }),
       item: base({}),
       gone: (s) => s.mutedReasons.length === 0,
     },
     {
       cause: 'muted-keyword',
+      label: '“election”',
       setup: (p) => muteKeyword(p, 'home', 'election'),
       item: base({ text: 'election day' }),
       gone: (s) => s.keywords.length === 0,
     },
     {
       cause: 'muted-author',
+      label: 'fid 7',
       setup: (p) => muteAuthor(p, 'home', 7),
       item: base({ authorFid: 7 }),
       gone: (s) => s.authors.length === 0,
     },
     {
       cause: 'muted-channel',
+      label: '/design',
       setup: (p) => muteChannel(p, 'home', 'design'),
       item: base({ channelKey: 'design' }),
       gone: (s) => s.channels.length === 0,
     },
     {
       cause: 'muted-embed',
+      label: 'video embeds',
       setup: (p) => withSift(p, { mutedEmbedKinds: ['video'] }),
       item: base({ embedKinds: ['video'] }),
       gone: (s) => s.mutedEmbedKinds.length === 0,
     },
     {
       cause: 'hidden-reply',
+      label: 'Replies',
       setup: (p) => withSift(p, { hideReplies: true }),
       item: base({ isReply: true }),
       gone: (s) => !s.hideReplies,
     },
     {
       cause: 'hidden-recast',
+      label: 'Recasts',
       setup: (p) => withSift(p, { hideRecasts: true }),
       item: base({ isRecast: true }),
       gone: (s) => !s.hideRecasts,
     },
     {
       cause: 'hidden-textless',
+      label: 'Casts with no text',
       setup: (p) => withSift(p, { hideTextless: true }),
       item: base({ text: '' }),
       gone: (s) => !s.hideTextless,
     },
     {
       cause: 'author-quality',
+      label: 'Authors rated below neutral',
       setup: (p) => withSift(p, { minAuthorQuality: 'neutral' }),
       item: base({ authorQuality: 'low' }),
       gone: (s) => !('minAuthorQuality' in s),
     },
     {
       cause: 'min-score',
+      label: 'Scored under 0.5',
       setup: (p) => withSift(p, { minScore: 0.5 }),
       item: base({ score: 0.1 }),
       gone: (s) => !('minScore' in s),
@@ -436,6 +448,7 @@ describe('undo from the receipts ledger', () => {
       assert.equal(before.receipts[0]!.cause, c.cause);
 
       const [row] = groupReceipts(before.receipts);
+      assert.equal(row!.label, c.label, `${c.cause}: the row names its rule`);
       const undone = undoDrop(prefs, 'home', row!.cause, row!.rule);
       assert.ok(c.gone(home(undone).sift), `${c.cause}: the rule is gone`);
 

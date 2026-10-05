@@ -93,7 +93,9 @@ into a fork of [`farcasterxyz/client`](https://github.com/farcasterxyz/client),
 typechecked and built under its toolchain, and tested in its own vitest — see
 the [reference patch](docs/integration/reference-patch/README.md). A reader of
 the fork can change their feed from a chip and see every removal accounted for.
-The React layer beyond that is not built yet; the remaining [call
+The fork is branded Home, with the Farcaster purple kept and the dark end of
+the palette tinted toward blue instead of black. The React layer beyond that is
+not built yet; the remaining [call
 sites](docs/integration/wiring-into-a-fork.md) are the next step.
 
 ## License

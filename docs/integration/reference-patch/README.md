@@ -1,8 +1,11 @@
 # The integration, as it was actually applied
 
 Not a description. `seam-and-chip.patch` is the diff of a real integration of
-Home into a `farcasterxyz/client` checkout at snapshot `b6922e2`: fifteen
-files, applied, typechecked, built and tested there. Reproduce it with:
+Home into a `farcasterxyz/client` checkout at snapshot `b6922e2`: the seam,
+the preferences provider, the chip, the hidden row, and the web app's
+rebranding to Home, applied, typechecked, built and tested there. It carries
+the icon set as binary hunks, so apply it with `git apply`, not `patch`.
+Reproduce it with:
 
 ```bash
 cp -r /path/to/home/packages/{home-personalization,farcaster-adapter,home-client-core} \
@@ -35,13 +38,26 @@ as `workspace:*` dependencies of `farcaster-client-hooks` and
 | `HomeFeedPageContent.tsx` | Provides the `'home'` scope and mounts the row above the list. |
 | `UnfocusedCast.tsx` | Two lines: destructure `includeReason` and `score`, render the chip in the top hat's slot. Unchanged since the first integration. |
 | `App.tsx`, `homePreferencesStore.ts` | Mount the provider over `localStorage`, every call guarded. |
-| three test files | Thirteen assertions in the client's own vitest and jsdom: the seam helper, the chip writing to preferences, the row's undo. |
+| three test files | Fourteen assertions in the client's own vitest and jsdom: the seam helper, the chip writing to preferences and closing like every other menu, the row's undo. |
+
+## The rebrand
+
+| | |
+| --- | --- |
+| `tailwind.config.js` | The dark end of the palette carries a hint of blue instead of going to black. Every dark grey keeps the client's own OKLab lightness and gains hue 268 (between the brand purple at 286 and the client's blue at 249) with chroma 0.045 at the darkest steps, tapering to nothing near white. Contrast ratios are unchanged to the second decimal. The purple is untouched. |
+| `index.css`, `index.html`, `manifest.json` | The landing gradient ends in the same indigo; the title, theme colour, manifest name and description say Home. |
+| `public/*.png` | The favicon, the app icons and the Open Graph card, rendered from the same mark the React component draws. |
+| `HomeMark.tsx`, `FilledLogo.tsx`, `Logo.tsx` | The mark and wordmark. The client's two logo components keep their size API and draw the mark, so every place that used them is rebranded without being touched. |
+| `HomeLandingPage.tsx` | Two ways in, a live preview of the chip in place of the marketing video, one honest sentence about accounts, and email login on phones, where the reference client offered nothing but a download link. |
+| `LeftSideBarLogo.tsx`, `StandalonePage.tsx`, `DownloadPage.tsx` | The shell's mark without the brand-asset menu; the standalone header goes back to Home; the sign-up page says plainly that accounts are created in the Farcaster app. |
+| `LoginMagicLinkWithInstructions.tsx` | A failed request no longer tells the reader their address is invalid. |
 
 ## What this measured
 
 - The web app typechecks with the patch applied (`tsc --noEmit`, zero errors)
-  and builds. The `UnfocusedCast` chunk is 270.65 kB with the provider, the
-  chip and the row in it, against 268.84 kB upstream.
+  and builds. The `UnfocusedCast` chunk is 268.94 kB with the provider, the
+  chip and the row in it, against 268.84 kB upstream: the chip's sheet is the
+  client's own popover, which the chunk already carried.
 - In the production stylesheet, every chip group has a colour in both themes:
   green, blue and purple for direct, network and discovery, grey for promoted.
   Before, six of ten chips rendered in plain text colour.
@@ -57,6 +73,5 @@ Feed tabs from FeedSpecs, the feed editor, the share-link route, settings, the
 session provider and the theme bridge. The client core's source resolution,
 boundaries and affinity are still unconnected to the client: on web the
 client's own hook owns fetching, so the provider holds the document and nothing
-else. The chip's sheet is a positioned div rather than the client's sheet
-primitive. Nothing here touches the mobile app, which keeps upstream behaviour
-until it mounts the provider.
+else. Nothing here touches the mobile app, which keeps upstream behaviour and
+upstream branding until it mounts the provider; the runbook lists its renames.

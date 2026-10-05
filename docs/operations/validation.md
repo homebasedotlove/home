@@ -18,7 +18,7 @@ on Linux. Nothing here is inferred from reading code.
 | 5 | Packages build in the fork | `tsc -p tsconfig.build.json` in the client | 3/3, under **TypeScript 7** |
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
-| 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 13 assertions |
+| 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -57,8 +57,8 @@ jsdom. `HomeWhyChip.test.tsx` asserts the chip renders for all ten reasons the
 API can send — including the two the upstream `SourceLabel` renders as
 `null` — labels an unknown future reason rather than going silent, opens a
 sheet with the explanation and the score, offers no controls outside a feed,
-writes Less and None to the reader's preferences inside one, and never offers to
-boost promoted content. `HomeHiddenRow.test.tsx` asserts the row accounts for
+writes Less and None to the reader's preferences inside one, closes on Escape
+and on a tap outside, and never offers to boost promoted content. `HomeHiddenRow.test.tsx` asserts the row accounts for
 every removal on a real fixture page, one row per rule, and that undo reverses
 exactly the rule on that row. `homePersonalize.test.ts` asserts the seam leaves
 a page untouched without a spec and personalises it with one. Each suite fails
@@ -70,6 +70,8 @@ The web bundle's `UnfocusedCast` chunk went from **268.84 kB to 272.12 kB** —
 the chip, the reason taxonomy and the whole pipeline, roughly 1 kB gzipped.
 With the preferences provider and the hidden row added it is **270.65 kB**: the
 constant spec left the chunk and the provider lives in the shared hooks bundle.
+With the chip’s sheet on the client’s own popover it is **268.94 kB**, back
+within a tenth of a kilobyte of upstream.
 
 ---
 
@@ -182,6 +184,38 @@ rendering black. All three are closed in the reference patch:
 Verified: 197 kernel tests; 13 assertions inside the fork, each suite failing
 when its fix is removed; the web app typechecks with zero errors and builds;
 the patch applies cleanly to a pristine checkout of the snapshot.
+
+## The rebrand and the simplification pass
+
+The fork is branded Home. The brand purple stays; the dark end of the palette
+carries a hint of blue instead of going to black. Each dark grey keeps the
+client's own OKLab lightness and gains hue 268 (between the purple at 286 and
+the client's blue at 249), chroma 0.045 at the darkest steps tapering to
+nothing near white, so the contrast of every text token on every surface is
+what it was: secondary text 7.77:1 on the new ground against 7.72:1 on black.
+The landing gradient, the title, the theme colour, the manifest, the icon set
+and the Open Graph card follow. The client's two logo components keep their
+size API and draw Home's mark, which rebrands every place they are used
+without touching those places.
+
+The same pass tightened the experience where the frames showed friction:
+
+- **The chip's sheet is the client's own anchored popover.** It flips to stay
+  on screen and closes on Escape or a tap outside, like every other menu in the
+  app. The hand-positioned div that overflowed its row is gone.
+- **The ledger's row labels come from the kernel.** `groupReceipts` names each
+  row, so web, mobile and the demo CLI call a muted group by the same word, and
+  the row component only lays rows out.
+- **The landing page has two ways in** and one honest sentence about accounts.
+  The marketing video, the store badges and the "or" divider are gone; a live
+  preview of the chip shows the product instead. On a phone the reference
+  client offered only a download link; Home offers email login there.
+- **A failed magic-link request no longer says "Invalid email."**
+- **The provider no longer carries a `notes` array nothing reads.**
+
+Verified: 197 kernel tests, including the row label for every receipt cause;
+14 assertions inside the fork; the web app typechecks with zero errors and
+builds; every frame re-rendered from the rebuilt bundle.
 
 ## Keeping it true
 

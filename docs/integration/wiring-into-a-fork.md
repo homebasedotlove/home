@@ -292,7 +292,7 @@ without a simulator, an API key, or a phone.
 
 ## Testing across the seam
 
-259 tests across the three packages, plus 13 inside the fork, all in
+259 tests across the three packages, plus 14 inside the fork, all in
 `vitest run`, none needing a simulator:
 
 | | |
@@ -300,7 +300,7 @@ without a simulator, an API key, or a phone.
 | `home-personalization` | 197 — the pipeline, themes, boundaries, preferences, share links |
 | `farcaster-adapter` | 21 — adaptation, embed classification, the seam; plus 7 opt-in assertions against a built client checkout |
 | `home-client-core` | 41 — source resolution, and the end-to-end journey above |
-| inside the fork | 13 — the seam helper, the chip writing to preferences, the hidden row's undo; in the client's own vitest |
+| inside the fork | 14 — the seam helper, the chip writing to preferences and closing like every other menu, the hidden row's undo; in the client's own vitest |
 
 Keep it that way. When a ranking or filtering bug appears it should be
 reproducible as a fixture in that suite, not as a tap sequence on a phone. The

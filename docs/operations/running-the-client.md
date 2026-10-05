@@ -253,6 +253,10 @@ late.
 | Associated domains | `applinks:warpcast.com`, `applinks:farcaster.xyz` and `webcredentials:` for both | `app.json` → `ios.associatedDomains` |
 | App name | `Farcaster` | `app.json` |
 
+These are the mobile app's. The web app's identity (title, theme colour,
+manifest, icon set, landing page, the shell's mark) is already Home in the
+[reference patch](../integration/reference-patch/README.md).
+
 Universal links and passkey `webcredentials` only work for domains **you**
 control and serve a matching `apple-app-site-association` from. Leaving
 Farcaster's domains in place means those features silently do not work for your

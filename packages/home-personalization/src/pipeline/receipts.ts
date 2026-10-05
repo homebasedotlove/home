@@ -7,6 +7,7 @@
  * how causes map onto rules.
  */
 
+import { describeReason, GROUP_LABELS } from '../reasons/index';
 import type { DropReceipt } from './types';
 
 export type ReceiptGroup = {
@@ -15,6 +16,8 @@ export type ReceiptGroup = {
   cause: DropReceipt['cause'];
   /** The rule value — a keyword, an fid, a channel key, a reason type. */
   rule?: string;
+  /** The rule as the reader would recognise it: "Promoted", "election", /design. */
+  label: string;
   /** Sentence for the row, taken from the first receipt in the group. */
   detail: string;
   count: number;
@@ -36,6 +39,44 @@ export const UNDO_LABEL: Record<DropReceipt['cause'], string> = {
   'min-score': 'Lower the cutoff',
 };
 
+/**
+ * The row's name. Computed here rather than in each UI, so a ledger on web, on
+ * mobile and in the demo CLI all call a muted group by the same word.
+ */
+export function labelForDrop(
+  cause: DropReceipt['cause'],
+  rule?: string,
+): string {
+  switch (cause) {
+    case 'muted-group':
+      return (
+        (rule && GROUP_LABELS[rule as keyof typeof GROUP_LABELS]) ||
+        rule ||
+        cause
+      );
+    case 'muted-reason':
+      return (rule && describeReason(rule)?.chip) || rule || cause;
+    case 'muted-keyword':
+      return `“${rule ?? ''}”`;
+    case 'muted-author':
+      return `fid ${rule ?? ''}`;
+    case 'muted-channel':
+      return `/${rule ?? ''}`;
+    case 'muted-embed':
+      return `${rule ?? ''} embeds`;
+    case 'hidden-reply':
+      return 'Replies';
+    case 'hidden-recast':
+      return 'Recasts';
+    case 'hidden-textless':
+      return 'Casts with no text';
+    case 'author-quality':
+      return `Authors rated below ${rule ?? ''}`;
+    case 'min-score':
+      return `Scored under ${rule ?? ''}`;
+  }
+}
+
 export function groupReceipts(receipts: DropReceipt[]): ReceiptGroup[] {
   const groups = new Map<string, ReceiptGroup>();
   for (const r of receipts) {
@@ -49,6 +90,7 @@ export function groupReceipts(receipts: DropReceipt[]): ReceiptGroup[] {
     const group: ReceiptGroup = {
       key,
       cause: r.cause,
+      label: labelForDrop(r.cause, r.rule),
       detail: r.detail,
       count: 1,
       itemIds: [r.itemId],
