@@ -95,6 +95,11 @@ const personalized = useMemo(() => {
 }, [data, spec, affinity]);
 ```
 
+`spec` is the reader's spec for this feed key, from the preferences provider:
+`useHomePreferences()?.specFor(feedKey)`. Undefined means the page is left
+exactly as the server sent it, which is what every feed the reader has no rules
+for gets.
+
 It returns `{ items, receipts, mix, hiddenCount }`, where `items` are the
 **original row objects** — the components downstream keep receiving the API
 types they already know how to draw.
@@ -119,10 +124,11 @@ implementation.
 On web, `isCast` is just `() => true` and `getCast` is `(item) => item`; the
 mixed-union handling costs nothing when there is no union.
 
-A working version of this patch — applied, built and tested against snapshot
-`b6922e2` — is in
-[`reference-patch/`](reference-patch/README.md), along with the why-chip it
-feeds and that component's tests.
+A working version of this patch — applied, typechecked, built and tested
+against snapshot `b6922e2` — is in
+[`reference-patch/`](reference-patch/README.md): the seam as a single
+function, the preferences provider the spec comes from, the why-chip it feeds,
+the hidden row that accounts for what it removed, and their tests.
 
 ## 3. The theme provider
 
@@ -174,14 +180,17 @@ On web, the same three methods over `localStorage`. Keep it **synchronous**:
 preferences are read during the first render of the feed, and an async read there
 means a frame of the wrong theme on every cold start.
 
-`HomeClient` from `home-client-core` already holds the document, persists on
-change, and exposes `update(fn)` taking any of the pure actions from
-`home-personalization/prefs/actions`. A `PreferencesProvider` is a thin React
-wrapper over it:
+The reference patch's `HomePreferencesProvider` does exactly this: it holds
+the document, persists on change, and exposes `update(fn)` taking any of the
+pure actions from `home-personalization/prefs/actions`. On web it sits over
+the kernel directly rather than over `HomeClient`, because the client's own
+hook owns fetching there; `HomeClient` is the right shape where a fork owns the
+fetch path too (sources, blends, catch-up). A why-chip inside a feed scope calls
+`useHomeAdjust`, which is this one line:
 
 ```ts
 // The entire path from tapping "Less" on a why-chip to a changed feed.
-client.update((p) => nudgeReason(p, feedId, 'discovery', 'down'));
+update((p) => nudgeReason(p, feedId, 'discovery', 'down'));
 ```
 
 Because it is local state, changes apply on the next frame — which is what
@@ -283,14 +292,15 @@ without a simulator, an API key, or a phone.
 
 ## Testing across the seam
 
-257 tests across the three packages, all in `vitest run`, none needing a
-simulator:
+259 tests across the three packages, plus 13 inside the fork, all in
+`vitest run`, none needing a simulator:
 
 | | |
 | --- | --- |
-| `home-personalization` | 195 — the pipeline, themes, boundaries, preferences, share links |
+| `home-personalization` | 197 — the pipeline, themes, boundaries, preferences, share links |
 | `farcaster-adapter` | 21 — adaptation, embed classification, the seam; plus 7 opt-in assertions against a built client checkout |
 | `home-client-core` | 41 — source resolution, and the end-to-end journey above |
+| inside the fork | 13 — the seam helper, the chip writing to preferences, the hidden row's undo; in the client's own vitest |
 
 Keep it that way. When a ranking or filtering bug appears it should be
 reproducible as a fixture in that suite, not as a tap sequence on a phone. The

@@ -19,14 +19,18 @@ import {
   reorderFeeds,
   setActiveFeed,
   setTabs,
+  undoDrop,
   unmuteKeyword,
   unmuteReasonGroup,
   uniqueFeedId,
+  updateFeed,
   upsertList,
 } from '../src/prefs/actions';
+import type { Preferences } from '../src/prefs';
 import { GROUP_WEIGHT_CEILING } from '../src/reasons/index';
 import { makeFeedSpec } from '../src/feedspec/defaults';
-import { runFeedPipeline } from '../src/pipeline';
+import type { SiftRules } from '../src/feedspec/types';
+import { groupReceipts, runFeedPipeline } from '../src/pipeline';
 import type { FeedItemView } from '../src/pipeline/types';
 
 const NOW = 1_700_000_000_000;
@@ -336,6 +340,117 @@ describe('lists and tabs', () => {
       before.tabs,
     );
     assert.deepEqual(setTabs(before, ['feeds', 'you']).tabs, ['feeds', 'you']);
+  });
+});
+
+describe('undo from the receipts ledger', () => {
+  const home = (prefs: Preferences) => getFeed(prefs, 'home')!;
+  const withSift = (prefs: Preferences, patch: Partial<SiftRules>) =>
+    updateFeed(prefs, 'home', { sift: { ...home(prefs).sift, ...patch } });
+  const base = (over: Partial<FeedItemView>): FeedItemView => ({
+    ...item('x', 'popular', 0.5),
+    ...over,
+  });
+
+  // One case per cause the sift can produce, each with the rule that fires it
+  // and the item it fires on. The ledger must be able to reverse all of them.
+  const cases: {
+    cause: string;
+    setup: (p: Preferences) => Preferences;
+    item: FeedItemView;
+    gone: (s: SiftRules) => boolean;
+  }[] = [
+    {
+      cause: 'muted-group',
+      setup: (p) => muteReasonGroup(p, 'home', 'discovery'),
+      item: base({}),
+      gone: (s) => !s.mutedGroups.includes('discovery'),
+    },
+    {
+      cause: 'muted-reason',
+      setup: (p) => withSift(p, { mutedReasons: ['popular'] }),
+      item: base({}),
+      gone: (s) => s.mutedReasons.length === 0,
+    },
+    {
+      cause: 'muted-keyword',
+      setup: (p) => muteKeyword(p, 'home', 'election'),
+      item: base({ text: 'election day' }),
+      gone: (s) => s.keywords.length === 0,
+    },
+    {
+      cause: 'muted-author',
+      setup: (p) => muteAuthor(p, 'home', 7),
+      item: base({ authorFid: 7 }),
+      gone: (s) => s.authors.length === 0,
+    },
+    {
+      cause: 'muted-channel',
+      setup: (p) => muteChannel(p, 'home', 'design'),
+      item: base({ channelKey: 'design' }),
+      gone: (s) => s.channels.length === 0,
+    },
+    {
+      cause: 'muted-embed',
+      setup: (p) => withSift(p, { mutedEmbedKinds: ['video'] }),
+      item: base({ embedKinds: ['video'] }),
+      gone: (s) => s.mutedEmbedKinds.length === 0,
+    },
+    {
+      cause: 'hidden-reply',
+      setup: (p) => withSift(p, { hideReplies: true }),
+      item: base({ isReply: true }),
+      gone: (s) => !s.hideReplies,
+    },
+    {
+      cause: 'hidden-recast',
+      setup: (p) => withSift(p, { hideRecasts: true }),
+      item: base({ isRecast: true }),
+      gone: (s) => !s.hideRecasts,
+    },
+    {
+      cause: 'hidden-textless',
+      setup: (p) => withSift(p, { hideTextless: true }),
+      item: base({ text: '' }),
+      gone: (s) => !s.hideTextless,
+    },
+    {
+      cause: 'author-quality',
+      setup: (p) => withSift(p, { minAuthorQuality: 'neutral' }),
+      item: base({ authorQuality: 'low' }),
+      gone: (s) => !('minAuthorQuality' in s),
+    },
+    {
+      cause: 'min-score',
+      setup: (p) => withSift(p, { minScore: 0.5 }),
+      item: base({ score: 0.1 }),
+      gone: (s) => !('minScore' in s),
+    },
+  ];
+
+  test('every cause the sift can produce is reversible from its row', () => {
+    for (const c of cases) {
+      const prefs = c.setup(defaultPreferences());
+      const before = runFeedPipeline([c.item], home(prefs), { now: NOW });
+      assert.equal(before.receipts.length, 1, `${c.cause}: the rule fires`);
+      assert.equal(before.receipts[0]!.cause, c.cause);
+
+      const [row] = groupReceipts(before.receipts);
+      const undone = undoDrop(prefs, 'home', row!.cause, row!.rule);
+      assert.ok(c.gone(home(undone).sift), `${c.cause}: the rule is gone`);
+
+      const after = runFeedPipeline([c.item], home(undone), { now: NOW });
+      assert.equal(after.receipts.length, 0, `${c.cause}: nothing hidden now`);
+      assert.equal(after.items.length, 1);
+    }
+  });
+
+  test('a row with a missing or malformed rule is a no-op, not a half-edit', () => {
+    const prefs = muteReasonGroup(defaultPreferences(), 'home', 'promoted');
+    assert.equal(undoDrop(prefs, 'home', 'muted-group'), prefs);
+    assert.equal(undoDrop(prefs, 'home', 'muted-group', 'nope'), prefs);
+    assert.equal(undoDrop(prefs, 'home', 'muted-author', 'abc'), prefs);
+    assert.equal(undoDrop(prefs, 'home', 'muted-keyword'), prefs);
   });
 });
 

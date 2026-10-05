@@ -11,14 +11,14 @@ on Linux. Nothing here is inferred from reading code.
 
 | # | Gate | Command | Result |
 | --- | --- | --- | --- |
-| 1 | Home's own suite | `pnpm test` | 257 tests |
+| 1 | Home's own suite | `pnpm test` | 259 tests |
 | 2 | Types match upstream | `pnpm verify:compat` | 34 fields, 2 enumerations, exact |
 | 3 | That check can fail | `pnpm verify:compat:drift` | 11/11 mutations caught |
 | 4 | Docs match the snapshot | `node scripts/audit-claims.mjs` | 34/34 claims hold |
 | 5 | Packages build in the fork | `tsc -p tsconfig.build.json` in the client | 3/3, under **TypeScript 7** |
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
-| 8 | The chip renders | client's own vitest + jsdom | 5 assertions |
+| 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 13 assertions |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -52,17 +52,24 @@ HOME_CLIENT=/path/to/client pnpm --filter farcaster-adapter test
 
 ## What gate 8 proves
 
-`HomeWhyChip.test.tsx` runs in the **client's own** vitest, React and Testing
-Library, in jsdom. It asserts the chip renders for all ten reasons the API can
-send — including the two the upstream `SourceLabel` renders as `null` — labels
-an unknown future reason rather than going silent, opens a sheet with the
-explanation and the score, reports the group and direction to its caller, and
-never offers to boost promoted content.
+Three suites run in the **client's own** vitest, React and Testing Library, in
+jsdom. `HomeWhyChip.test.tsx` asserts the chip renders for all ten reasons the
+API can send — including the two the upstream `SourceLabel` renders as
+`null` — labels an unknown future reason rather than going silent, opens a
+sheet with the explanation and the score, offers no controls outside a feed,
+writes Less and None to the reader's preferences inside one, and never offers to
+boost promoted content. `HomeHiddenRow.test.tsx` asserts the row accounts for
+every removal on a real fixture page, one row per rule, and that undo reverses
+exactly the rule on that row. `homePersonalize.test.ts` asserts the seam leaves
+a page untouched without a spec and personalises it with one. Each suite fails
+when its fix is removed.
 
 ## Cost
 
 The web bundle's `UnfocusedCast` chunk went from **268.84 kB to 272.12 kB** —
 the chip, the reason taxonomy and the whole pipeline, roughly 1 kB gzipped.
+With the preferences provider and the hidden row added it is **270.65 kB**: the
+constant spec left the chunk and the provider lives in the shared hooks bundle.
 
 ---
 
@@ -151,6 +158,30 @@ fix.
     out of `loadPreferences`: a cold start that never recovers. Surfaced by
     the security review; junk entries now fall through the same skipped paths
     as any other malformed rule.
+
+## The three moves
+
+The frame-by-frame review of the sign-in flow found the fork's why-chip wired
+to nothing, its receipts computed and never shown, and six of its ten chips
+rendering black. All three are closed in the reference patch:
+
+1. **The chip is wired.** `HomePreferencesProvider` holds the reader's
+   document over the platform's key-value store; `useFeedItems` reads the spec
+   for its feed key from it instead of a constant; the chip's Less, None and
+   More go through the feed scope to `nudgeReason` and `muteReasonGroup`.
+   Outside a feed the sheet explains and offers no controls.
+2. **The hidden row renders what the hook returned.** "N casts hidden on this
+   page." above the home feed, a ledger of one row per rule behind it, and a
+   button on each row that reverses that rule through the kernel's new
+   `undoDrop`, which is tested against all eleven causes the sift can produce.
+3. **The colour tokens are fixed.** `text-success` resolved to a variable
+   scoped to `.snap-theme-scope`, and `text-action-blue` was not a utility the
+   client's config generates. The chip now uses the client's own light and dark
+   tokens for each group.
+
+Verified: 197 kernel tests; 13 assertions inside the fork, each suite failing
+when its fix is removed; the web app typechecks with zero errors and builds;
+the patch applies cleanly to a pristine checkout of the snapshot.
 
 ## Keeping it true
 

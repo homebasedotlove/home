@@ -1,3 +1,196 @@
+diff --git a/apps/farcaster-web/package.json b/apps/farcaster-web/package.json
+index 048dd07..40dc81a 100644
+--- a/apps/farcaster-web/package.json
++++ b/apps/farcaster-web/package.json
+@@ -93,7 +93,10 @@
+     "uuid": "^11.1.1",
+     "viem": "2.39.3",
+     "wagmi": "^3.1.0",
+-    "zod": "^4.3.6"
++    "zod": "^4.3.6",
++    "home-client-core": "workspace:*",
++    "home-personalization": "workspace:*",
++    "farcaster-adapter": "workspace:*"
+   },
+   "scripts": {
+     "validate-sitemaps": "node scripts/validateSitemaps.mjs",
+diff --git a/apps/farcaster-web/src/components/App.tsx b/apps/farcaster-web/src/components/App.tsx
+index 5e2b471..104c6ff 100644
+--- a/apps/farcaster-web/src/components/App.tsx
++++ b/apps/farcaster-web/src/components/App.tsx
+@@ -5,7 +5,11 @@ import {
+   persistQueryClient,
+   PersistQueryClientOptions,
+ } from '@tanstack/react-query-persist-client';
+-import { BlockedDomainsProvider, PubSubProvider } from 'farcaster-client-hooks';
++import {
++  BlockedDomainsProvider,
++  HomePreferencesProvider,
++  PubSubProvider,
++} from 'farcaster-client-hooks';
+ import React, { FC, ReactNode, Suspense } from 'react';
+ import { BrowserRouter } from 'react-router-dom';
+ import { WagmiProvider } from 'wagmi';
+@@ -29,6 +33,7 @@ import { ThemeProvider } from '~/contexts/ThemeProvider';
+ import { VideoPlayStatusProvider } from '~/contexts/VideoPlayStatusProvider';
+ import { WebFarcasterApiClientProvider } from '~/contexts/WebFarcasterApiClientProvider';
+ import { InteractedSnapUrlsWebProvider } from '~/providers/InteractedSnapUrlsWebProvider';
++import { homePreferencesStore } from '~/utils/homePreferencesStore';
+ import { wagmiConfig } from '~/utils/wagmi';
+ 
+ import { FullScreenErrorBoundary } from './errors/FullScreenErrorBoundary';
+@@ -106,9 +111,14 @@ const App: FC = () => {
+                                                   <DirectCastToTakeActionProvider>
+                                                     <MiniAppProvider>
+                                                       <MinimizableWindowProvider>
+-                                                        <BrowserRouter>
+-                                                          <Router />
+-                                                        </BrowserRouter>
++                                                        {/* Home: the reader's preferences, one document over localStorage */}
++                                                        <HomePreferencesProvider
++                                                          store={homePreferencesStore}
++                                                        >
++                                                          <BrowserRouter>
++                                                            <Router />
++                                                          </BrowserRouter>
++                                                        </HomePreferencesProvider>
+                                                       </MinimizableWindowProvider>
+                                                     </MiniAppProvider>
+                                                   </DirectCastToTakeActionProvider>
+diff --git a/apps/farcaster-web/src/components/casts/HomeWhyChip.tsx b/apps/farcaster-web/src/components/casts/HomeWhyChip.tsx
+new file mode 100644
+index 0000000..977e0ca
+--- /dev/null
++++ b/apps/farcaster-web/src/components/casts/HomeWhyChip.tsx
+@@ -0,0 +1,128 @@
++import { ApiCastFeedIncludeReason } from 'farcaster-client-data';
++import type { HomeAdjust } from 'farcaster-client-hooks';
++import { useHomeAdjust } from 'farcaster-client-hooks';
++import { describeReason, explainReason, reasonGroup } from 'home-personalization';
++import React, { FC, memo, useCallback, useState } from 'react';
++
++/**
++ * Home's why-chip.
++ *
++ * The reference client already surfaces ranking reasons, in two places: an
++ * `IncludeReasonTopHat` on the feed row for two of the ten reasons, and a
++ * `SourceLabel` inside the kebab menu for eight of them. Neither has a press
++ * handler. So a reader can sometimes learn why a cast is there, and can never
++ * do anything about it.
++ *
++ * This renders in the same slot as the top hat, for every reason, and is a
++ * button. Tapping it is the whole product: the explanation and the control are
++ * the same object. Inside a feed, the controls write to the reader's
++ * preferences through the feed scope; anywhere else the sheet explains and
++ * offers none, rather than offering buttons that would do nothing.
++ */
++
++// Each group uses the client's own light and dark tokens. The semantic
++// `text-success` resolves to a variable scoped to `.snap-theme-scope`, which a
++// feed row is not inside, and `text-action-blue` is not a utility the config
++// generates at all; both rendered as plain text colour.
++const GROUP_CLASS: Record<string, string> = {
++  direct: 'text-action-green-light dark:text-action-green-dark',
++  network: 'text-action-blue-light dark:text-action-blue-dark',
++  discovery: 'text-action-purple-light dark:text-action-purple-dark',
++  promoted: 'text-faint',
++};
++
++type HomeWhyChipProps = {
++  includeReason: ApiCastFeedIncludeReason;
++  score?: number;
++  /** Overrides the feed scope. Tests and previews pass one; the feed does not. */
++  onAdjust?: HomeAdjust;
++};
++
++const HomeWhyChip: FC<HomeWhyChipProps> = memo(
++  ({ includeReason, score, onAdjust }) => {
++    const [open, setOpen] = useState(false);
++    const descriptor = describeReason(includeReason.type);
++    const group = reasonGroup(includeReason.type);
++    const scopedAdjust = useHomeAdjust();
++    const adjust = onAdjust ?? scopedAdjust;
++
++    const choose = useCallback(
++      (direction: 'up' | 'down' | 'off') => {
++        if (group && adjust) adjust(group, direction);
++        setOpen(false);
++      },
++      [group, adjust],
++    );
++
++    // An unknown reason still gets a chip rather than silence: upstream can add
++    // one at any time, and an unlabelled cast is the bug this exists to fix.
++    const label = descriptor?.chip ?? includeReason.type;
++    const canAdjust = Boolean(group && adjust);
++
++    return (
++      <div className="relative" data-testid="home-why-chip">
++        <button
++          type="button"
++          onClick={() => setOpen((v) => !v)}
++          className={`mb-1 inline-flex items-center gap-1.5 rounded border border-current px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${
++            GROUP_CLASS[group ?? ''] ?? 'text-faint'
++          }`}
++          aria-expanded={open}
++          aria-label={`Why am I seeing this: ${label}`}
++        >
++          <span className="size-1.5 rounded-full bg-current" />
++          {label}
++        </button>
++
++        {open && (
++          <div
++            role="dialog"
++            data-testid="home-why-sheet"
++            className="absolute left-0 top-full z-50 w-72 rounded-lg border border-default bg-app p-3 shadow-lg"
++          >
++            <p className="mb-1 text-sm text-default">
++              {explainReason(includeReason.type)}
++            </p>
++            {score !== undefined && (
++              <p className="mb-2 font-mono text-xs text-faint">
++                meta.score {score.toFixed(2)}
++              </p>
++            )}
++            {canAdjust && (
++              <div className="flex flex-wrap gap-2">
++                <button
++                  type="button"
++                  onClick={() => choose('down')}
++                  className="rounded border border-default px-2 py-1 text-xs"
++                >
++                  Less of this
++                </button>
++                <button
++                  type="button"
++                  onClick={() => choose('off')}
++                  className="rounded border border-default px-2 py-1 text-xs"
++                >
++                  None of this
++                </button>
++                {/* Promoted can be reduced or removed, never amplified. */}
++                {descriptor?.boostable !== false && (
++                  <button
++                    type="button"
++                    onClick={() => choose('up')}
++                    className="rounded border border-default px-2 py-1 text-xs"
++                  >
++                    More of this
++                  </button>
++                )}
++              </div>
++            )}
++          </div>
++        )}
++      </div>
++    );
++  },
++);
++
++HomeWhyChip.displayName = 'HomeWhyChip';
++
++export { HomeWhyChip };
 diff --git a/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx b/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx
 index aa7411c..9a14d84 100644
 --- a/apps/farcaster-web/src/components/casts/UnfocusedCast.tsx
@@ -34,77 +227,833 @@ index aa7411c..9a14d84 100644
              {includeReasonTopHatType && (
                <IncludeReasonTopHat
                  includeReasonType={includeReasonTopHatType}
+diff --git a/apps/farcaster-web/src/components/casts/__tests__/HomeWhyChip.test.tsx b/apps/farcaster-web/src/components/casts/__tests__/HomeWhyChip.test.tsx
+new file mode 100644
+index 0000000..180fe91
+--- /dev/null
++++ b/apps/farcaster-web/src/components/casts/__tests__/HomeWhyChip.test.tsx
+@@ -0,0 +1,132 @@
++// @vitest-environment jsdom
++
++import { render, screen } from '@testing-library/react';
++import React from 'react';
++import userEvent from '@testing-library/user-event';
++import {
++  HomeFeedScopeProvider,
++  HomePreferencesProvider,
++} from 'farcaster-client-hooks';
++import {
++  getFeed,
++  loadPreferences,
++  memoryStore,
++  PREFERENCES_KEY,
++} from 'home-personalization';
++import { describe, expect, it, vi } from 'vitest';
++
++import { HomeWhyChip } from '~/components/casts/HomeWhyChip';
++
++/**
++ * Runs in the client's own vitest harness, against the client's own React and
++ * Testing Library. What it proves is narrow and specific: Home's kernel is
++ * importable from inside the app, the chip renders for every reason the API can
++ * send, and tapping it inside a feed changes the reader's preferences, which
++ * is the thing the upstream SourceLabel and IncludeReasonTopHat do not do.
++ */
++describe('HomeWhyChip', () => {
++  it('renders a chip for every reason the API can send', () => {
++    const reasons = [
++      'following-author', 'evergreen-following-author', 'follow-of-follow',
++      'recasted-by-following', 'has-reply-by-followed', 'pinned-in-channel',
++      'popular-in-channel', 'popular', 'high-quality-unfollowed', 'snap-promoted',
++    ] as const;
++
++    for (const type of reasons) {
++      const { unmount } = render(
++        <HomeWhyChip includeReason={{ type } as never} />,
++      );
++      const chip = screen.getByTestId('home-why-chip');
++      // Upstream renders nothing at all for the two following-author reasons.
++      expect(chip.textContent?.trim().length ?? 0).toBeGreaterThan(0);
++      unmount();
++    }
++  });
++
++  it('explains the reason and shows the score when tapped', async () => {
++    render(
++      <HomeWhyChip
++        includeReason={{ type: 'popular' } as never}
++        score={0.71}
++        onAdjust={() => {}}
++      />,
++    );
++    expect(screen.queryByTestId('home-why-sheet')).toBeNull();
++
++    await userEvent.click(screen.getByRole('button'));
++
++    const sheet = screen.getByTestId('home-why-sheet');
++    expect(sheet.textContent).toContain('popular right now');
++    expect(sheet.textContent).toContain('0.71');
++    expect(screen.getByText('Less of this')).toBeTruthy();
++    expect(screen.getByText('None of this')).toBeTruthy();
++    expect(screen.getByText('More of this')).toBeTruthy();
++  });
++
++  it('explains without offering controls outside a feed', async () => {
++    render(<HomeWhyChip includeReason={{ type: 'popular' } as never} />);
++    await userEvent.click(screen.getByRole('button'));
++    expect(screen.getByTestId('home-why-sheet').textContent).toContain(
++      'popular right now',
++    );
++    // No feed scope and no handler: buttons that would do nothing are not shown.
++    expect(screen.queryByText('Less of this')).toBeNull();
++    expect(screen.queryByText('None of this')).toBeNull();
++  });
++
++  it('reports the group and direction the reader chose', async () => {
++    const onAdjust = vi.fn();
++    render(
++      <HomeWhyChip
++        includeReason={{ type: 'high-quality-unfollowed' } as never}
++        onAdjust={onAdjust}
++      />,
++    );
++    await userEvent.click(screen.getByRole('button'));
++    await userEvent.click(screen.getByText('Less of this'));
++    expect(onAdjust).toHaveBeenCalledWith('discovery', 'down');
++  });
++
++  it('writes the choice to the reader\'s preferences inside a feed', async () => {
++    const store = memoryStore();
++    render(
++      <HomePreferencesProvider store={store}>
++        <HomeFeedScopeProvider feedId="home">
++          <HomeWhyChip includeReason={{ type: 'popular' } as never} />
++        </HomeFeedScopeProvider>
++      </HomePreferencesProvider>,
++    );
++    const home = () => getFeed(loadPreferences(store).preferences, 'home')!;
++    expect(store.getString(PREFERENCES_KEY)).toBeUndefined();
++
++    await userEvent.click(screen.getByRole('button'));
++    await userEvent.click(screen.getByText('Less of this'));
++    expect(home().sort.mode).toBe('weighted');
++    expect(home().sort.weights.discovery).toBe(0.6);
++    expect(screen.queryByTestId('home-why-sheet')).toBeNull();
++
++    await userEvent.click(screen.getByRole('button'));
++    await userEvent.click(screen.getByText('None of this'));
++    expect(home().sift.mutedGroups).toEqual(['discovery']);
++  });
++
++  it('never offers to boost promoted content', async () => {
++    render(
++      <HomeWhyChip
++        includeReason={{ type: 'snap-promoted' } as never}
++        onAdjust={() => {}}
++      />,
++    );
++    await userEvent.click(screen.getByRole('button'));
++    expect(screen.getByText('Less of this')).toBeTruthy();
++    expect(screen.getByText('None of this')).toBeTruthy();
++    expect(screen.queryByText('More of this')).toBeNull();
++  });
++
++  it('labels an unknown future reason rather than rendering nothing', () => {
++    render(<HomeWhyChip includeReason={{ type: 'brand-new-reason' } as never} />);
++    expect(screen.getByTestId('home-why-chip').textContent).toContain(
++      'brand-new-reason',
++    );
++  });
++});
+diff --git a/apps/farcaster-web/src/components/feeds/HomeHiddenRow.tsx b/apps/farcaster-web/src/components/feeds/HomeHiddenRow.tsx
+new file mode 100644
+index 0000000..73606dc
+--- /dev/null
++++ b/apps/farcaster-web/src/components/feeds/HomeHiddenRow.tsx
+@@ -0,0 +1,115 @@
++import { useHomePreferences } from 'farcaster-client-hooks';
++import type { DropReceipt, ReceiptGroup } from 'home-personalization';
++import {
++  describeReason,
++  GROUP_LABELS,
++  groupReceipts,
++  summarizeReceipts,
++  undoDrop,
++  UNDO_LABEL,
++} from 'home-personalization';
++import React, { FC, memo, useCallback, useMemo, useState } from 'react';
++
++/**
++ * "N casts hidden on this page." and the ledger behind it.
++ *
++ * An unauditable filter is indistinguishable from a bug, so every cast the
++ * reader's rules remove is accounted for here, one row per rule, with the
++ * button that reverses that rule. Filtering ships with this row or not at all.
++ */
++
++const labelFor = (row: ReceiptGroup): string => {
++  switch (row.cause) {
++    case 'muted-group':
++      return GROUP_LABELS[row.rule as keyof typeof GROUP_LABELS] ?? row.cause;
++    case 'muted-reason':
++      return describeReason(row.rule ?? '')?.chip ?? row.rule ?? row.cause;
++    case 'muted-keyword':
++      return `“${row.rule ?? ''}”`;
++    case 'muted-author':
++      return `fid ${row.rule ?? ''}`;
++    case 'muted-channel':
++      return `/${row.rule ?? ''}`;
++    case 'muted-embed':
++      return `${row.rule ?? ''} embeds`;
++    case 'hidden-reply':
++      return 'Replies';
++    case 'hidden-recast':
++      return 'Recasts';
++    case 'hidden-textless':
++      return 'Casts with no text';
++    case 'author-quality':
++      return `Authors rated below ${row.rule ?? ''}`;
++    case 'min-score':
++      return `Scored under ${row.rule ?? ''}`;
++  }
++};
++
++type HomeHiddenRowProps = {
++  feedId: string;
++  receipts: DropReceipt[];
++};
++
++const HomeHiddenRow: FC<HomeHiddenRowProps> = memo(({ feedId, receipts }) => {
++  const home = useHomePreferences();
++  const update = home?.update;
++  const [open, setOpen] = useState(false);
++  const rows = useMemo(() => groupReceipts(receipts), [receipts]);
++  const summary = summarizeReceipts(receipts);
++
++  const undo = useCallback(
++    (row: ReceiptGroup) =>
++      update?.((prefs) => undoDrop(prefs, feedId, row.cause, row.rule)),
++    [update, feedId],
++  );
++
++  if (!summary || !update) return null;
++
++  return (
++    <div
++      className="border-b border-default px-4 py-2 text-sm"
++      data-testid="home-hidden-row"
++    >
++      <button
++        type="button"
++        className="flex w-full items-center justify-between gap-2 text-faint"
++        aria-expanded={open}
++        onClick={() => setOpen((v) => !v)}
++      >
++        <span>{summary}</span>
++        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
++      </button>
++      {open && (
++        <ul className="mt-2 flex flex-col gap-2" data-testid="home-receipts">
++          {rows.map((row) => (
++            <li
++              key={row.key}
++              className="flex items-center justify-between gap-3"
++            >
++              <div className="min-w-0">
++                <div className="font-semibold text-default">
++                  {labelFor(row)}{' '}
++                  <span className="font-normal text-faint">
++                    · {row.count} hidden
++                  </span>
++                </div>
++                <div className="text-xs text-faint">{row.detail}</div>
++              </div>
++              <button
++                type="button"
++                className="shrink-0 rounded border border-default px-2 py-1 text-xs"
++                onClick={() => undo(row)}
++              >
++                {UNDO_LABEL[row.cause]}
++              </button>
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++});
++
++HomeHiddenRow.displayName = 'HomeHiddenRow';
++
++export { HomeHiddenRow };
+diff --git a/apps/farcaster-web/src/components/feeds/__tests__/HomeHiddenRow.test.tsx b/apps/farcaster-web/src/components/feeds/__tests__/HomeHiddenRow.test.tsx
+new file mode 100644
+index 0000000..259bf5b
+--- /dev/null
++++ b/apps/farcaster-web/src/components/feeds/__tests__/HomeHiddenRow.test.tsx
+@@ -0,0 +1,92 @@
++// @vitest-environment jsdom
++
++import { render, screen } from '@testing-library/react';
++import React from 'react';
++import userEvent from '@testing-library/user-event';
++import { homeFeedPage, personalizeMixedFeed } from 'farcaster-adapter';
++import { HomePreferencesProvider } from 'farcaster-client-hooks';
++import {
++  defaultPreferences,
++  exportPreferences,
++  getFeed,
++  loadPreferences,
++  memoryStore,
++  muteKeyword,
++  muteReasonGroup,
++  PREFERENCES_KEY,
++} from 'home-personalization';
++import type { KVStore, Preferences } from 'home-personalization';
++import { describe, expect, it } from 'vitest';
++
++import { HomeHiddenRow } from '~/components/feeds/HomeHiddenRow';
++
++/** The receipts a real page produces under the reader's rules. */
++const receiptsFor = (prefs: Preferences) =>
++  personalizeMixedFeed(homeFeedPage(), {
++    isCast: () => true,
++    getCast: (item) => item,
++    spec: getFeed(prefs, 'home')!,
++    context: { now: 1_764_600_000_000 },
++  }).receipts;
++
++const seeded = (prefs: Preferences): KVStore =>
++  memoryStore({ [PREFERENCES_KEY]: exportPreferences(prefs) });
++
++describe('HomeHiddenRow', () => {
++  it('renders nothing when nothing was hidden', () => {
++    const { container } = render(
++      <HomePreferencesProvider store={memoryStore()}>
++        <HomeHiddenRow feedId="home" receipts={[]} />
++      </HomePreferencesProvider>,
++    );
++    expect(container.innerHTML).toBe('');
++  });
++
++  it('accounts for every removal, one row per rule, with its undo', async () => {
++    const prefs = muteKeyword(
++      muteReasonGroup(defaultPreferences(), 'home', 'promoted'),
++      'home',
++      'brooklyn',
++    );
++    const receipts = receiptsFor(prefs);
++    expect(receipts.length).toBe(2);
++
++    render(
++      <HomePreferencesProvider store={seeded(prefs)}>
++        <HomeHiddenRow feedId="home" receipts={receipts} />
++      </HomePreferencesProvider>,
++    );
++    expect(screen.getByText('2 casts hidden on this page.')).toBeTruthy();
++    expect(screen.queryByTestId('home-receipts')).toBeNull();
++
++    await userEvent.click(screen.getByText('2 casts hidden on this page.'));
++    const ledger = screen.getByTestId('home-receipts');
++    expect(ledger.textContent).toContain('Promoted');
++    expect(ledger.textContent).toContain('“brooklyn”');
++    expect(ledger.textContent).toContain('1 hidden');
++    expect(screen.getByText('Turn back on')).toBeTruthy();
++    expect(screen.getByText('Unmute')).toBeTruthy();
++  });
++
++  it('undo reverses exactly the rule on that row', async () => {
++    const prefs = muteKeyword(
++      muteReasonGroup(defaultPreferences(), 'home', 'promoted'),
++      'home',
++      'brooklyn',
++    );
++    const store = seeded(prefs);
++    render(
++      <HomePreferencesProvider store={store}>
++        <HomeHiddenRow feedId="home" receipts={receiptsFor(prefs)} />
++      </HomePreferencesProvider>,
++    );
++    await userEvent.click(screen.getByText('2 casts hidden on this page.'));
++    await userEvent.click(screen.getByText('Turn back on'));
++
++    const home = getFeed(loadPreferences(store).preferences, 'home')!;
++    expect(home.sift.mutedGroups).toEqual([]);
++    expect(home.sift.keywords.map((k) => k.pattern)).toEqual(['brooklyn']);
++    // And the page re-filtered under the new rules hides one cast, not two.
++    expect(receiptsFor(loadPreferences(store).preferences).length).toBe(1);
++  });
++});
+diff --git a/apps/farcaster-web/src/pages/homeFeed/HomeFeedPageContent.tsx b/apps/farcaster-web/src/pages/homeFeed/HomeFeedPageContent.tsx
+index 5f16747..8d3a90e 100644
+--- a/apps/farcaster-web/src/pages/homeFeed/HomeFeedPageContent.tsx
++++ b/apps/farcaster-web/src/pages/homeFeed/HomeFeedPageContent.tsx
+@@ -1,6 +1,7 @@
+ import { ArrowUpIcon } from '@primer/octicons-react';
+ import { AnalyticsEvent } from 'farcaster-analytics';
+ import {
++  HomeFeedScopeProvider,
+   useChannelFeedUnseenStatus,
+   useFeedItems,
+   useRefreshFeedItemsFirstPage,
+@@ -11,6 +12,7 @@ import { FC, memo, useCallback, useEffect, useMemo } from 'react';
+ import toast from 'react-hot-toast';
+ 
+ import { Cast } from '~/components/casts/Cast';
++import { HomeHiddenRow } from '~/components/feeds/HomeHiddenRow';
+ import { DefaultEmptyListView } from '~/components/lists/DefaultEmptyListView';
+ import { FlatList } from '~/components/lists/FlatList';
+ import { HomeFeaturePromotion } from '~/components/promotions/HomeFeaturePromotion';
+@@ -33,15 +35,14 @@ const HomeFeedPageContent: FC = memo(() => {
+     // FIXME: Fill this out if we notice issues on web clients similar to Web
+   }, []);
+ 
+-  const { feedItems, onEndReached, isFetchingNextPage, refetch } = useFeedItems(
+-    {
++  const { feedItems, homeReceipts, onEndReached, isFetchingNextPage, refetch } =
++    useFeedItems({
+       feedKey: 'home',
+       feedType: 'default',
+       updateState: true,
+       purgeToFirstPageOnMount: !wasPopped,
+       onNullFeedItemsResponse: onNullFeedItemsResponse,
+-    },
+-  );
++    });
+ 
+   const castsWithContext = useMemo(
+     () =>
+@@ -111,7 +112,9 @@ const HomeFeedPageContent: FC = memo(() => {
+   );
+ 
+   return (
+-    <>
++    // Home: the chips in this list adjust the 'home' spec, and what their
++    // rules removed is accounted for in the row above the list.
++    <HomeFeedScopeProvider feedId="home">
+       {isSignedIn && (
+         <ToastButton
+           IconComponent={ArrowUpIcon}
+@@ -121,6 +124,7 @@ const HomeFeedPageContent: FC = memo(() => {
+         />
+       )}
+       {isSignedIn && <HomeFeaturePromotion />}
++      <HomeHiddenRow feedId="home" receipts={homeReceipts} />
+       <FlatList
+         data={castsWithContext}
+         emptyView={<DefaultEmptyListView message="Your feed is empty" />}
+@@ -129,7 +133,7 @@ const HomeFeedPageContent: FC = memo(() => {
+         onEndReached={onEndReached}
+         isFetchingNextPage={isFetchingNextPage}
+       />
+-    </>
++    </HomeFeedScopeProvider>
+   );
+ });
+ 
+diff --git a/apps/farcaster-web/src/utils/homePreferencesStore.ts b/apps/farcaster-web/src/utils/homePreferencesStore.ts
+new file mode 100644
+index 0000000..baca01b
+--- /dev/null
++++ b/apps/farcaster-web/src/utils/homePreferencesStore.ts
+@@ -0,0 +1,34 @@
++import type { KVStore } from 'home-personalization';
++
++/**
++ * The kernel's storage interface over localStorage.
++ *
++ * Every call is guarded. A private window, a full quota, or a storage-blocking
++ * policy must degrade to defaults for this session and never throw during the
++ * first render of the feed.
++ */
++const homePreferencesStore: KVStore = {
++  getString: (key) => {
++    try {
++      return window.localStorage.getItem(key) ?? undefined;
++    } catch {
++      return undefined;
++    }
++  },
++  setString: (key, value) => {
++    try {
++      window.localStorage.setItem(key, value);
++    } catch {
++      // Quota or private mode: the in-memory copy still applies this session.
++    }
++  },
++  remove: (key) => {
++    try {
++      window.localStorage.removeItem(key);
++    } catch {
++      // Same.
++    }
++  },
++};
++
++export { homePreferencesStore };
+diff --git a/packages/farcaster-client-hooks/package.json b/packages/farcaster-client-hooks/package.json
+index ec6503f..bae5475 100644
+--- a/packages/farcaster-client-hooks/package.json
++++ b/packages/farcaster-client-hooks/package.json
+@@ -27,7 +27,9 @@
+     "millify": "6.1.0",
+     "react": "19.0.0",
+     "tus-js-client": "^4.0.1",
+-    "zustand": "^5.0.8"
++    "zustand": "^5.0.8",
++    "farcaster-adapter": "workspace:*",
++    "home-personalization": "workspace:*"
+   },
+   "peerDependencies": {
+     "viem": "2.x",
+diff --git a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/__tests__/homePersonalize.test.ts b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/__tests__/homePersonalize.test.ts
+new file mode 100644
+index 0000000..d168821
+--- /dev/null
++++ b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/__tests__/homePersonalize.test.ts
+@@ -0,0 +1,47 @@
++import { homeFeedPage } from 'farcaster-adapter';
++import type { ApiCastFeedItem } from 'farcaster-client-data';
++import {
++  defaultPreferences,
++  getFeed,
++  muteReasonGroup,
++  nudgeReason,
++} from 'home-personalization';
++import { describe, expect, it } from 'vitest';
++
++import { personalizeFeedItems } from '../homePersonalize';
++
++const page = () => homeFeedPage() as unknown as ApiCastFeedItem[];
++
++describe('personalizeFeedItems', () => {
++  it('leaves a page untouched when the reader has no spec for that feed', () => {
++    const items = page();
++    const out = personalizeFeedItems(items, undefined);
++    expect(out.feedItems).toBe(items);
++    expect(out.homeReceipts).toEqual([]);
++    expect(out.homeHiddenCount).toBe(0);
++    expect(out.homeMix).toBeUndefined();
++  });
++
++  it('applies the reader\'s spec and accounts for every removal', () => {
++    const prefs = muteReasonGroup(defaultPreferences(), 'home', 'promoted');
++    const items = page();
++    const out = personalizeFeedItems(items, getFeed(prefs, 'home'), 1_764_600_000_000);
++    expect(out.feedItems.length + out.homeHiddenCount).toBe(items.length);
++    expect(out.homeReceipts.map((r) => r.cause)).toEqual(['muted-group']);
++    expect(out.homeReceipts[0]?.rule).toBe('promoted');
++    expect(out.feedItems.some((i) => i.meta?.includeReason?.type === 'snap-promoted')).toBe(false);
++    expect(out.homeMix?.byGroup.promoted).toBeUndefined();
++  });
++
++  it('re-ranks when a reason is nudged, and keeps the original objects', () => {
++    const items = page();
++    const server = personalizeFeedItems(items, getFeed(defaultPreferences(), 'home'), 1_764_600_000_000);
++    expect(server.feedItems.map((i) => i.id)).toEqual(items.map((i) => i.id));
++
++    const prefs = nudgeReason(nudgeReason(defaultPreferences(), 'home', 'discovery', 'down'), 'home', 'direct', 'up');
++    const nudged = personalizeFeedItems(items, getFeed(prefs, 'home'), 1_764_600_000_000);
++    expect(nudged.feedItems.map((i) => i.id)).not.toEqual(items.map((i) => i.id));
++    expect(nudged.feedItems.length).toBe(items.length);
++    for (const item of nudged.feedItems) expect(items).toContain(item);
++  });
++});
+diff --git a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/homePersonalize.ts b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/homePersonalize.ts
+new file mode 100644
+index 0000000..642fc97
+--- /dev/null
++++ b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/homePersonalize.ts
+@@ -0,0 +1,50 @@
++import { personalizeMixedFeed } from 'farcaster-adapter';
++import type { ApiCastFeedItem } from 'farcaster-client-data';
++import type { DropReceipt, FeedSpec, MixSummary } from 'home-personalization';
++
++type HomePersonalizedPage = {
++  /** The render list. Same element type that came in, so nothing downstream changes. */
++  feedItems: ApiCastFeedItem[];
++  /** One per cast the reader's rules removed. Drives the hidden row and its ledger. */
++  homeReceipts: DropReceipt[];
++  homeMix: MixSummary | undefined;
++  homeHiddenCount: number;
++};
++
++/**
++ * Home's seam: filter and re-rank one page by the reader's own rules.
++ *
++ * Without a spec for this feed (no provider mounted, or a feed the reader has
++ * no rules for, such as a channel) the page comes back exactly as the server
++ * sent it. That is upstream behaviour, and it is what every feed other than
++ * the ones the reader has defined gets.
++ */
++function personalizeFeedItems(
++  items: ApiCastFeedItem[],
++  spec: FeedSpec | undefined,
++  now: number = Date.now(),
++): HomePersonalizedPage {
++  if (!spec) {
++    return {
++      feedItems: items,
++      homeReceipts: [],
++      homeMix: undefined,
++      homeHiddenCount: 0,
++    };
++  }
++  const result = personalizeMixedFeed(items, {
++    isCast: () => true,
++    getCast: (item) => item,
++    spec,
++    context: { now },
++  });
++  return {
++    feedItems: result.items,
++    homeReceipts: result.receipts,
++    homeMix: result.mix,
++    homeHiddenCount: result.hiddenCount,
++  };
++}
++
++export { personalizeFeedItems };
++export type { HomePersonalizedPage };
 diff --git a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
-index 1a8e26d..58070e9 100644
+index 1a8e26d..9ea23fb 100644
 --- a/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
 +++ b/packages/farcaster-client-hooks/src/hooks/data/queries/feedItems/useFeedItems.ts
-@@ -17,6 +17,21 @@ import partialRight from 'lodash/partialRight';
+@@ -17,7 +17,9 @@ import partialRight from 'lodash/partialRight';
  import values from 'lodash/values';
  import { useCallback, useMemo, useRef } from 'react';
  
-+import { personalizeMixedFeed } from 'farcaster-adapter';
-+import { makeFeedSpec, emptySift, defaultSort } from 'home-personalization';
-+
-+// Stand-in for `preferences.feeds[activeFeedId]`. Demotes discovery, lifts the
-+// people you follow, and drops promoted casts entirely — the state a reader
-+// reaches by tapping two why-chips.
-+const homeFeedSpec = makeFeedSpec('home', 'Home', { kind: 'home' }, {
-+  sift: { ...emptySift(), mutedGroups: ['promoted'] },
-+  sort: {
-+    ...defaultSort(),
-+    mode: 'weighted',
-+    weights: { direct: 3, network: 1, discovery: 0.3 },
-+  },
-+});
-+
++import { personalizeFeedItems } from './homePersonalize';
  import { useFarcasterApiClient } from '../../../../providers/FarcasterApiClientProvider';
++import { useHomePreferences } from '../../../../providers/HomePreferencesProvider';
  import { useInternalEventing } from '../../../../providers/InternalEventingProvider';
  import { usePurged } from '../../../../providers/PurgedProvider';
-@@ -333,9 +348,22 @@ const useFeedItems = ({
-     const userSuggestions =
-       data?.pages.flatMap((page) => page.result.suggestedUsers || []) || [];
+ import { useOnEndReached } from '../../helpers';
+@@ -56,6 +58,10 @@ const useFeedItems = ({
+   const batchUpdateGloballyCachedCast = useBatchMergeIntoGloballyCachedCasts();
+   const internalEventsTracker = useInternalEventing();
  
-+    // Home: filter and re-rank by the reader's own rules before anything
-+    // renders. `feedItems` keeps its element type, so every component
-+    // downstream is untouched; `receipts` and `mix` are new.
-+    const personalized = personalizeMixedFeed(uniqFeedItems, {
-+      isCast: () => true,
-+      getCast: (item) => item,
-+      spec: homeFeedSpec,
-+      context: { now: Date.now() },
-+    });
++  // Home: the reader's own rules for this feed, or none, in which case the
++  // page is left exactly as the server sent it.
++  const homeSpec = useHomePreferences()?.specFor(feedKey);
 +
+   const queryKey = useMemo(
+     () => buildFeedItemsKey({ feedKey, feedType, sortMode: sortMode?.type }),
+     [feedKey, feedType, sortMode?.type],
+@@ -335,13 +341,16 @@ const useFeedItems = ({
+ 
      return {
        ...rest,
 -      feedItems: uniqFeedItems,
-+      feedItems: personalized.items as ApiCastFeedItem[],
-+      homeReceipts: personalized.receipts,
-+      homeMix: personalized.mix,
-+      homeHiddenCount: personalized.hiddenCount,
++      // Home: filter and re-rank by the reader's own rules before anything
++      // renders. The element type is unchanged, so every component downstream
++      // is untouched; the receipts, mix and hidden count are new.
++      ...personalizeFeedItems(uniqFeedItems, homeSpec),
        fetchPreviousPage,
        fetchNextPage,
        onEndReached,
-@@ -644,9 +672,22 @@ const useNonSuspenseFeedItems = ({
-     const userSuggestions =
-       data?.pages.flatMap((page) => page.result.suggestedUsers || []) || [];
+       userSuggestions,
+     };
+-  }, [fetchNextPage, fetchPreviousPage, query, onEndReached]);
++  }, [fetchNextPage, fetchPreviousPage, query, onEndReached, homeSpec]);
+ };
  
-+    // Home: filter and re-rank by the reader's own rules before anything
-+    // renders. `feedItems` keeps its element type, so every component
-+    // downstream is untouched; `receipts` and `mix` are new.
-+    const personalized = personalizeMixedFeed(uniqFeedItems, {
-+      isCast: () => true,
-+      getCast: (item) => item,
-+      spec: homeFeedSpec,
-+      context: { now: Date.now() },
-+    });
+ const useNonSuspenseFeedItems = ({
+@@ -367,6 +376,10 @@ const useNonSuspenseFeedItems = ({
+   const batchUpdateGloballyCachedCast = useBatchMergeIntoGloballyCachedCasts();
+   const internalEventsTracker = useInternalEventing();
+ 
++  // Home: the reader's own rules for this feed, or none, in which case the
++  // page is left exactly as the server sent it.
++  const homeSpec = useHomePreferences()?.specFor(feedKey);
 +
+   const queryKey = useMemo(
+     () => buildFeedItemsKey({ feedKey, feedType, sortMode: sortMode?.type }),
+     [feedKey, feedType, sortMode?.type],
+@@ -646,13 +659,16 @@ const useNonSuspenseFeedItems = ({
+ 
      return {
        ...rest,
 -      feedItems: uniqFeedItems,
-+      feedItems: personalized.items as ApiCastFeedItem[],
-+      homeReceipts: personalized.receipts,
-+      homeMix: personalized.mix,
-+      homeHiddenCount: personalized.hiddenCount,
++      // Home: filter and re-rank by the reader's own rules before anything
++      // renders. The element type is unchanged, so every component downstream
++      // is untouched; the receipts, mix and hidden count are new.
++      ...personalizeFeedItems(uniqFeedItems, homeSpec),
        fetchPreviousPage,
        fetchNextPage,
        onEndReached,
+       userSuggestions,
+     };
+-  }, [fetchNextPage, fetchPreviousPage, query, onEndReached]);
++  }, [fetchNextPage, fetchPreviousPage, query, onEndReached, homeSpec]);
+ };
+ 
+ // Dedup but keep the last item, from
+diff --git a/packages/farcaster-client-hooks/src/providers/HomePreferencesProvider.tsx b/packages/farcaster-client-hooks/src/providers/HomePreferencesProvider.tsx
+new file mode 100644
+index 0000000..d4f1472
+--- /dev/null
++++ b/packages/farcaster-client-hooks/src/providers/HomePreferencesProvider.tsx
+@@ -0,0 +1,150 @@
++import type {
++  FeedSpec,
++  KVStore,
++  Preferences,
++  ReasonGroup,
++} from 'home-personalization';
++import {
++  getFeed,
++  loadPreferences,
++  muteReasonGroup,
++  nudgeReason,
++  savePreferences,
++} from 'home-personalization';
++import React, {
++  createContext,
++  FC,
++  memo,
++  ReactNode,
++  useCallback,
++  useContext,
++  useMemo,
++  useRef,
++  useState,
++} from 'react';
++
++/**
++ * Home's preferences, for the whole app.
++ *
++ * One document, loaded once from the platform's key-value store and written
++ * back on every change. Every mutation is one of the kernel's pure actions, so
++ * this is a thin write-through cache and nothing more: no business logic
++ * accumulates here, and the same actions run identically in tests and in the
++ * demo CLI.
++ *
++ * Mounting it is optional. A feed hook that finds no provider leaves the page
++ * exactly as the server sent it, which is upstream behaviour, so the mobile
++ * app keeps building and running unchanged until it mounts one over MMKV.
++ */
++type HomePreferencesContextValue = {
++  preferences: Preferences;
++  /** Non-fatal problems found while loading, e.g. a document that could not be read. */
++  notes: string[];
++  /** Apply one of the kernel's pure actions and persist the result. */
++  update: (fn: (prefs: Preferences) => Preferences) => void;
++  /**
++   * The reader's spec for one of the client's feed keys ('home', 'following',
++   * a channel key). Undefined means "leave that feed as the server sent it".
++   */
++  specFor: (feedKey: string) => FeedSpec | undefined;
++};
++
++const HomePreferencesContext =
++  createContext<HomePreferencesContextValue | null>(null);
++
++type HomePreferencesProviderProps = {
++  store: KVStore;
++  children: ReactNode;
++};
++
++const HomePreferencesProvider: FC<HomePreferencesProviderProps> = memo(
++  ({ store, children }) => {
++    // Read synchronously, once. Preferences are needed during the first render
++    // of the feed, and an async read there is a frame of the wrong feed on
++    // every cold start.
++    const [loaded] = useState(() => loadPreferences(store));
++    const [preferences, setPreferences] = useState(loaded.preferences);
++    const latest = useRef(preferences);
++
++    const update = useCallback(
++      (fn: (prefs: Preferences) => Preferences) => {
++        const next = fn(latest.current);
++        if (next === latest.current) return;
++        latest.current = next;
++        savePreferences(store, next);
++        setPreferences(next);
++      },
++      [store],
++    );
++
++    const specFor = useCallback(
++      (feedKey: string) => getFeed(preferences, feedKey),
++      [preferences],
++    );
++
++    const value = useMemo(
++      () => ({ preferences, notes: loaded.notes, update, specFor }),
++      [preferences, loaded.notes, update, specFor],
++    );
++
++    return (
++      <HomePreferencesContext.Provider value={value}>
++        {children}
++      </HomePreferencesContext.Provider>
++    );
++  },
++);
++HomePreferencesProvider.displayName = 'HomePreferencesProvider';
++
++/** Null when no provider is mounted. Callers treat that as "no personalization". */
++const useHomePreferences = () => useContext(HomePreferencesContext);
++
++/**
++ * Which feed the casts on screen belong to, so a why-chip inside one knows
++ * which spec its Less / None / More should change. Provided by the page that
++ * renders a feed and absent everywhere else (a conversation, notifications),
++ * where the chip explains and offers no controls.
++ */
++const HomeFeedScopeContext = createContext<string | null>(null);
++
++type HomeFeedScopeProviderProps = { feedId: string; children: ReactNode };
++
++const HomeFeedScopeProvider: FC<HomeFeedScopeProviderProps> = memo(
++  ({ feedId, children }) => (
++    <HomeFeedScopeContext.Provider value={feedId}>
++      {children}
++    </HomeFeedScopeContext.Provider>
++  ),
++);
++HomeFeedScopeProvider.displayName = 'HomeFeedScopeProvider';
++
++const useHomeFeedScope = () => useContext(HomeFeedScopeContext);
++
++type HomeAdjust = (
++  group: ReasonGroup,
++  direction: 'up' | 'down' | 'off',
++) => void;
++
++/** What a why-chip's buttons call. Undefined outside a feed or without a provider. */
++const useHomeAdjust = (): HomeAdjust | undefined => {
++  const update = useHomePreferences()?.update;
++  const feedId = useHomeFeedScope();
++  return useMemo(() => {
++    if (!update || !feedId) return undefined;
++    return (group: ReasonGroup, direction: 'up' | 'down' | 'off') =>
++      update((prefs) =>
++        direction === 'off'
++          ? muteReasonGroup(prefs, feedId, group)
++          : nudgeReason(prefs, feedId, group, direction),
++      );
++  }, [update, feedId]);
++};
++
++export {
++  HomeFeedScopeProvider,
++  HomePreferencesProvider,
++  useHomeAdjust,
++  useHomeFeedScope,
++  useHomePreferences,
++};
++export type { HomeAdjust, HomePreferencesContextValue };
+diff --git a/packages/farcaster-client-hooks/src/providers/index.ts b/packages/farcaster-client-hooks/src/providers/index.ts
+index 5f4ef7e..60296c3 100644
+--- a/packages/farcaster-client-hooks/src/providers/index.ts
++++ b/packages/farcaster-client-hooks/src/providers/index.ts
+@@ -4,6 +4,7 @@ export * from './EventingProvider';
+ export * from './FarcasterApiClientProvider';
+ export * from './FrameProvider';
+ export * from './GlobalCacheUsageProvider';
++export * from './HomePreferencesProvider';
+ export * from './InternalEventingProvider';
+ export * from './PubSubProvider';
+ export * from './SignManifestProvider';

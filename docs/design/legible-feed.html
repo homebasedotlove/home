@@ -422,7 +422,7 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
       <div class="mast-meta">
         <span>homebasedotlove/home</span>
         <span>Audit target: farcasterxyz/client @ b6922e2</span>
-        <span>Kernel: 195 tests, 0 dependencies</span>
+        <span>Kernel: 197 tests, 0 dependencies</span>
       </div>
     </div>
   </header>
@@ -695,9 +695,9 @@ dialog::backdrop { background: rgba(10,12,14,.55); }
       <h2>What exists today</h2>
     </div>
     <div class="col">
-      <p>The design and the engine are done. <code>packages/home-personalization</code> implements all six axes as pure TypeScript with no dependencies &mdash; no React, no React Native, no API client, no storage engine &mdash; so it runs identically on iOS, on the web, and under <code>vitest</code>. 195 tests, typechecked strict.</p>
+      <p>The design and the engine are done. <code>packages/home-personalization</code> implements all six axes as pure TypeScript with no dependencies &mdash; no React, no React Native, no API client, no storage engine &mdash; so it runs identically on iOS, on the web, and under <code>vitest</code>. 197 tests, typechecked strict.</p>
       <p>Writing it surfaced three things worth keeping: the rank normaliser has to map onto an <em>open</em> interval or the lowest-scored item is immune to every weight; share links carry user-authored regular expressions, so the validator rejects quantified groups outright rather than risk a frozen feed on someone else&rsquo;s phone; and <code>ApiUserQuality</code> is seven values, not three, with <code>unranked</code> exempt from any floor &mdash; a quality filter that silently hid every unrated account would mostly hide new ones.</p>
-      <p>Since then: an adapter typechecked against the reference client&rsquo;s generated API types, a client core that runs the whole journey without a screen, and the feed seam and why-chip wired into a fork of the reference snapshot and proven on its compiled output. The client beyond that chip is not built yet.</p>
+      <p>Since then: an adapter typechecked against the reference client&rsquo;s generated API types, a client core that runs the whole journey without a screen, and the feed seam, a preferences provider, the why-chip and the hidden row wired into a fork of the reference snapshot and tested in its own vitest: a reader can change their feed from a chip and see every removal accounted for. The client beyond that is not built yet.</p>
     </div>
   </section>
 

@@ -17,11 +17,13 @@ import type {
   FeedSpec,
   KeywordRule,
   MatchMode,
+  SiftRules,
   SortSpec,
 } from '../feedspec/types';
 import { isProbablySafeRegex, LIMITS } from '../feedspec/validate';
+import type { DropReceipt } from '../pipeline/types';
 import type { ReasonGroup } from '../reasons';
-import { GROUP_WEIGHT_CEILING } from '../reasons';
+import { GROUP_WEIGHT_CEILING, REASON_GROUPS } from '../reasons';
 import { clamp } from '../util/numbers';
 import type { AuthorList, CastAction, Preferences, TabId } from './index';
 
@@ -241,6 +243,65 @@ export function unmuteChannel(
       channels: feed.sift.channels.filter((c) => c !== key),
     },
   }));
+}
+
+/**
+ * Reverse the rule behind one row of the receipts ledger.
+ *
+ * A receipt names its cause and the rule value that fired, which is exactly
+ * what `groupReceipts` puts on each row. This is the action behind that row's
+ * button, so the ledger can undo anything the sift did without knowing how
+ * causes map onto rules. A cause whose rule is missing or malformed is a no-op:
+ * the document is returned as it was, never half-edited.
+ */
+export function undoDrop(
+  prefs: Preferences,
+  feedId: string,
+  cause: DropReceipt['cause'],
+  rule?: string,
+): Preferences {
+  const sift = (fn: (s: SiftRules) => SiftRules) =>
+    replaceFeed(prefs, feedId, (feed) => ({ ...feed, sift: fn(feed.sift) }));
+  switch (cause) {
+    case 'muted-group':
+      return (REASON_GROUPS as readonly string[]).includes(rule ?? '')
+        ? unmuteReasonGroup(prefs, feedId, rule as ReasonGroup)
+        : prefs;
+    case 'muted-reason':
+      return rule
+        ? sift((s) => ({
+            ...s,
+            mutedReasons: s.mutedReasons.filter((r) => r !== rule),
+          }))
+        : prefs;
+    case 'muted-keyword':
+      return rule ? unmuteKeyword(prefs, feedId, rule) : prefs;
+    case 'muted-author': {
+      const fid = Number(rule);
+      return rule && Number.isFinite(fid)
+        ? unmuteAuthor(prefs, feedId, fid)
+        : prefs;
+    }
+    case 'muted-channel':
+      return rule ? unmuteChannel(prefs, feedId, rule) : prefs;
+    case 'muted-embed':
+      return rule
+        ? sift((s) => ({
+            ...s,
+            mutedEmbedKinds: s.mutedEmbedKinds.filter((k) => k !== rule),
+          }))
+        : prefs;
+    case 'hidden-reply':
+      return sift((s) => ({ ...s, hideReplies: false }));
+    case 'hidden-recast':
+      return sift((s) => ({ ...s, hideRecasts: false }));
+    case 'hidden-textless':
+      return sift((s) => ({ ...s, hideTextless: false }));
+    case 'author-quality':
+      return sift(({ minAuthorQuality: _floor, ...rest }) => rest);
+    case 'min-score':
+      return sift(({ minScore: _cutoff, ...rest }) => rest);
+  }
 }
 
 // ---------------------------------------------------------------------------
