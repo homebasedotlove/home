@@ -43,6 +43,9 @@ the web path needs no credentials and the mobile path does.
 > endpoints, and terms of use are the operator's call, not a technical one this
 > repository can answer. Confirm before building on it.
 
+What the protocol itself offers instead, and what it costs to use it, is in
+[`plugging-into-snapchain.md`](plugging-into-snapchain.md).
+
 ---
 
 ## 1. Three milestones, kept separate

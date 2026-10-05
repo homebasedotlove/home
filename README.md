@@ -16,6 +16,7 @@ Home is an attempt to unlock it.
 | [`docs/integration/`](docs/integration/wiring-into-a-fork.md) | The six call sites that connect the kernel to a fork of `farcasterxyz/client` |
 | [`docs/operations/`](docs/operations/running-the-client.md) | Every env var, credential and task needed to get a fork running |
 | [`docs/operations/validation.md`](docs/operations/validation.md) | What has actually been executed against a real client, and what has not |
+| [`docs/operations/plugging-into-snapchain.md`](docs/operations/plugging-into-snapchain.md) | How a client connects to Farcaster and Snapchain in 2026, what the fork does instead, and the limits |
 | [`packages/home-personalization/`](packages/home-personalization) | The engine, implemented and tested |
 
 **Start with** [the audit](docs/research/reference-client-audit.md) for why, then
