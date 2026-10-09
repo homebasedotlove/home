@@ -6,6 +6,10 @@ are. Written 2026-10-05 against the primary sources listed at the end, each
 pinned to a commit. Numbers are quoted from code or finalized proposals, not
 from marketing pages.
 
+The mechanism underneath this page, from why the registries sit on OP Mainnet
+to what happens to a submitted message block by block, is in
+[`../research/protocol-mechanics.md`](../research/protocol-mechanics.md).
+
 What could **not** be verified from this sandbox: live values of the on-chain
 contracts (the public OP Mainnet RPC is blocked here), the current text of
 `docs.farcaster.xyz` and `docs.neynar.com` (both blocked; the docs repository

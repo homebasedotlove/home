@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md
- * against the sources it was read from.
+ * and docs/research/protocol-mechanics.md against the sources they were read
+ * from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -458,6 +459,148 @@ if (missing.length) {
   expectText('Quick Auth server default', S.miniapps.read('packages/miniapp-sdk/src/quickAuth.ts'), 'https://auth.farcaster.xyz');
 }
 
+// --- docs/research/protocol-mechanics.md ------------------------------------------
+
+{
+  const sc = S.snapchain;
+
+  const connector = sc.read('src/connectors/onchain_events/mod.rs');
+  check(
+    'chains and start blocks the node follows',
+    { op: '10', opFirst: '108864739', base: '8453', baseFirst: '31180908', eth: true },
+    {
+      op: connector.match(/OP_MAINNET_CHAIN_ID: u32 = (\d+)/)?.[1],
+      opFirst: connector.match(/OP_MAINNET_FIRST_BLOCK: u64 = (\d+)/)?.[1],
+      base: connector.match(/BASE_MAINNET_CHAIN_ID: u32 = (\d+)/)?.[1],
+      baseFirst: connector.match(/BASE_MAINNET_FIRST_BLOCK: u64 = (\d+)/)?.[1],
+      eth: /1 => Some\(Chain::EthMainnet\)/.test(connector),
+    },
+  );
+
+  const onchain = sc.read('proto/definitions/onchain_event.proto');
+  const ev = (name) => Number(onchain.match(new RegExp(`${name}\\s*=\\s*(\\d+);`))?.[1]);
+  check(
+    'on-chain event type ids',
+    { SIGNER: 1, SIGNER_MIGRATED: 2, ID_REGISTER: 3, STORAGE_RENT: 4, TIER_PURCHASE: 5, CHANNEL_REGISTER: 6 },
+    {
+      SIGNER: ev('EVENT_TYPE_SIGNER'),
+      SIGNER_MIGRATED: ev('EVENT_TYPE_SIGNER_MIGRATED'),
+      ID_REGISTER: ev('EVENT_TYPE_ID_REGISTER'),
+      STORAGE_RENT: ev('EVENT_TYPE_STORAGE_RENT'),
+      TIER_PURCHASE: ev('EVENT_TYPE_TIER_PURCHASE'),
+      CHANNEL_REGISTER: ev('EVENT_TYPE_CHANNEL_REGISTER'),
+    },
+  );
+
+  const hubEvent = sc.read('proto/definitions/hub_event.proto');
+  const he = (name) => Number(hubEvent.match(new RegExp(`${name}\\s*=\\s*(\\d+);`))?.[1]);
+  check(
+    'hub event type ids',
+    { MERGE_MESSAGE: 1, PRUNE_MESSAGE: 2, REVOKE_MESSAGE: 3, MERGE_USERNAME_PROOF: 6, MERGE_ON_CHAIN_EVENT: 9, MERGE_FAILURE: 10, BLOCK_CONFIRMED: 11, CHANNEL_OWNER_CHANGE_HINT: 12 },
+    Object.fromEntries(
+      ['MERGE_MESSAGE', 'PRUNE_MESSAGE', 'REVOKE_MESSAGE', 'MERGE_USERNAME_PROOF', 'MERGE_ON_CHAIN_EVENT', 'MERGE_FAILURE', 'BLOCK_CONFIRMED', 'CHANNEL_OWNER_CHANGE_HINT'].map((n) => [n, he(`HUB_EVENT_TYPE_${n}`)]),
+    ),
+  );
+  expectText('hub events carry block number and shard', hubEvent, /uint64 block_number = 12;[\s\S]*uint32 shard_index = 14;/);
+
+  const proto = sc.read('proto/definitions/message.proto');
+  const en = (name) => Number(proto.match(new RegExp(`${name}\\s*=\\s*(\\d+);`))?.[1]);
+  check(
+    'hash, signature and network enums',
+    { BLAKE3: 1, ED25519: 1, EIP712: 2, MAINNET: 1, TESTNET: 2, DEVNET: 3 },
+    {
+      BLAKE3: en('HASH_SCHEME_BLAKE3'),
+      ED25519: en('SIGNATURE_SCHEME_ED25519'),
+      EIP712: en('SIGNATURE_SCHEME_EIP712'),
+      MAINNET: en('FARCASTER_NETWORK_MAINNET'),
+      TESTNET: en('FARCASTER_NETWORK_TESTNET'),
+      DEVNET: en('FARCASTER_NETWORK_DEVNET'),
+    },
+  );
+  check(
+    'first eight message type ids',
+    [1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14],
+    ['CAST_ADD', 'CAST_REMOVE', 'REACTION_ADD', 'REACTION_REMOVE', 'LINK_ADD', 'LINK_REMOVE', 'VERIFICATION_ADD_ETH_ADDRESS', 'VERIFICATION_REMOVE', 'USER_DATA_ADD', 'USERNAME_PROOF', 'FRAME_ACTION', 'LINK_COMPACT_STATE'].map((n) => en(`MESSAGE_TYPE_${n}`)),
+  );
+  expectText('Message carries optional data_bytes', proto, /optional bytes data_bytes = 7;/);
+
+  const msgv = sc.read('src/core/validations/message.rs');
+  check(
+    'message size limits',
+    { plain: '2048', tenK: '16_384', linkCompact: '65536', usernameProof: '16_384' },
+    {
+      plain: msgv.match(/const MAX_DATA_BYTES: usize = ([\d_]+);/)?.[1],
+      tenK: msgv.match(/const MAX_DATA_BYTES_FOR_10K_CAST: usize = ([\d_]+);/)?.[1],
+      linkCompact: msgv.match(/const MAX_DATA_BYTES_FOR_LINK_COMPACT: usize = ([\d_]+);/)?.[1],
+      usernameProof: msgv.match(/const MAX_DATA_BYTES_FOR_USERNAME_PROOF: usize = ([\d_]+);/)?.[1],
+    },
+  );
+  expectText('hash is BLAKE3 truncated to 20 bytes', msgv, /let result = blake3_20\(data_bytes\);/);
+  expectText('the signature is verified over the hash, not the data bytes', msgv, /validate_signature\(\s*message\.signature_scheme,\s*&message\.hash,/);
+  expectText('envelope signatures must be Ed25519', msgv, /signature_scheme != proto::SignatureScheme::Ed25519 as i32/);
+  expectText('mainnet nodes accept only mainnet messages', msgv, /if current_network == FarcasterNetwork::Mainnet \{\s*if network != FarcasterNetwork::Mainnet/);
+  expectText('at most 10 mentions', sc.read('src/core/validations/cast.rs'), /body\.mentions\.len\(\) > 10/);
+
+  const engine = sc.read('src/storage/store/engine.rs');
+  expectText('merge requires an id-register event for the fid', engine, /get_id_register_event_by_fid\(message_data\.fid/);
+  expectText('merge requires an active key matching the signer', engine, /get_active_key\([\s\S]{0,200}message_data\.fid,\s*&message\.signer/);
+  expectText('gasless keys are scope-checked, on-chain keys grandfathered', engine, /if !active_key\.admits\(msg_type\)/);
+  expectText('key messages skip the active-signer check', engine, /if !is_key_message \{/);
+
+  expectText('read nodes gossip submitted messages to validators', sc.read('src/mempool/mempool.rs'), /self\.gossip_message\(message, source\)\.await;\s*self\.statsd_client\s*\.count\("read_mempool\.messages_published"/);
+  expectText('fid routes to a shard by SHA-256', sc.read('src/mempool/routing.rs'), /Sha256::digest\(\(fid as FidOnDisk\)\.to_be_bytes\(\)\);[\s\S]*\(hash_u32 % num_shards\) \+ 1/);
+
+  const consensus = sc.read('src/consensus/consensus.rs');
+  check(
+    'consensus timing in milliseconds',
+    { propose: '1000', prevote: '500', precommit: '500', block: '1000' },
+    {
+      propose: consensus.match(/propose_time: Duration::from_millis\((\d+)\)/)?.[1],
+      prevote: consensus.match(/prevote_time: Duration::from_millis\((\d+)\)/)?.[1],
+      precommit: consensus.match(/precommit_time: Duration::from_millis\((\d+)\)/)?.[1],
+      block: consensus.match(/block_time: Duration::from_millis\((\d+)\)/)?.[1],
+    },
+  );
+  expectText('event ids use 14 sequence bits', sc.read('src/storage/store/account/event.rs'), /pub const SEQUENCE_BITS: u32 = 14;/);
+  const cfg = sc.read('src/cfg.rs');
+  expectText('events kept for three days by default', cfg, /event_retention: Duration::from_secs\(60 \* 60 \* 24 \* 3\)/);
+  expectText('node needs an L1 RPC for ENS proofs', cfg, /pub l1_rpc_url: String,/);
+  expectText('read-node mode is a config switch', cfg, /pub read_node: bool,/);
+  expectText('RPC auth is a config switch', cfg, /pub rpc_auth: String,/);
+  expectText('snapshots come from the public R2 bucket', sc.read('src/storage/db/snapshot.rs'), 'https://pub-d352dd8819104a778e20d08888c5a661.r2.dev');
+  expectText('fnames are polled from the fname server', sc.read('src/connectors/fname/mod.rs'), 'https://fnames.farcaster.xyz/transfers');
+
+  const blocks = sc.read('proto/definitions/blocks.proto');
+  expectText('block header fields', blocks, /message BlockHeader \{\s*Height height = 1;\s*uint64 timestamp = 2;\s*uint32 version = 3;\s*FarcasterNetwork chain_id = 4;\s*bytes shard_witnesses_hash = 5;\s*bytes parent_hash = 6;\s*bytes state_root = 7;\s*bytes events_hash = 8;/);
+  expectText('a transaction is one fid with an account root', blocks, /message Transaction \{\s*uint64 fid = 1;\s*repeated Message user_messages = 2;\s*repeated ValidatorMessage system_messages = 3;\s*bytes account_root = 4;/);
+  expectText('subscriptions take event types, from_id and shard', sc.read('proto/definitions/request_response.proto'), /message SubscribeRequest \{\s*repeated HubEventType event_types = 1;\s*optional uint64 from_id = 2;[\s\S]*?optional uint32 shard_index = 4;/);
+  expectText('info exposes the next engine version timestamp', sc.read('proto/definitions/request_response.proto'), /uint64 next_engine_version_timestamp = 10;/);
+  expectText('events docs: pruned after 3 days', sc.read('site/docs/pages/reference/httpapi/events.md'), 'Hubs prune events older than 3 days');
+  expectText('the docs Rust snippet signs the data bytes (the caution in §2.2)', sc.read('site/docs/pages/reference/httpapi/message.md'), 'private_key.sign(&msg_data_bytes)');
+
+  const spec = S.protocol.read('docs/SPECIFICATION.md');
+  check(
+    'spec: hash width, clock skew, epoch, mentions, chain',
+    ['160-bit', 'not more than 600 seconds ahead', 'Jan 1, 2021 00:00:00 UTC', 'up to 10 mentions', 'on Optimism'],
+    ['160-bit', 'not more than 600 seconds ahead', 'Jan 1, 2021 00:00:00 UTC', 'up to 10 mentions', 'on Optimism'].filter((t) => spec.includes(t)),
+  );
+  expectText('spec: ts-proto is the reference serialiser', spec, 'ts-proto@v1.146.0');
+  check('spec ships conformance vectors', true, S.protocol.exists('vectors/README.md'));
+  expectText('overview: a registry on a Turing-complete blockchain', S.protocol.read('docs/OVERVIEW.md'), 'smart contract registry on a Turing-complete blockchain');
+
+  const cdocs = S.contracts.read('docs/docs.md');
+  check(
+    'contracts docs: deployment map and OP assumptions',
+    ['deployed on OP Mainnet. The Tier Registry contract is deployed on Base Mainnet', 'OP Mainnet will not re-org after 6 confirmations', 'register an fid, rent storage units and register a key in a single transaction', 'requires callers to rent 1'],
+    ['deployed on OP Mainnet. The Tier Registry contract is deployed on Base Mainnet', 'OP Mainnet will not re-org after 6 confirmations', 'register an fid, rent storage units and register a key in a single transaction', 'requires callers to rent 1'].filter((t) => cdocs.includes(t)),
+  );
+
+  const page = (p) => S.docs.read(`src/app/(docs)/${p}/page.mdx`);
+  expectText('docs: onchain kept to a minimum', page('learn/architecture/overview'), 'Use of onchain actions is kept at a minimum to reduce costs and improve performance.');
+  expectText('docs: accounts are created by an onchain transaction', page('learn/what-is-farcaster/accounts'), 'Any Ethereum address can register a Farcaster account by making an onchain transaction.');
+  expectText('docs FAQ: no testnet deployment', page('reference/contracts/faq'), /Are the Farcaster contracts deployed to a testnet\?\s*No\./);
+}
+
 // --- the reference client -------------------------------------------------------
 
 const SNAPSHOT = findSnapshot();
@@ -569,6 +712,8 @@ Not checkable offline; re-read when the page is revised:
   FIP #238 Signer revokes only impact future messages  https://github.com/farcasterxyz/protocol/discussions/238
   Neynar acquired Farcaster, 2026-01-21                https://neynar.com/blog/neynar-is-acquiring-farcaster
   Neynar plan tiers                                    https://dev.neynar.com/pricing
+  OP Mainnet announcement, 2023-08-22                  https://x.com/dwr/status/1693986385315963024
+  FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
 `);
 console.log(failed ? `${failed} of ${results.length} claims FAILED.` : `All ${results.length} claims hold against these sources.`);
 process.exit(failed ? 1 : 0);

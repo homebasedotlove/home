@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 65/65 claims hold at the pinned commits |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 106/106 claims hold at the pinned commits, across the Snapchain page and the protocol-mechanics page |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -223,10 +223,11 @@ builds; every frame re-rendered from the rebuilt bundle.
 Everything above was re-run, and two new checks were added, after the
 Snapchain page was written.
 
-- **Gate 9 exists.** `scripts/audit-protocol-claims.mjs` re-derives the 65
+- **Gate 9 exists.** `scripts/audit-protocol-claims.mjs` re-derives the
   checkable numbers in [`plugging-into-snapchain.md`](plugging-into-snapchain.md)
-  from the seven repositories it cites, cloned at the pinned commits by
-  `scripts/fetch-protocol-sources.sh` (7 s, 49 MB from scratch). All 65 hold.
+  and [`../research/protocol-mechanics.md`](../research/protocol-mechanics.md)
+  (65 and 41 claims) from the seven repositories they cite, cloned at the pinned commits by
+  `scripts/fetch-protocol-sources.sh` (7 s, 49 MB from scratch). All 106 hold.
   Its `--network` mode confirmed the seven npm versions the page quotes are
   still the latest. The six web-only facts (FIP statuses and dates) were
   re-read by hand the same day and had not moved.
