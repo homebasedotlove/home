@@ -1,0 +1,37 @@
+{
+  "snapchain": {
+    "url": "https://github.com/farcasterxyz/snapchain.git",
+    "sha": "8f82bcc68dd4e5c75b4a4814bf6fc6b54215a73c",
+    "date": "2026-08-13"
+  },
+  "protocol": {
+    "url": "https://github.com/farcasterxyz/protocol.git",
+    "sha": "aa6bdfb2c185e9a557097b8b40af923e2a278cf1",
+    "date": "2026-06-18"
+  },
+  "docs": {
+    "url": "https://github.com/farcasterxyz/docs.git",
+    "sha": "3a02c829717afa75030f57a64e9f5e1ccc12bfe9",
+    "date": "2026-04-07"
+  },
+  "contracts": {
+    "url": "https://github.com/farcasterxyz/contracts.git",
+    "sha": "58d6b2873a5d67290c4f143a4e86a6e274de443b",
+    "date": "2026-08-13"
+  },
+  "auth-monorepo": {
+    "url": "https://github.com/farcasterxyz/auth-monorepo.git",
+    "sha": "ae3dffd339a161bcbed870cf0f3cd36b756b94b2",
+    "date": "2026-03-30"
+  },
+  "miniapps": {
+    "url": "https://github.com/farcasterxyz/miniapps.git",
+    "sha": "8a052e445b0e09283afd47afbc5883ebea5f70c8",
+    "date": "2026-08-04"
+  },
+  "OAS": {
+    "url": "https://github.com/neynarxyz/OAS.git",
+    "sha": "6c6307dbdbc26ee81647588ea0c385ea7a8efc88",
+    "date": "2026-08-07"
+  }
+}

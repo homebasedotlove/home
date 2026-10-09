@@ -1,0 +1,49 @@
+name: protocol-audit
+
+# Re-checks every number in docs/operations/plugging-into-snapchain.md.
+#
+# The first job clones the commits the page cites and must pass: it proves the
+# page matches its own sources. The second clones each repository's HEAD and is
+# allowed to fail: a failure there names a claim that has moved upstream and is
+# due for a re-read, which is the point of running it on a schedule.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+  pull_request:
+    paths:
+      - docs/operations/plugging-into-snapchain.md
+      - scripts/audit-protocol-claims.mjs
+      - scripts/fetch-protocol-sources.sh
+      - scripts/protocol-sources.json
+      - .github/workflows/protocol-audit.yml
+
+jobs:
+  pinned:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Clone the client the page was read against
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --quiet --depth 1 \
+            https://github.com/farcasterxyz/client packages/farcaster-adapter/.snapshot
+      - run: bash scripts/fetch-protocol-sources.sh
+      - run: node scripts/audit-protocol-claims.mjs
+
+  latest:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone --quiet --depth 1 \
+            https://github.com/farcasterxyz/client packages/farcaster-adapter/.snapshot
+      - run: bash scripts/fetch-protocol-sources.sh --latest
+      - run: node scripts/audit-protocol-claims.mjs --network

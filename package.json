@@ -14,7 +14,9 @@
     "typecheck": "pnpm --filter '*' --parallel --aggregate-output typecheck",
     "verify:compat": "pnpm --filter farcaster-adapter verify:compat",
     "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift",
-    "audit:claims": "node scripts/audit-claims.mjs"
+    "audit:claims": "node scripts/audit-claims.mjs",
+    "audit:protocol": "node scripts/audit-protocol-claims.mjs",
+    "fetch:protocol-sources": "bash scripts/fetch-protocol-sources.sh"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

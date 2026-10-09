@@ -17,6 +17,7 @@ Home is an attempt to unlock it.
 | [`docs/operations/`](docs/operations/running-the-client.md) | Every env var, credential and task needed to get a fork running |
 | [`docs/operations/validation.md`](docs/operations/validation.md) | What has actually been executed against a real client, and what has not |
 | [`docs/operations/plugging-into-snapchain.md`](docs/operations/plugging-into-snapchain.md) | How a client connects to Farcaster and Snapchain in 2026, what the fork does instead, and the limits |
+| [`docs/operations/path-to-operational.md`](docs/operations/path-to-operational.md) | What still stands between the repository and a client real people can use, item by item |
 | [`packages/home-personalization/`](packages/home-personalization) | The engine, implemented and tested |
 
 **Start with** [the audit](docs/research/reference-client-audit.md) for why, then
@@ -64,6 +65,7 @@ client uses (20.19.5) and built with its prettier config and tsconfig shape.
 ```bash
 pnpm install
 pnpm check:all                          # format, typecheck, build, test, compat
+pnpm fetch:protocol-sources && pnpm audit:protocol   # the Snapchain page against its sources
 pnpm --filter home-client-core demo     # watch the whole mechanism run
 ```
 

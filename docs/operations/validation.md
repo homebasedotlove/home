@@ -19,6 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 65/65 claims hold at the pinned commits |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -217,11 +218,45 @@ Verified: 197 kernel tests, including the row label for every receipt cause;
 14 assertions inside the fork; the web app typechecks with zero errors and
 builds; every frame re-rendered from the rebuilt bundle.
 
+## The second validation pass (2026-10-09)
+
+Everything above was re-run, and two new checks were added, after the
+Snapchain page was written.
+
+- **Gate 9 exists.** `scripts/audit-protocol-claims.mjs` re-derives the 65
+  checkable numbers in [`plugging-into-snapchain.md`](plugging-into-snapchain.md)
+  from the seven repositories it cites, cloned at the pinned commits by
+  `scripts/fetch-protocol-sources.sh` (7 s, 49 MB from scratch). All 65 hold.
+  Its `--network` mode confirmed the seven npm versions the page quotes are
+  still the latest. The six web-only facts (FIP statuses and dates) were
+  re-read by hand the same day and had not moved.
+- **Upstream has moved once.** `farcasterxyz/client` replaced the snapshot on
+  2026-09-30 (`0c289ed`). Against it: the reference patch applies cleanly, with
+  only `apps/farcaster-web/package.json` changed among the 34 files it touches;
+  `verify:compat` passes and all eleven drift mutations are still caught; with
+  the patch applied, installed and built there, all 14 fork assertions pass and
+  the web app typechecks with zero errors; 33 of the 34 client claims hold, the exception being the mobile seam, which moved
+  from `useMixedFeedItems.ts:311` to `:326`. The generated API types grew by
+  five lines. Home's citations still say `b6922e2`; re-pinning is bookkeeping
+  and is item 3 of the L1 list in [`path-to-operational.md`](path-to-operational.md).
+- **One correction.** Snapchain rejects timestamps more than 10 minutes in the
+  future; the docs page says 15. The page cites the code.
+
+The three unproven items above are unchanged: no request has reached the
+production API, the authenticated shell has not booted against it, and nothing
+has run on iOS. What each would take is in
+[`path-to-operational.md`](path-to-operational.md) §6.
+
 ## Keeping it true
 
 `pnpm check:all` runs gates 1–3. Gate 4 is `scripts/audit-claims.mjs`. Gates 5–8
 need a client checkout and are the reproduction steps in
 [`../integration/reference-patch/README.md`](../integration/reference-patch/README.md).
+
+Gate 9 is `pnpm audit:protocol` after `pnpm fetch:protocol-sources`; with
+`--latest` the fetch clones each repository's HEAD instead, and a failure then
+names the protocol fact that has moved. The `protocol-audit` workflow runs both
+variants weekly.
 
 Run gate 4 after every snapshot update. The numbers this project argues from —
 117 of 149, 797 tokens, 47 placeholders, a seam at a named line — are the first
