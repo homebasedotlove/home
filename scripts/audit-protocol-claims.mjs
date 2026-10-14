@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
- * docs/research/protocol-mechanics.md and docs/operations/setup-end-to-end.md
- * against the sources they were read from.
+ * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md and
+ * docs/research/client-landscape.md against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -365,6 +365,14 @@ if (missing.length) {
     ['16 GB of RAM', '4 CPU cores', '2 TB of free storage', 'ports 3381 - 3383', 'about 200 GB'].filter((t) => start.includes(t)),
   );
   expectText('AWS guide budgets ~$100/month', sc.read('site/docs/pages/guides/running-a-node.mdx'), '$100/month');
+  check(
+    'both node guides recommend Neynar over running a node',
+    { start: true, aws: true },
+    {
+      start: sc.read('site/docs/pages/getting-started.mdx').includes('consider a managed service like [Neynar](https://neynar.com/) instead of running your own node'),
+      aws: sc.read('site/docs/pages/guides/running-a-node.mdx').includes('consider a managed service like [Neynar](https://neynar.com/) instead of running your own node'),
+    },
+  );
 
   const writing = sc.read('site/docs/pages/guides/writing-messages.mdx');
   check(
@@ -746,6 +754,18 @@ if (!SNAPSHOT) {
   );
   expectText('the web app constructs one FarcasterApiClient in its provider', r('apps/farcaster-web/src/contexts/WebFarcasterApiClientProvider.tsx'), 'new FarcasterApiClient()');
   expectText('the realtime stream carries unseen counts, not casts', api, /export type ApiWebSocketMessageType =\s*\| 'unseen'\s*\| 'notification-tab-unseen'/);
+
+  // client-landscape.md: what the template repository says about itself
+  const templateReadme = r('README.md');
+  check(
+    'template README statements',
+    ['A snapshot of the Farcaster client monorepo codebase without the Farcaster Wallet implementation', 'designed to be a reference for building a social client on top of the Farcaster protocol', 'run locally, pointing to the current production API by Farcaster', 'one-way, automatically generated snapshot', "Fork it and build on it"],
+    ['A snapshot of the Farcaster client monorepo codebase without the Farcaster Wallet implementation', 'designed to be a reference for building a social client on top of the Farcaster protocol', 'run locally, pointing to the current production API by Farcaster', 'one-way, automatically generated snapshot', "Fork it and build on it"].filter((t) => templateReadme.includes(t)),
+  );
+  const licence = r('LICENSE');
+  check('template licence', { mit: true, neynar: true }, { mit: licence.includes('MIT License'), neynar: licence.includes('Copyright (c) 2026 Neynar, Inc.') });
+  expectText('template points at the community agent guide', r('AGENT_GUIDE.md'), 'https://github.com/danromero/farcaster-client-agent-guide');
+  expectText('template syncs API types from a private backend', r('Makefile'), 'BACKEND_PATH ?= ../backend');
 }
 
 // --- network (optional) ------------------------------------------------------------
@@ -809,7 +829,8 @@ Not checkable offline; re-read when the page is revised:
   FIP #225 Auth Addresses, finalized, key type 2       https://github.com/farcasterxyz/protocol/discussions/225
   FIP #238 Signer revokes only impact future messages  https://github.com/farcasterxyz/protocol/discussions/238
   Neynar acquired Farcaster, 2026-01-21                https://neynar.com/blog/neynar-is-acquiring-farcaster
-  Neynar plan tiers                                    https://dev.neynar.com/pricing
+  Neynar plan tiers and credit costs                   https://dev.neynar.com/pricing  https://docs.neynar.com/reference/compute-units
+  Sampled client manifests (herocast, nounspace, litecast, tofui, opencast) read 2026-10-14 on GitHub
   OP Mainnet announcement, 2023-08-22                  https://x.com/dwr/status/1693986385315963024
   FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
 `);

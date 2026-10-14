@@ -1,7 +1,8 @@
 name: protocol-audit
 
 # Re-checks every number in docs/operations/plugging-into-snapchain.md,
-# docs/research/protocol-mechanics.md and docs/operations/setup-end-to-end.md.
+# docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md and
+# docs/research/client-landscape.md.
 #
 # The first job clones the commits the page cites and must pass: it proves the
 # page matches its own sources. The second clones each repository's HEAD and is
@@ -17,6 +18,7 @@ on:
       - docs/operations/plugging-into-snapchain.md
       - docs/research/protocol-mechanics.md
       - docs/operations/setup-end-to-end.md
+      - docs/research/client-landscape.md
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh
       - scripts/protocol-sources.json

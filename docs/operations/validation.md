@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 135/135 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page and the end-to-end runbook |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 140/140 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook and the client-landscape page |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -226,9 +226,10 @@ Snapchain page was written.
 - **Gate 9 exists.** `scripts/audit-protocol-claims.mjs` re-derives the
   checkable numbers in [`plugging-into-snapchain.md`](plugging-into-snapchain.md)
   [`../research/protocol-mechanics.md`](../research/protocol-mechanics.md) and
-  [`setup-end-to-end.md`](setup-end-to-end.md) (65, 41 and 29 claims) from the
-  seven repositories they cite, cloned at the pinned commits by
-  `scripts/fetch-protocol-sources.sh` (7 s, 49 MB from scratch). All 135 hold.
+  [`setup-end-to-end.md`](setup-end-to-end.md) and
+  [`../research/client-landscape.md`](../research/client-landscape.md) (65, 41,
+  29 and 5 claims) from the seven repositories they cite, cloned at the pinned commits by
+  `scripts/fetch-protocol-sources.sh` (7 s, 49 MB from scratch). All 140 hold.
   Its `--network` mode confirmed the seven npm versions the page quotes are
   still the latest. The six web-only facts (FIP statuses and dates) were
   re-read by hand the same day and had not moved.

@@ -13,6 +13,7 @@ Home is an attempt to unlock it.
 | --- | --- |
 | [`docs/research/`](docs/research/reference-client-audit.md) | What the reference client leaves on the table, with citations |
 | [`docs/research/protocol-mechanics.md`](docs/research/protocol-mechanics.md) | Why identity is on OP Mainnet, how a cast reaches Snapchain byte by byte, and how a client reads, writes and subscribes |
+| [`docs/research/client-landscape.md`](docs/research/client-landscape.md) | How third-party clients are actually built, what the template repository is, how dominant Neynar is, and what a zero-cost client can and cannot do |
 | [`docs/design/`](docs/design/README.md) | Principles, the six customization axes, the four signature interactions, information architecture, roadmap |
 | [`docs/integration/`](docs/integration/wiring-into-a-fork.md) | The six call sites that connect the kernel to a fork of `farcasterxyz/client` |
 | [`docs/operations/`](docs/operations/running-the-client.md) | Every env var, credential and task needed to get a fork running |
