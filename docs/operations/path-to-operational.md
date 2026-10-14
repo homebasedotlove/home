@@ -11,6 +11,7 @@ credential and environment variable; [plugging into Snapchain](plugging-into-sna
 has the protocol facts; [validation](validation.md) has what has been executed.
 [Setting Home up end to end](setup-end-to-end.md) turns the L2 items below into a
 runbook.
+[The plan](plan.md) says which of these to do first and why.
 
 ---
 

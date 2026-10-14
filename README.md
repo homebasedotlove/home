@@ -21,6 +21,7 @@ Home is an attempt to unlock it.
 | [`docs/operations/plugging-into-snapchain.md`](docs/operations/plugging-into-snapchain.md) | How a client connects to Farcaster and Snapchain in 2026, what the fork does instead, and the limits |
 | [`docs/operations/path-to-operational.md`](docs/operations/path-to-operational.md) | What still stands between the repository and a client real people can use, item by item |
 | [`docs/operations/setup-end-to-end.md`](docs/operations/setup-end-to-end.md) | The runbook: node options, accounts, devnet, testnet, the Home service, the client seams, every flow and its verification |
+| [`docs/operations/plan.md`](docs/operations/plan.md) | **Start here for what to do next:** the decision, this week's four actions, the build order, when to spend money, and the evidence behind each step |
 | [`packages/home-personalization/`](packages/home-personalization) | The engine, implemented and tested |
 
 **Start with** [the audit](docs/research/reference-client-audit.md) for why, then

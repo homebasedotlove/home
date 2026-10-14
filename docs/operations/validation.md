@@ -245,6 +245,12 @@ Snapchain page was written.
 - **One correction.** Snapchain rejects timestamps more than 10 minutes in the
   future; the docs page says 15. The page cites the code.
 
+- **Re-run 2026-10-14 against upstream `0c289ed`.** `pnpm check:all` with the
+  latest snapshot: 259 tests, types compatible, all eleven drift mutations
+  caught, 33 of 34 client claims; `pnpm audit:protocol`: 140 of 140. The one
+  stale claim is the mobile seam line, and re-pinning is step 1.1 of
+  [`plan.md`](plan.md).
+
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing
 has run on iOS. What each would take is in

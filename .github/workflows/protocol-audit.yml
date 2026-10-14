@@ -19,6 +19,7 @@ on:
       - docs/research/protocol-mechanics.md
       - docs/operations/setup-end-to-end.md
       - docs/research/client-landscape.md
+      - docs/operations/plan.md
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh
       - scripts/protocol-sources.json
