@@ -9,6 +9,8 @@ and come with the exact test to run.
 Companion pages: [running the client](running-the-client.md) has every
 credential and environment variable; [plugging into Snapchain](plugging-into-snapchain.md)
 has the protocol facts; [validation](validation.md) has what has been executed.
+[Setting Home up end to end](setup-end-to-end.md) turns the L2 items below into a
+runbook.
 
 ---
 

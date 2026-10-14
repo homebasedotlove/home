@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md
- * and docs/research/protocol-mechanics.md against the sources they were read
- * from.
+ * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
+ * docs/research/protocol-mechanics.md and docs/operations/setup-end-to-end.md
+ * against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -601,6 +601,89 @@ if (missing.length) {
   expectText('docs FAQ: no testnet deployment', page('reference/contracts/faq'), /Are the Farcaster contracts deployed to a testnet\?\s*No\./);
 }
 
+// --- docs/operations/setup-end-to-end.md ------------------------------------------
+
+{
+  const sc = S.snapchain;
+
+  const nodes = sc.read('src/network/mesh/nodes.rs');
+  check(
+    'public node registry: hosts the runbook names',
+    ['https://snap.farcaster.xyz:3381', 'https://crackle.farcaster.xyz:3381', 'https://pop.farcaster.xyz:3381', 'https://snap.uno.fun:3381', 'https://iris.farcaster.xyz:3381', 'https://juno.farcaster.xyz:3381', 'https://vega.farcaster.xyz:3381'],
+    ['https://snap.farcaster.xyz:3381', 'https://crackle.farcaster.xyz:3381', 'https://pop.farcaster.xyz:3381', 'https://snap.uno.fun:3381', 'https://iris.farcaster.xyz:3381', 'https://juno.farcaster.xyz:3381', 'https://vega.farcaster.xyz:3381'].filter((h) => nodes.includes(h)),
+  );
+  expectText('pop is a read node', nodes, /name: "pop",[\s\S]{0,120}role: NodeRole::MainnetReader/);
+  expectText('iris is a testnet validator', nodes, /name: "iris",[\s\S]{0,120}role: NodeRole::TestnetValidator/);
+  expectText('the registry is a public API URL list for the browser UI', nodes, 'public HTTP API base URL the browser UI can hit');
+
+  const mainnetCompose = sc.read('docker-compose.mainnet.yml');
+  check(
+    'mainnet compose writes a read-node config',
+    { readNode: true, mainnet: true, shards: true, noRpc: true, ports: true },
+    {
+      readNode: /read_node = true/.test(mainnetCompose),
+      mainnet: /fc_network="Mainnet"/.test(mainnetCompose),
+      shards: /shard_ids = \[1,2\][\s\S]*num_shards = 2/.test(mainnetCompose),
+      noRpc: !/rpc_url\s*=/.test(mainnetCompose),
+      ports: mainnetCompose.includes('"3381:3381/tcp"') && mainnetCompose.includes('"3382:3382/udp"') && mainnetCompose.includes('"3383:3383/tcp"'),
+    },
+  );
+  expectText('testnet compose exists and is a read node on Testnet', sc.read('docker-compose.testnet.yml'), /fc_network="Testnet"[\s\S]*read_node = true/);
+
+  const main = sc.read('src/main.rs');
+  expectText('on-chain connector starts only when an RPC URL is configured', main, /if !app_config\.onchain_events\.rpc_url\.is_empty\(\)/);
+  expectText('the OP connector is hard-wired to Optimism with the network tag passed through', main, /node_local_state::Chain::Optimism,\s*app_config\.fc_network,/);
+
+  const readme = sc.read('README.md');
+  check(
+    'README node facts',
+    ['1.5TB of free storage', '< $1,000/month', 'This can take up to 2 hours', 'Ports 3381 - 3383 exposed on both TCP and UDP'],
+    ['1.5TB of free storage', '< $1,000/month', 'This can take up to 2 hours', 'Ports 3381 - 3383 exposed on both TCP and UDP'].filter((t) => readme.includes(t)),
+  );
+  expectText('bootstrap script hands off to snapchain.sh upgrade', sc.read('scripts/snapchain-bootstrap.sh'), /exec \.\/snapchain\.sh "upgrade"/);
+  expectText('snapchain.sh installs an auto-upgrade cron', sc.read('scripts/snapchain.sh'), 'snapchain.sh autoupgrade');
+
+  const devCompose = sc.read('docker-compose.yml');
+  expectText('devnet compose runs four nodes with node1 on 3381/3383', devCompose, /node1:[\s\S]*"3381:3381\/tcp"[\s\S]*"3383:3383\/tcp"[\s\S]*node4:/);
+  expectText('devnet image bakes in admin auth dev:dev', sc.read('Dockerfile'), 'setup_local_testnet --docker --admin-rpc-auth dev:dev');
+  expectText('make dev runs the compose with watch', sc.read('Makefile'), /^dev: build\n\tdocker compose up --watch/m);
+
+  const cliReadme = sc.read('cli/README.md');
+  check(
+    'fc CLI facts',
+    ['fc devnet bootstrap --grpc-node http://127.0.0.1:3383 --auth dev:dev', 'Submit a gasless `KEY_ADD`', 'fc subscribe --shard 1 --grpc-node https://iris.farcaster.xyz:3383', 'storage rent, ID-register, and a\nsigner'],
+    ['fc devnet bootstrap --grpc-node http://127.0.0.1:3383 --auth dev:dev', 'Submit a gasless `KEY_ADD`', 'fc subscribe --shard 1 --grpc-node https://iris.farcaster.xyz:3383', 'storage rent, ID-register, and a\nsigner'].filter((t) => cliReadme.includes(t)),
+  );
+  expectText('fc defaults to the iris testnet node', sc.read('cli/src/main.rs'), 'default_value = "https://iris.farcaster.xyz:3381"');
+  expectText('devnet bootstrap submits rent, register and signer events', sc.read('cli/src/main.rs'), /"STORAGE_RENT",[\s\S]*"ID_REGISTER",[\s\S]*"SIGNER_ADD",/);
+  expectText('admin service accepts synthetic on-chain events', sc.read('proto/definitions/admin_rpc.proto'), 'rpc SubmitOnChainEvent(OnChainEvent) returns (OnChainEvent);');
+  expectText('a read node has no local mempool and gossips writes', sc.read('src/mempool/mempool.rs'), "Read nodes don't have a local mempool");
+
+  const api = S.OAS.read('src/api/spec.yaml');
+  expectText('Neynar publishes a developer-signed message', api, 'Use the Message.toJSON method on the signed message and pass the JSON in the body of this POST request.');
+  check(
+    'Neynar webhook event types',
+    ['cast.created', 'follow.created', 'reaction.created', 'user.created', 'user.updated'],
+    ['cast.created', 'follow.created', 'reaction.created', 'user.created', 'user.updated'].filter((t) => api.includes(`${t}:`)),
+  );
+  check(
+    'Neynar endpoints the runbook relies on',
+    ['/v2/farcaster/message/:', '/v2/farcaster/webhook/:', '/v2/farcaster/storage/buy/:', '/v2/farcaster/signer/developer_managed/signed_key/:', '/v2/farcaster/cast/conversation/:', '/v2/farcaster/notifications/:'],
+    ['/v2/farcaster/message/:', '/v2/farcaster/webhook/:', '/v2/farcaster/storage/buy/:', '/v2/farcaster/signer/developer_managed/signed_key/:', '/v2/farcaster/cast/conversation/:', '/v2/farcaster/notifications/:'].filter((t) => api.includes(t)),
+  );
+
+  const viem = S['auth-monorepo'].read('packages/auth-client/src/clients/ethereum/viemConnector.ts');
+  check('SIWF verification reads idOf and keyDataOf over the configured RPC', { idOf: true, keyDataOf: true, rpcUrl: true, warning: true }, {
+    idOf: viem.includes('functionName: "idOf"'),
+    keyDataOf: viem.includes('functionName: "keyDataOf"'),
+    rpcUrl: viem.includes('rpcUrl'),
+    warning: viem.includes('using public endpoint. Do not use this in production'),
+  });
+  expectText('auth-kit config takes rpcUrl, domain and siweUri', S['auth-monorepo'].read('packages/auth-kit/README.md'), /rpcUrl: "https:\/\/mainnet\.optimism\.io",\s*domain: "example\.com",\s*siweUri: "https:\/\/example\.com\/login",/);
+
+  expectText('docs feed guide builds a chronological feed from castsByFid', S.docs.read('src/app/(docs)/developers/guides/apps/feed/page.mdx'), 'client.getCastsByFid({');
+}
+
 // --- the reference client -------------------------------------------------------
 
 const SNAPSHOT = findSnapshot();
@@ -648,6 +731,21 @@ if (!SNAPSHOT) {
   });
   const m = api.match(/^export type ApiCastFeedIncludeReason =\n((?:\s+\|.*\n)+)/m);
   check('ten include reasons', 10, m ? m[1].split('\n').filter((l) => l.trim()).length : -1);
+
+  // setup-end-to-end.md: the seams and endpoints the runbook replaces
+  const clientSrc = r('packages/farcaster-client-data/src/client/FarcasterApiClient.ts');
+  check(
+    'media upload endpoints the runbook replaces',
+    ["'/v1/generate-image-upload-url'", "'/v1/prepare-video-upload'", "'/v1/upload-video-with-tus'", "'/v1/uploaded-video'"],
+    ["'/v1/generate-image-upload-url'", "'/v1/prepare-video-upload'", "'/v1/upload-video-with-tus'", "'/v1/uploaded-video'"].filter((t) => clientSrc.includes(t)),
+  );
+  check(
+    'core screen endpoints the runbook maps',
+    ["'/v2/feed-items'", "'/v2/casts'", "'/v2/thread-casts'", "'/v2/user'", "'/v2/user-by-username'", "'/v2/me'", "'/v2/followers'", "'/v2/following'", "'/v2/cast-likes'", "'/v2/cast-recasters'", "'/v2/recasts'", "'/v2/all-channels'", "'/v2/channel'", "'/v2/signed-key-request'", "'/v2/onboarding'"],
+    ["'/v2/feed-items'", "'/v2/casts'", "'/v2/thread-casts'", "'/v2/user'", "'/v2/user-by-username'", "'/v2/me'", "'/v2/followers'", "'/v2/following'", "'/v2/cast-likes'", "'/v2/cast-recasters'", "'/v2/recasts'", "'/v2/all-channels'", "'/v2/channel'", "'/v2/signed-key-request'", "'/v2/onboarding'"].filter((t) => clientSrc.includes(t)),
+  );
+  expectText('the web app constructs one FarcasterApiClient in its provider', r('apps/farcaster-web/src/contexts/WebFarcasterApiClientProvider.tsx'), 'new FarcasterApiClient()');
+  expectText('the realtime stream carries unseen counts, not casts', api, /export type ApiWebSocketMessageType =\s*\| 'unseen'\s*\| 'notification-tab-unseen'/);
 }
 
 // --- network (optional) ------------------------------------------------------------
