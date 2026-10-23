@@ -21,6 +21,7 @@ on:
       - docs/research/client-landscape.md
       - docs/operations/plan.md
       - docs/research/hypersnap.md
+      - docs/research/both-networks.md
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh
       - scripts/protocol-sources.json

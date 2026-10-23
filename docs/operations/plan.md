@@ -140,6 +140,13 @@ Channels stay on the Client API until on-protocol channels reach mainnet;
 their message types are gated to V21, which is not on the schedule (audit:
 "V21 (channels) is not on the mainnet schedule").
 
+Items 1, 3 and 5 are where Home becomes a client of both networks at once:
+providers and nodes as configuration with a network tag on every item, login
+that also accepts protocol tokens verified against a node, and writes posted to
+a list of nodes with per-node status. The reasoning and three small additions
+(a social-contract chip, "via @app" attribution, a parity probe) are in
+[`../research/both-networks.md`](../research/both-networks.md) §4.
+
 ---
 
 ## 3. When to spend money, and on what
@@ -196,6 +203,8 @@ against upstream HEAD and names any claim that moves.
 | The production API refuses Home's origin or Neynar declines | §1.3a and §1.4; Source B is already underway, so the answer changes the order, not the plan |
 | Public nodes rate-limit or refuse writes | §1.3b; fall back to Neynar's hosted node, then an own read node |
 | Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
+| Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as reported for a day on 2026-10-14 | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
+| The Hypersnap pivot splits the network | a network tag on every item, dedupe by message hash, writes posted to a node on each network, Home's app fid never migrated ([`../research/both-networks.md`](../research/both-networks.md) §3); nothing to build until a release fixes `PIVOT_HEIGHT` |
 | Readers cannot sign a gasless request from the Farcaster app | §2.4 on a device; the deeplink path with sponsorship is the fallback and is documented |
 | Testnet does not accept mainnet accounts | §1.3c; the devnet remains the test ground |
 | Upstream moves the seams again | the audits fail loudly and the patch re-applies; measured once already: one line moved in one snapshot |

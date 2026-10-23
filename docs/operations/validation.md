@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 177/177 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page and the Hypersnap page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 193/193 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page and the both-networks page |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -257,6 +257,13 @@ Snapchain page was written.
   on: Hypersnap serves 103 of the 104 `/v2/farcaster/*` paths in Neynar's
   pinned OpenAPI spec by name, and its `validators.toml` is upstream's `8f82bcc`
   file without the v18 sets upstream added on 2026-10-15.
+- **Both networks, 2026-10-23.** [`../research/both-networks.md`](../research/both-networks.md)
+  added four sources (Snapchain at `961d12b`, the `farcasterorg/miniapps`
+  fork, `jpfraneto/fatline`, `guy-do-or-die/farcaster-census`) and 16 claims;
+  `pnpm audit:protocol` holds 193 of 193. The stall the Hypersnap page
+  predicted is now a pinned sentence in a third party's README, and the ballot
+  contract and counts of the Network School vote are pinned from the census
+  data file. The casts the page quotes are web-only and listed as such.
 
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing

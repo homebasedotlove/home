@@ -52,7 +52,7 @@ that generate them and from search excerpts.
   release train (Cargo says 0.13.5 and its changelog stops at 0.13.2 while
   Snapchain is at 0.14.3), and its validator list is missing the v18 validator
   swap upstream added on 2026-10-15, which a read node must know about or it
-  will drop blocks (§2.3). Its stated roadmap is to become its own chain with
+  will drop blocks, and did on 2026-10-22 (§2.3). Its stated roadmap is to become its own chain with
   its own token. Farcaster, for its part, changed owners twice in 2026, the
   second time on 2026-10-15 to Network School, with a paid-access model
   announced for the main app. Both sides are moving.
@@ -165,6 +165,17 @@ with "Dropping decided block because its signatures are invalid". This is the
 concrete form of "young fork, one maintainer": the data is Farcaster's, but
 staying in sync with Farcaster's validator changes is manual work the fork has
 not yet automated.
+
+**Update 2026-10-23.** It happened. On 2026-10-22 Hypersnap read nodes
+halted with that exact log line at heights 48,632,005 (shard 0), 49,147,015
+(shard 2) and 49,311,004 (shard 1), reported as
+[farcasterorg/hypersnap#41](https://github.com/farcasterorg/hypersnap/issues/41);
+an operator who copied upstream's three entries into `validators.toml` saw the
+node resume "within a minute", and another documents the stall and the fix in
+its README (pinned: `fatline`). As of 2026-10-23 `main` is still `2e8733d`
+without the entries and the issue has no maintainer reply. The week's other
+changes on both sides, and what they mean for a client that wants to be both,
+are in [`both-networks.md`](both-networks.md).
 
 ### 2.4 What a pivot would mean for a client
 
@@ -313,7 +324,7 @@ three: Source B synthesises them locally, as planned.
 
 | # | Check | Command or method | Pass means |
 | --- | --- | --- | --- |
-| a | the node is in sync with Farcaster's chain | `curl -s https://haatz.quilibrium.com/v1/info` and the same on a Farcaster public node; compare `maxHeight` per shard and `blockDelay` | heights within seconds of each other; a Hypersnap node stuck near 48,632,000 on shard 0 has hit §2.3 |
+| a | the node is in sync with Farcaster's chain | `curl -s https://haatz.quilibrium.com/v1/info` and the same on a Farcaster public node; compare `maxHeight` per shard and `blockDelay` | heights within seconds of each other; a Hypersnap node stuck at 48,632,005 on shard 0, 49,147,015 on shard 2 or 49,311,004 on shard 1 has hit §2.3, as the public reports of 2026-10-22 did |
 | b | the validator list is current | `validators.toml` in the Hypersnap commit the node runs contains the v18 sets (key `bd465c94…`) | present; otherwise run your own node with upstream's file |
 | c | the twelve read shapes the adapter uses match Neynar's | for each of `feed/following`, `feed/trending`, `notifications`, `cast/conversation`, `user/bulk`, `user/search`, `cast/search`, `channel/search`, `reactions/cast`, `followers`, `following`, `channel` compare a response to the pinned OpenAPI schema with the adapter's existing contract tests | the adapter's type guards accept the responses unchanged, or the differences are enumerated |
 | d | writes go round the API | `POST /v2/farcaster/message` returns 501; `POST /v1/submitMessage` with a devnet-signed message is accepted | both as described |

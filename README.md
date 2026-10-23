@@ -15,6 +15,7 @@ Home is an attempt to unlock it.
 | [`docs/research/protocol-mechanics.md`](docs/research/protocol-mechanics.md) | Why identity is on OP Mainnet, how a cast reaches Snapchain byte by byte, and how a client reads, writes and subscribes |
 | [`docs/research/client-landscape.md`](docs/research/client-landscape.md) | How third-party clients are actually built, what the template repository is, how dominant Neynar is, and what a zero-cost client can and cannot do |
 | [`docs/research/hypersnap.md`](docs/research/hypersnap.md) | Running a client on Farcaster versus on Hypersnap: what the fork is in code, where it says it is going, four data sources compared, Opencaster versus the reference client, and what it means for Home |
+| [`docs/research/both-networks.md`](docs/research/both-networks.md) | Being a Farcaster client and a Hypersnap client at once: what changed after the Network School deal, what "both" means today and after a pivot, the code changes it implies, and a watch list |
 | [`docs/design/`](docs/design/README.md) | Principles, the six customization axes, the four signature interactions, information architecture, roadmap |
 | [`docs/integration/`](docs/integration/wiring-into-a-fork.md) | The six call sites that connect the kernel to a fork of `farcasterxyz/client` |
 | [`docs/operations/`](docs/operations/running-the-client.md) | Every env var, credential and task needed to get a fork running |

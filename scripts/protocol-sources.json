@@ -53,5 +53,25 @@
     "url": "https://github.com/arcabotai/hypersnap-web.git",
     "sha": "ef608f8e803db83985fdd96129da2354cfa34e34",
     "date": "2026-10-22"
+  },
+  "snapchain-latest": {
+    "url": "https://github.com/farcasterxyz/snapchain.git",
+    "sha": "961d12b6095bd3b82b5fdeb8e739e8232b1dca8f",
+    "date": "2026-10-23"
+  },
+  "farcasterorg-miniapps": {
+    "url": "https://github.com/farcasterorg/miniapps.git",
+    "sha": "1cef64ecad40e66d4de86cc50362235bf344cbcc",
+    "date": "2026-10-14"
+  },
+  "fatline": {
+    "url": "https://github.com/jpfraneto/fatline.git",
+    "sha": "148e7288fb2637b65222cbf504e0221d2a24712a",
+    "date": "2026-10-22"
+  },
+  "farcaster-census": {
+    "url": "https://github.com/guy-do-or-die/farcaster-census.git",
+    "sha": "252b4212a0f7b3ec8b1c79410cbef9af0469dcbe",
+    "date": "2026-10-21"
   }
 }

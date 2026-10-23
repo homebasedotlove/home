@@ -2,8 +2,8 @@
 /**
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
  * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
- * docs/research/client-landscape.md and docs/research/hypersnap.md against the
- * sources they were read from.
+ * docs/research/client-landscape.md, docs/research/hypersnap.md and
+ * docs/research/both-networks.md against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -1022,6 +1022,114 @@ if (!SNAPSHOT) {
   check('Opencaster signing model, gateway dependency, exclusions and status', clientLines, clientLines.filter((t) => oc.read('hypersnap/README.md').includes(t)));
 }
 
+// --- docs/research/both-networks.md -------------------------------------------------
+
+{
+  const sl = S['snapchain-latest'];
+  const ma = S['farcasterorg-miniapps'];
+  const fl = S.fatline;
+  const ce = S['farcaster-census'];
+
+  // Farcaster side after 2026-10-15: the protocol work continued
+  check('Snapchain release after the deal', '[0.14.3] - 2026-10-15', sl.read('CHANGELOG.md').match(/^## (\[[^\]]+\] - \d{4}-\d{2}-\d{2})/m)?.[1]);
+  const val = sl.read('validators.toml');
+  check(
+    'the v18 validator swap: heights and names',
+    { shard0: '48_632_000', shard2: '49_147_000', shard1: '49_311_000', comment: true },
+    {
+      shard0: val.match(/# v18 \(registry configVersion 18\)[^\n]*\n[^\n]*on block shard 0\n\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)/)?.[1],
+      shard2: val.match(/# v18: same swap on message shard 2\n\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)/)?.[1],
+      shard1: val.match(/# v18: same swap on message shard 1\n\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)/)?.[1],
+      comment: val.includes('# v18 (registry configVersion 18): moria (bd465c...) and isengard (be846f...)'),
+    },
+  );
+  expectText('upstream pulls validator config from the chain at boot', sl.read('docker-compose.mainnet.yml'), '/app/apply-onchain-config.sh config.toml || exit 1');
+  const vdoc = sl.read('site/docs/pages/validators.mdx');
+  check(
+    'validator docs: seven keys, five of them Neynar, five signatures commit',
+    { neynar: 5, uno: 1, degen: 1, rule: true },
+    {
+      neynar: count(vdoc, /\| Neynar \|/g),
+      uno: count(vdoc, /\| Uno \|/g),
+      degen: count(vdoc, /\| Degen \|/g),
+      rule: vdoc.includes('All seven validators carry equal weight. A block commits once more than two thirds of them have signed it, which is five of seven'),
+    },
+  );
+  expectText('fc cast-add gained format_version (chained casts work continues)', sl.read('cli/src/main.rs'), 'format_version: u32,');
+
+  // Cassie Heart's packages: login without Farcaster's server
+  expectText('the miniapps fork keeps the Merkle copyright', ma.read('LICENSE'), 'Copyright (c) 2024-present Merkle Manufactory Inc.');
+  check(
+    'the farcasterorg packages and versions',
+    { sdk: ['@farcasterorg/miniapp-sdk', '0.4.0'], auth: ['@farcasterorg/quick-auth', '0.2.0'] },
+    {
+      sdk: [JSON.parse(ma.read('packages/miniapp-sdk/package.json')).name, JSON.parse(ma.read('packages/miniapp-sdk/package.json')).version],
+      auth: [JSON.parse(ma.read('packages/quick-auth/package.json')).name, JSON.parse(ma.read('packages/quick-auth/package.json')).version],
+    },
+  );
+  const qa = ma.read('packages/quick-auth/README.md');
+  const qaLines = [
+    'Quick Auth without an auth server.',
+    'This library verifies one against\nFarcaster protocol state read from a hub.',
+    'drop-in replacement for [`@farcaster/quick-auth`]',
+    'const client = createClient() // hubUrl defaults to https://haatz.quilibrium.com',
+    '- Starts with `hqa1.`, followed by the base64url message and signature.',
+    'Uses `/v1/fidAddressType`, `/v1/verificationsByFid`, `/v1/signer` and\n`/v1/onChainEventsByFid`.',
+  ];
+  check('quick-auth README statements', qaLines, qaLines.filter((t) => qa.includes(t)));
+  expectText('the SDK side: protocol auth with no auth server', ma.read('packages/miniapp-sdk/src/protocolAuth.ts'), 'Protocol Quick Auth: like `sdk.quickAuth`, but with no auth server.');
+  check(
+    'both node kinds serve the four hub endpoints quick-auth calls',
+    { snapchain: 4, hypersnap: 4 },
+    {
+      snapchain: ['fidAddressType', 'verificationsByFid', 'signer', 'onChainEventsByFid'].filter((e) => S.snapchain.read('src/network/http_server.rs').includes(`"/v1/${e}"`)).length,
+      hypersnap: ['fidAddressType', 'verificationsByFid', 'signer', 'onChainEventsByFid'].filter((e) => S.hypersnap.read('src/network/http_server.rs').includes(`"/v1/${e}"`)).length,
+    },
+  );
+
+  // fatline: the stall as witnessed, and the two-network client design
+  expectText('fatline is MIT', fl.read('LICENSE'), 'MIT License');
+  const fr = fl.read('README.md');
+  const frLines = [
+    "Hypersnap: stood still 13:00–18:37 UTC because the validator list in Hypersnap's repository misses Farcaster's 2026-10-22 validator change ([issue #41](https://github.com/farcasterorg/hypersnap/issues/41)); our setup now takes the list from Snapchain, and it is catching up.",
+    'Farcaster and Hypersnap side by side need two servers.',
+    'Both reported ~914 million messages on 2026-10-21.',
+    "Neynar's hosted node API now charges per request over x402 (0.01 USDC) instead of an API key.",
+    '| Public keyless node in the config | `crackle.farcaster.xyz:3381` | `haatz.quilibrium.com` |',
+    'Choose one and every read and post goes only through it; if it is down, you get an error naming it, never a quiet switch.',
+    'a message on both networks becomes one item with two statuses',
+    'Checked on 2026-10-22 for FID 18350: haatz and our own Hypersnap node each gave the same 4,824 messages',
+  ];
+  check('fatline README statements', frLines, frLines.filter((t) => fr.includes(t)));
+  const note = fl.read('research/STATE-OF-FARCASTER-2026-10-18.md');
+  const noteLines = [
+    'was posted **October 17, 2026, 14:47:30 UTC**',
+    '| Read nodes do not accept writes | They accept message submissions and relay them to validators |',
+    '| An app key needs a small Optimism transaction | Gasless app keys are available |',
+    'lists seven equally weighted validator keys: five Neynar, one Uno, and one Degen',
+  ];
+  check("fatline's note on the prize and its clarification", noteLines, noteLines.filter((t) => note.includes(t)));
+
+  // the vote, counted from public data
+  expectText('the census is MIT', ce.read('LICENSE'), 'MIT License');
+  const census = JSON.parse(ce.read('data/final-numbers.json'));
+  check(
+    'the ballot contract and the counts the page quotes',
+    { contract: '0x4ecfed276c566aeb49da1f3a888e8dbb7263028d (Base)', holders: 24578, asOf: 'Base block 52,840,567 = 2026-10-20T04:28:01Z', announcement: '2026-10-15T17:47Z' },
+    { contract: census.chain?.contract, holders: census.chain?.holders_signed, asOf: census.chain?.as_of, announcement: census.frames?.announcement },
+  );
+  check(
+    'opt-outs, restrictions and the status endpoint',
+    { optOutsMin: true, restricted: true, endpoint: true, tokenIdIsFid: true },
+    {
+      optOutsMin: JSON.stringify(census).includes('481'),
+      restricted: JSON.stringify(census).includes('263'),
+      endpoint: ce.read('README.md').includes('`GET client.farcaster.xyz/v2/user?fid=N` → `viewerContext.optInStatus`, no login'),
+      tokenIdIsFid: ce.read('README.md').includes('tokenId = fid'),
+    },
+  );
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -1034,6 +1142,8 @@ if (NETWORK) {
     '@farcaster/auth-client': '0.7.1',
     '@farcaster/auth-kit': '0.8.2',
     '@farcaster/miniapp-sdk': '0.3.0',
+    '@farcasterorg/quick-auth': '0.2.0',
+    '@farcasterorg/miniapp-sdk': '0.4.0',
   };
   for (const [pkg, v] of Object.entries(wanted)) {
     try {
@@ -1090,6 +1200,9 @@ Not checkable offline; re-read when the page is revised:
   Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
   Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
   State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)
+  Hypersnap read nodes stalled on the v18 swap, 2026-10-22   https://github.com/farcasterorg/hypersnap/issues/41
+  Casts quoted in both-networks.md (Rish, Balaji, Cassie)  read from haatz by bettercallzaal/ZAOOS docs 2666/2680 and jpfraneto/fatline; hashes in the page
+  FIP #19 sections 16-17 and Appendix A, edited 2026-10-12  https://github.com/orgs/farcasterorg/discussions/19
 `);
 console.log(failed ? `${failed} of ${results.length} claims FAILED.` : `All ${results.length} claims hold against these sources.`);
 process.exit(failed ? 1 : 0);
