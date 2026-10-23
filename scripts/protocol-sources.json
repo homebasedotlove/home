@@ -33,5 +33,25 @@
     "url": "https://github.com/neynarxyz/OAS.git",
     "sha": "6c6307dbdbc26ee81647588ea0c385ea7a8efc88",
     "date": "2026-08-07"
+  },
+  "hypersnap": {
+    "url": "https://github.com/farcasterorg/hypersnap.git",
+    "sha": "2e8733d044141ad3ba0e0592a4d5873c1dc6ce9c",
+    "date": "2026-10-16"
+  },
+  "hypersnap-docs-web": {
+    "url": "https://github.com/farcasterorg/hypersnap-docs-web.git",
+    "sha": "85fb17b4212fdb9a28ea1f01d656b6eed1d7b4ae",
+    "date": "2026-04-13"
+  },
+  "hypersnapweb": {
+    "url": "https://github.com/arcacomputer/hypersnapweb.git",
+    "sha": "02ef0f0abdf23b62fe08008964f4e14696a879b2",
+    "date": "2026-09-02"
+  },
+  "opencaster": {
+    "url": "https://github.com/arcabotai/hypersnap-web.git",
+    "sha": "ef608f8e803db83985fdd96129da2354cfa34e34",
+    "date": "2026-10-22"
   }
 }

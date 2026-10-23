@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 140/140 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook and the client-landscape page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 177/177 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page and the Hypersnap page |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -250,6 +250,13 @@ Snapchain page was written.
   caught, 33 of 34 client claims; `pnpm audit:protocol`: 140 of 140. The one
   stale claim is the mobile seam line, and re-pinning is step 1.1 of
   [`plan.md`](plan.md).
+- **Hypersnap pinned 2026-10-23.** [`../research/hypersnap.md`](../research/hypersnap.md)
+  added four sources (the Hypersnap node, its docs, the hypersnap.org generator
+  and Opencaster, 64 MB of shallow clones) and 37 claims; `pnpm audit:protocol`
+  now holds 177 of 177. Two of the new claims are comparisons the page rests
+  on: Hypersnap serves 103 of the 104 `/v2/farcaster/*` paths in Neynar's
+  pinned OpenAPI spec by name, and its `validators.toml` is upstream's `8f82bcc`
+  file without the v18 sets upstream added on 2026-10-15.
 
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing

@@ -148,6 +148,7 @@ their message types are gated to V21, which is not on the schedule (audit:
 | --- | --- | --- |
 | Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
 | Home wants Neynar's feeds and search at volume without running anything | Neynar Scale, $249 a month for 60M credits | Neynar's docs via search excerpts; **unverified** here |
+| Neynar's terms, prices or shapes change, or Home wants reads with no key and no credits | point the adapter at a **Hypersnap node**: `haatz.quilibrium.com` for development, Home's own later; same `/v2/farcaster/*` shapes | [`../research/hypersnap.md`](../research/hypersnap.md) §6: 103 of Neynar's 104 paths exist by name on a Hypersnap node; run its checks a–f first, because its validator list is already stale |
 | Never | become a validator; depend on the production API for anything but the ranked feed, and only while permitted | validators are a permissioned set of seven keys (audit: "latest validator set has seven keys") |
 
 ---
@@ -194,6 +195,7 @@ against upstream HEAD and names any claim that moves.
 | --- | --- |
 | The production API refuses Home's origin or Neynar declines | §1.3a and §1.4; Source B is already underway, so the answer changes the order, not the plan |
 | Public nodes rate-limit or refuse writes | §1.3b; fall back to Neynar's hosted node, then an own read node |
+| Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
 | Readers cannot sign a gasless request from the Farcaster app | §2.4 on a device; the deeplink path with sponsorship is the fallback and is documented |
 | Testnet does not accept mainnet accounts | §1.3c; the devnet remains the test ground |
 | Upstream moves the seams again | the audits fail loudly and the patch re-applies; measured once already: one line moved in one snapshot |

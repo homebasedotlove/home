@@ -235,3 +235,7 @@ runbook sequences it last: everything before it can be done for nothing.
 | [Farcaster docs apps page](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | the services list |
 | [vrypan, "All about Farcaster signers"](https://blog.vrypan.net/2023/11/25/all-about-farcaster-signers/) | 2023 | who paid for signer adds then |
 | [CoinDesk on the acquisition](https://www.coindesk.com/business/2026/01/21/farcaster-founders-step-back-as-neynar-acquires-struggling-crypto-social-app) | 2026-01-21 | ownership |
+
+Hypersnap, the Snapchain fork, and Opencaster, the client Arca Computer runs
+on it (a different project from Opencast above), are compared with the
+Farcaster stack in [`hypersnap.md`](hypersnap.md).

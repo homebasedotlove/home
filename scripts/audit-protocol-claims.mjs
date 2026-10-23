@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
- * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md and
- * docs/research/client-landscape.md against the sources they were read from.
+ * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
+ * docs/research/client-landscape.md and docs/research/hypersnap.md against the
+ * sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -768,6 +769,259 @@ if (!SNAPSHOT) {
   expectText('template syncs API types from a private backend', r('Makefile'), 'BACKEND_PATH ?= ../backend');
 }
 
+// --- docs/research/hypersnap.md ---------------------------------------------------
+
+{
+  const hs = S.hypersnap;
+  const hd = S['hypersnap-docs-web'];
+  const hw = S.hypersnapweb;
+  const oc = S.opencaster;
+  const sc = S.snapchain;
+  const lines = (text) => text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+
+  // what Hypersnap is
+  expectText('Hypersnap is GPL-3.0', hs.read('LICENSE'), /GNU GENERAL PUBLIC LICENSE\s+Version 3/);
+  const cargo = hs.read('Cargo.toml');
+  check(
+    'Hypersnap Cargo package and binary',
+    { name: 'snapchain', version: '0.13.5', bin: 'hypersnap' },
+    {
+      name: cargo.match(/^\[package\]\nname = "([^"]+)"/m)?.[1],
+      version: cargo.match(/^version = "([^"]+)"/m)?.[1],
+      bin: cargo.match(/^\[\[bin\]\]\nname = "([^"]+)"/m)?.[1],
+    },
+  );
+  check(
+    'Hypersnap CHANGELOG stops before its Cargo version',
+    '[0.13.2] - 2026-06-24',
+    hs.read('CHANGELOG.md').match(/^## (\[[^\]]+\] - \d{4}-\d{2}-\d{2})/m)?.[1],
+  );
+
+  // the network it joins
+  const compose = hs.read('docker-compose.mainnet.yml');
+  check(
+    'Hypersnap mainnet compose: a read node of Farcaster mainnet with the API on',
+    { network: true, readNode: true, shards: true, hyper: true, api: true, image: true },
+    {
+      network: compose.includes('fc_network="Mainnet"'),
+      readNode: compose.includes('read_node = true'),
+      shards: compose.includes('shard_ids = [1,2]'),
+      hyper: /\[hyper\]\s+enabled = true/.test(compose),
+      api: /\[api\]\s+enabled = true/.test(compose),
+      image: compose.includes('image: farcasterorg/hypersnap:latest'),
+    },
+  );
+  const peers = (text) =>
+    new Set(
+      (text.match(/bootstrap_peers = "([^"]+)"/)?.[1] ?? '')
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean),
+    );
+  const hsPeers = peers(compose);
+  const scPeers = peers(sc.read('docker-compose.mainnet.yml'));
+  check(
+    'bootstrap peers shared with upstream',
+    { hypersnap: 9, upstream: 9, shared: 8 },
+    { hypersnap: hsPeers.size, upstream: scPeers.size, shared: [...hsPeers].filter((p) => scPeers.has(p)).length },
+  );
+  check(
+    'upstream ships and runs the onchain validator-config pull; Hypersnap does not',
+    { upstreamScript: true, upstreamCompose: true, hypersnapScript: false, hypersnapCompose: false },
+    {
+      upstreamScript: sc.exists('scripts/apply-onchain-config.sh'),
+      upstreamCompose: sc.read('docker-compose.mainnet.yml').includes('apply-onchain-config.sh'),
+      hypersnapScript: hs.exists('scripts/apply-onchain-config.sh'),
+      hypersnapCompose: compose.includes('apply-onchain-config'),
+    },
+  );
+  const hsVal = hs.read('validators.toml');
+  const scVal = sc.read('validators.toml');
+  check(
+    'validators.toml is upstream 8f82bcc with only the title changed',
+    { title: '# Hypersnap Mainnet Validator Sets', restIdentical: true },
+    { title: hsVal.split('\n')[0], restIdentical: hsVal.split('\n').slice(1).join('\n') === scVal.split('\n').slice(1).join('\n') },
+  );
+  check(
+    'Hypersnap validators.toml lacks the v18 sets (moria key absent)',
+    false,
+    hsVal.includes('bd465c947fe1acfac219fec2fb2ae1e8a13e2acd0498c413f2e54c946ea95095'),
+  );
+  check(
+    'a read node verifies commit signatures and drops blocks from unexpected signers',
+    { verify: true, drop: true, dropLog: true },
+    {
+      verify: hs.read('src/consensus/read_validator.rs').includes('verify_signatures(&commits, &self.validator_sets)'),
+      drop: hs.read('src/core/util.rs').includes('Block contained signatures from unexpected signers'),
+      dropLog: hs.read('src/consensus/read_validator.rs').includes('Dropping decided block because its signatures are invalid'),
+    },
+  );
+
+  // engine parity
+  const ver = hs.read('src/version/version.rs');
+  const mainnet = ver.slice(ver.indexOf('ENGINE_VERSION_SCHEDULE_MAINNET'), ver.indexOf('ENGINE_VERSION_SCHEDULE_TESTNET'));
+  const schedule = {};
+  for (const m of mainnet.matchAll(/active_at:\s*(\d+),[^\n]*\n\s*version:\s*EngineVersion::V(\d+)/g)) {
+    schedule[`V${m[2]}`] = new Date(Number(m[1]) * 1000).toISOString().slice(0, 10);
+  }
+  check(
+    'Hypersnap mainnet engine schedule matches upstream for V16-V20',
+    { V16: '2026-05-07', V17: '2026-06-04', V18: '2026-06-22', V19: '2026-07-27', V20: '2026-08-13' },
+    Object.fromEntries(['V16', 'V17', 'V18', 'V19', 'V20'].map((v) => [v, schedule[v]])),
+  );
+  check(
+    'Hypersnap gates V20 embeds and has no V21 channel gates',
+    { v20: true, channelGates: false, upstreamHasChannelGates: true },
+    {
+      v20: /IncreaseEmbedLimitForAllUsers => self >= &EngineVersion::V20/.test(ver),
+      channelGates: ver.includes('ChannelMessages'),
+      upstreamHasChannelGates: sc.read('src/version/version.rs').includes('ChannelMessages'),
+    },
+  );
+  const keyBody = (src) => {
+    const proto = src.read('proto/definitions/message.proto');
+    const body = proto.slice(proto.indexOf('message KeyAddBody {'), proto.indexOf('}', proto.indexOf('message KeyAddBody {')));
+    return {
+      scopes: body.includes('repeated int32 scopes = 9;'),
+      ttl: body.includes('uint32 ttl = 10;'),
+      maxTtl: src.read('src/core/validations/key.rs').match(/pub const MAX_KEY_TTL_SECONDS: u32 = ([^;]+);/)?.[1],
+    };
+  };
+  check(
+    'gasless keys carry scopes and a sliding ttl capped at 90 days, in Hypersnap as upstream',
+    { hypersnap: { scopes: true, ttl: true, maxTtl: '90 * 24 * 60 * 60' }, upstream: { scopes: true, ttl: true, maxTtl: '90 * 24 * 60 * 60' } },
+    { hypersnap: keyBody(hs), upstream: keyBody(sc) },
+  );
+
+  // the API layer
+  let apiLines = 0;
+  const apiRoutes = new Set();
+  for (const f of walk(join(hs.dir, 'src/api'), ['.rs'])) {
+    const text = readFileSync(f, 'utf8');
+    apiLines += lines(text);
+    for (const m of text.matchAll(/"(\/v2\/farcaster\/[^" ]*)"/g)) {
+      const p = m[1].replace(/\/$/, '');
+      if (!/cool-app|nonsense/.test(p)) apiRoutes.add(p);
+    }
+  }
+  const oas = S.OAS.read('src/api/spec.yaml');
+  const oasPaths = new Set([...oas.matchAll(/^ {2}(\/v2\/farcaster\/[^:\n]+):/gm)].map((m) => m[1].replace(/\/$/, '')));
+  check(
+    'Hypersnap route literals versus the paths in Neynar OpenAPI',
+    { hypersnap: 140, neynar: 104, shared: 103, neynarOnly: ['/v2/farcaster/fungible/owner/relevant/bulk'] },
+    {
+      hypersnap: apiRoutes.size,
+      neynar: oasPaths.size,
+      shared: [...apiRoutes].filter((p) => oasPaths.has(p)).length,
+      neynarOnly: [...oasPaths].filter((p) => !apiRoutes.has(p)).sort(),
+    },
+  );
+  const http = hs.read('src/api/http.rs');
+  check('size of the API layer', { httpRs: 5723, srcApi: 30845 }, { httpRs: lines(http), srcApi: apiLines });
+  const writeArm = http.slice(http.indexOf("// Write action stubs — these require managed signer infrastructure"), http.indexOf("Write operations require submitting signed Farcaster messages via the gRPC SubmitMessage endpoint"));
+  check(
+    'mutating routes answer 501 and point at SubmitMessage',
+    { text: true, routes: ['/v2/farcaster/message', '/v2/farcaster/signer', '/v2/farcaster/signer/signed_key', '/v2/farcaster/login/nonce', '/v2/farcaster/login/authorize', '/v2/farcaster/user/register', '/v2/farcaster/storage/buy', '/v2/farcaster/reaction', '/v2/farcaster/follow'] },
+    {
+      text: http.includes('StatusCode::NOT_IMPLEMENTED,\n                    "Write operations require submitting signed Farcaster messages via the gRPC SubmitMessage endpoint"'),
+      routes: ['/v2/farcaster/message', '/v2/farcaster/signer', '/v2/farcaster/signer/signed_key', '/v2/farcaster/login/nonce', '/v2/farcaster/login/authorize', '/v2/farcaster/user/register', '/v2/farcaster/storage/buy', '/v2/farcaster/reaction', '/v2/farcaster/follow'].filter((r) => writeArm.includes(`"${r}")`)),
+    },
+  );
+  expectText('managed Neynar endpoints answer 501 on a self-hosted node', http, 'This endpoint requires managed infrastructure not available on a self-hosted node');
+  expectText('"for you" is an alias of the trending feed', http, '// "For you" feed — alias to trending as personalization');
+  expectText('feeds are following and trending, computed on demand', hs.read('src/api/feeds.rs'), /Feeds are computed on-demand[\s\S]*Following Feed[\s\S]*Trending Feed\*\*: Top casts by engagement score/);
+  check('trending keeps the top 1000 and defaults to a 24-hour window', { size: '1000', hours: '24' }, {
+    size: hs.read('src/api/feeds.rs').match(/const TRENDING_RANKING_SIZE: usize = (\d+);/)?.[1],
+    hours: hs.read('src/api/config.rs').match(/fn default_trending_window_hours\(\) -> u32 \{\s*(\d+)/)?.[1],
+  });
+  check('search engines', ['Tantivy', 'Meilisearch'], [...(hs.read('src/api/config.rs').match(/pub enum SearchEngine \{([\s\S]*?)\n\}/)?.[1] ?? '').matchAll(/^\s{4}(\w+),/gm)].map((m) => m[1]));
+  const server = hs.read('src/network/http_server.rs');
+  check(
+    'v2 routes share the node HTTP port and the protocol write path is retained',
+    { v2: true, submit: true, grpc: true },
+    {
+      v2: server.includes('if handler.can_handle(req.method(), path)'),
+      submit: server.includes('(&Method::POST, "/v1/submitMessage")'),
+      grpc: hs.read('src/network/server.rs').includes('async fn submit_message_to_mempool('),
+    },
+  );
+  check(
+    'hyper mode: config flag, gossip capability, design doc, stub CLI',
+    { config: true, gossip: true, design: '# Hyper Mode Architecture', stub: true, proto: true },
+    {
+      config: /pub struct HyperConfig \{\s*pub enabled: bool,/.test(hs.read('src/hyper/mod.rs')),
+      gossip: hs.read('src/network/gossip.rs').includes('cap == CAPABILITY_HYPER'),
+      design: hs.read('docs/hyper.md').split('\n')[0],
+      stub: hs.read('src/bin/hyper.rs').includes('let report = HyperDiffReport {'),
+      proto: hs.exists('proto/definitions/hyper.proto'),
+    },
+  );
+  expectText('the smoke test defaults to the public node', hs.read('scripts/test-v2-api.sh'), 'BASE="${1:-https://haatz.quilibrium.com}"');
+  expectText('the launcher warns there is no token', hs.read('scripts/hypersnap.sh'), 'The network has not yet released a token. Running a node at this time will not earn tokens.');
+  const reqs = ['- 16 GB of RAM', '- 4 CPU cores or vCPUs', '- 1.5TB of free storage'];
+  check('node requirements are Snapchain\'s', { hypersnap: reqs, upstream: reqs }, {
+    hypersnap: reqs.filter((r) => hs.read('README.md').includes(r)),
+    upstream: reqs.filter((r) => sc.read('README.md').includes(r)),
+  });
+  expectText('the build pins a forked signature library', hs.read('README.md'), 'CassOnMars/eth-signature-verifier');
+
+  // what the docs say
+  const introLines = [
+    'Hypersnap is a Rust implementation of a Farcaster node. Alongside the core consensus + gossip layer, it exposes an HTTP API at `/v2/farcaster/*` that mirrors the shape of the broader Farcaster v2 API ecosystem so existing client SDKs and patterns work unchanged.',
+    'It is **not** an identity system. Hypersnap reads identity state from the on-chain `IdRegistry` contract.',
+    'It is **not** a walled garden. Every public read endpoint is unauthenticated',
+  ];
+  check('docs introduction statements', introLines, introLines.filter((t) => hd.read('src/introduction.md').includes(t)));
+  const limitLines = [
+    'Hypersnap is designed to be run by node operators for their own apps, not as a centralized API vendor',
+    'There is **no built-in per-IP rate limit** on the public read endpoints.',
+    '- Default: **1000 events per 60 seconds**, per webhook.',
+    '- **Webhooks:** `max_webhooks_per_owner` (default **25**).',
+  ];
+  check('docs rate-limit statements', limitLines, limitLines.filter((t) => hd.read('src/concepts/rate-limits.md').includes(t)));
+  expectText('webhook management signs EIP-712 with the Hypersnap domain on chain 10', hd.read('src/concepts/authentication.md'), 'const domain  = { name: "Hypersnap", version: "1", chainId: 10 };');
+  const guideLines = ['Every one of these is a single unauthenticated GET against a Hypersnap node.', "- **You don't submit casts through this API.**"];
+  check('build-a-client guide statements', guideLines, guideLines.filter((t) => hd.read('src/guides/build-a-client.md').includes(t)));
+  expectText('the docs name the public node', hd.read('src/playground.md'), 'haatz.quilibrium.com');
+
+  // what hypersnap.org is generated from
+  const site = JSON.parse(hw.read('src/data/farcasterorg-sources.json'));
+  check(
+    'hypersnap.org curated facts',
+    { org: '2026-02-15', node: 'https://haatz.quilibrium.com', prefix: '/v2/farcaster', requirements: ['16 GB RAM', '4 CPU cores or vCPUs', '1.5 TB free storage', 'Public IP address', 'Ports 3381-3383 exposed on TCP and UDP'], notice: 'The network has not yet released a token. Running a node at this time will not earn tokens.' },
+    { org: site.organization?.createdAt?.slice(0, 10), node: site.publicNode?.baseUrl, prefix: site.publicNode?.apiPrefix, requirements: site.node?.requirements, notice: site.node?.noRewardsNotice },
+  );
+  expectText('the site is built by Arca Computer', hw.read('README.md'), 'built and maintained by [Arca Computer](https://arca.computer)');
+
+  // Opencaster
+  expectText('Opencaster is AGPL-3.0', oc.read('LICENSE'), /GNU AFFERO GENERAL PUBLIC LICENSE\s+Version 3/);
+  const ocLines = ['**An open source client for everyone. Powered by Arca Computer. Runs on Hypersnap.**', 'forked from [Quorum Desktop](https://github.com/QuilibriumNetwork/quorum-desktop)', 'This is an independent client, not an official Quorum or Farcaster release.'];
+  check('Opencaster README statements', ocLines, ocLines.filter((t) => oc.read('README.md').includes(t)));
+  const worker = oc.read('hypersnap/worker/index.ts');
+  check(
+    'Opencaster worker: one upstream, the protocol write path, a 64 KiB cap',
+    { upstream: true, write: true, cap: true },
+    {
+      upstream: worker.includes("const UPSTREAM = 'https://haatz.quilibrium.com';"),
+      write: worker.includes("const isWrite = path === '/v1/submitMessage';"),
+      cap: worker.includes('Signed message exceeds 64 KiB.'),
+    },
+  );
+  const clientLines = [
+    'It generates a random Ed25519 posting key in the browser and asks a compatible wallet app to approve it using `eth_signTypedData_v4`.',
+    'No Farcaster-operated login service is involved.',
+    'gasless KEY_ADD',
+    'Default device keys request `[1, 3, 4]`: casts/replies and adding/removing reactions.',
+    'require a separate, explicit approval for a new key with `[1, 3, 4, 5, 6, 11]`.',
+    'All permission sets use a **seven-day sliding inactivity window**',
+    'this version has no failover or independent indexer',
+    'Excluded: creating Farcaster accounts, paid storage/on-chain registration, seed recovery, wallet transfers, DM transport, push notifications, video uploads, end-user media deletion, and mini-app execution.',
+    'This is a beta, and no independent security audit is claimed.',
+    'no Farcaster-hosted API client, account service, websocket, or source dependency was imported',
+  ];
+  check('Opencaster signing model, gateway dependency, exclusions and status', clientLines, clientLines.filter((t) => oc.read('hypersnap/README.md').includes(t)));
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -833,6 +1087,9 @@ Not checkable offline; re-read when the page is revised:
   Sampled client manifests (herocast, nounspace, litecast, tofui, opencast) read 2026-10-14 on GitHub
   OP Mainnet announcement, 2023-08-22                  https://x.com/dwr/status/1693986385315963024
   FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
+  Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
+  Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
+  State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)
 `);
 console.log(failed ? `${failed} of ${results.length} claims FAILED.` : `All ${results.length} claims hold against these sources.`);
 process.exit(failed ? 1 : 0);
