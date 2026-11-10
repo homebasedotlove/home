@@ -316,7 +316,88 @@ first build. This page replaces their "overturned if" with a plan: messages
 after the two gates in §3, the wallet in the order of §7. Neither changes
 the design page's rule that no server of Home's holds a key.
 
-## 10. Not verified
+## 10. Limitations, option by option
+
+Asked directly on 2026-11-10: what each choice cannot do. "Confirmed" means
+pinned in code. Everything else is marked.
+
+### 10.1 Coinbase's wallet as Home's wallet
+
+| Limitation | Standing |
+| --- | --- |
+| It cannot be the account key. It cannot approve a posting key without a transaction on either network, register a Hypersnap-only account, open Farcaster's inbox, or sign the Quorum link | confirmed, §4 |
+| Every approval opens a window on Coinbase's site. Home's pages must not send `Cross-Origin-Opener-Policy: same-origin`, and browsers that block pop-ups block the wallet | confirmed for the window and the header; pop-up blocking is inferred |
+| The SDK reports usage to Coinbase unless Home turns that off; it is on by default | confirmed |
+| The reader's passkey works through Coinbase's site. If that site refuses Home, the wallet is unusable in Home; the money stays reachable only through Coinbase or through a second owner the reader added | the contract allows a second owner, confirmed; the rest is inferred from the design |
+| Ethereum-family chains only | no other chain family appears in the SDK source, read 2026-11-10; not pinned |
+| An address shown on a profile must make its claim on Ethereum or Optimism, not Base, where the wallet mostly lives | confirmed |
+| Signatures are bound to one chain and one wallet address and need a chain lookup to verify, so services that expect an ordinary signature refuse them | confirmed |
+| Sending costs gas unless Home pays it through Coinbase's sponsorship service | **unverified**; documentation blocked |
+| Home must read balances itself; anything beyond ETH and USDC needs an indexing service | design consequence |
+| The product was renamed twice in fourteen months and a replacement SDK is announced with no date | confirmed in the SDK's README |
+| Whether Coinbase restricts countries or sites | **unverified** |
+
+### 10.2 Quorum for messages
+
+| Limitation | Standing |
+| --- | --- |
+| It reaches only people who have linked a Quorum identity. It is not Farcaster's inbox, and nothing sent from Farcaster's app arrives | confirmed by design; how many people that is, **unknown** |
+| The web app is beta, and message delivery was still being repaired in August 2026 | confirmed |
+| One company's servers carry it, with no published terms for other clients | host confirmed; terms not found |
+| Messages are not kept on a server. Clearing the browser's storage loses the history and the key unless the reader exported a backup | confirmed in Quorum's own notes |
+| The link needs an ordinary key that owns the Farcaster account. Accounts held inside Farcaster's app, or by a smart wallet, cannot link | confirmed as coded |
+| The directory is not proof; Home must check both signatures itself | confirmed |
+| The MIT library is incomplete: its README says hooks and utilities are still in the AGPL desktop app. Home writes that part itself | confirmed |
+| Its keys use a curve browsers cannot hold as protected keys, so Home must encrypt them at rest itself | inferred |
+| No audit of the encryption was found | not found, which is not proof of absence |
+| A paid tier exists, paid on Ethereum; it was not found to gate messages | tier confirmed; gating not found |
+
+### 10.3 Hypersnap for messages
+
+| Limitation | Standing |
+| --- | --- |
+| It does not exist: no message type, no proposal | confirmed |
+| If its validators added one, the relay would not carry it, so nobody on Farcaster's side could be reached | confirmed for the relay's type list |
+| Anything written to the chain is public and permanent, so who talks to whom would be visible unless the design hides it | design consequence |
+| Its stated next features are signups, channels and mini app indexing | **web** |
+
+### 10.4 Farcaster's direct casts
+
+| Limitation | Standing |
+| --- | --- |
+| A private interface, reached by presenting as Farcaster's own site. It can be closed without notice | confirmed in two clients |
+| Not encrypted end to end; Farcaster's servers hold readable messages | **web**, Farcaster's own draft |
+| Home would need a relay that every reader's inbox token passes through, which breaks the rule that no server of Home's can act for a reader | confirmed for the relay |
+| Only an ordinary key that owns the account can open it. Accounts held inside Farcaster's app, or by a smart wallet, cannot | confirmed for the 65-byte check |
+| The inbox token covers text. Images and reactions need a full Farcaster session | confirmed |
+| It sits under Network School's terms; whether accounts that declined them can use it is **unknown** | unknown |
+
+Its one advantage is reach: everyone on Farcaster is there.
+
+### 10.5 XMTP
+
+| Limitation | Standing |
+| --- | --- |
+| It finds wallets, not Farcaster accounts. A person is reachable only if they verified an address and that address has an inbox. A reader with no wallet has no inbox | confirmed for the identity model |
+| Home must run a gateway service and pay fees in USDC, about $5 per 100,000 messages, once fees are charged | confirmed as of April 2026 |
+| The network was mid-move in April 2026: one company ran every node, and the browser SDK was not yet marked ready for the fee-charging network. Today's state is **unknown** | confirmed as of April |
+| One browser tab at a time | confirmed |
+| Ten installations per inbox; every browser profile is one, and cleared storage spends one | confirmed for the limit |
+| History on a new device, spam controls and web push were not read | **not checked** |
+| Its largest audience is Coinbase's wallet app, which turned toward trading in September | **unverified** |
+
+### 10.6 What the limits add up to
+
+- **No option reaches everyone privately.** Farcaster's inbox has reach
+  without privacy or permission. Quorum and XMTP have privacy without
+  reach.
+- **Two kinds of account are shut out of every option but XMTP:** those
+  held inside Farcaster's app and those owned by a smart wallet.
+- **Coinbase's wallet is a good money wallet and a poor identity.** Used
+  for money only, its limits are a pop-up, a default that must be turned
+  off, and a dependence on one company.
+
+## 11. Not verified
 
 - Whether Quilibrium permits other clients on Quorum's servers, and
   whether those servers accept requests from another site's pages.
@@ -328,7 +409,7 @@ the design page's rule that no server of Home's holds a key.
   taken Network School's terms.
 - Every flow in §3 and §7. None was run.
 
-## 11. Evidence
+## 12. Evidence
 
 | Claim | Where it was read |
 | --- | --- |
@@ -342,7 +423,7 @@ the design page's rule that no server of Home's holds a key.
 | Quorum's encryption, licences, servers, link and directory | `quorum-shared@c00c61e`, `quorum-desktop@db04b99`, `quorum-mobile@37c0fe6` |
 | XMTP's identity, chains, fees and status | `xmtp/docs-xmtp-org@8b513c9`, `xmtp/libxmtp@ab6fdcd` |
 | The smart wallet contract | `coinbase/smart-wallet@a4e83fd` |
-| The SDK, its name and its window | `base/account-sdk@1c31057` |
+| The SDK, its name, its window, its reporting default and its header requirement | `base/account-sdk@1c31057` |
 | wagmi's connector | `wevm/wagmi@e6d5dad` |
 | The reference client's wallet stack | `farcasterxyz/client@73a39bd` `apps/farcaster-web` |
 | Farcaster's direct-cast drafts | `farcasterxyz/protocol` discussions 226 and 99, issue 5, read on the web |

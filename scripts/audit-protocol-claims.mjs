@@ -1918,6 +1918,44 @@ if (!SNAPSHOT) {
     },
   );
   expectText('Home is MIT, so only MIT and Apache libraries can be used', readFileSync(join(HOME, 'LICENSE'), 'utf8'), 'MIT License');
+
+  // --- limitations, option by option ---
+  const sdkSrc = (rel) => sdk.read(`packages/account-sdk/src/${rel}`);
+  check(
+    "Coinbase's SDK: reporting on by default, a pop-up window, and a header Home must not send",
+    { defaultOn: true, onUnlessFalse: true, reportsTo: true, popup: true, coop: true },
+    {
+      defaultOn: sdkSrc('core/provider/interface.ts').includes('   * Whether to enable functional telemetry.\n   * @default true'),
+      onUnlessFalse: sdkSrc('interface/builder/core/createBaseAccountSDK.ts').includes('if (options.preference.telemetry !== false) {'),
+      reportsTo: sdkSrc('core/telemetry/initCCA.ts').includes("apiEndpoint: 'https://cca-lite.coinbase.com',"),
+      popup: sdkSrc('core/communicator/Communicator.ts').includes(' * This class is responsible for opening a popup window, posting messages to it,'),
+      coop: sdkSrc('util/checkCrossOriginOpenerPolicy.ts').includes("Base Account SDK requires the Cross-Origin-Opener-Policy header to not be set to 'same-origin'."),
+    },
+  );
+  expectText(
+    'Quorum keeps no messages on a server, so cleared browser storage loses them',
+    qd.read('.agents/docs/features/user-data-backup.md'),
+    'scenarios where DM data is permanently unrecoverable due to the P2P architecture (no server-side message storage).',
+  );
+  expectText(
+    "Quorum's MIT library is incomplete: hooks and utilities are still in the desktop app",
+    qs.read('README.md'),
+    '### Hooks *(planned migration)*\nReact Query hooks for data fetching and mutations. Currently in quorum-desktop, will be migrated here.',
+  );
+  expectText('Quorum has a paid tier, paid on Ethereum', qm.read('services/apex/apexPaymentService.ts'), ' * Quorum Apex subscription on Ethereum mainnet.');
+  expectText(
+    "Farcaster's inbox token covers text; images and reactions need a full session",
+    flat(dcAuth),
+    'Images and reactions still go * through the session token (`farcasterAuthToken`), as on farcaster.xyz.',
+  );
+  check(
+    'as of April 2026 XMTP had not marked its browser SDK ready for either the test or the fee-charging network',
+    { browserNotReady: 2, mainnetFunding: true },
+    {
+      browserNotReady: count(xStart, /🔴 Browser/g),
+      mainnetFunding: /\| Payer wallets can be funded on Mainnet\s+\| 🔴\s+\|/.test(xStart),
+    },
+  );
 }
 
 // --- network (optional) ------------------------------------------------------------

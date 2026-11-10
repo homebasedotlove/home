@@ -161,7 +161,8 @@
       "/package.json",
       "/src/config/config.quorum.ts",
       "/.agents/docs/cryptographic-architecture.md",
-      "/src/dev/tests/harness/README.md"
+      "/src/dev/tests/harness/README.md",
+      "/.agents/docs/features/user-data-backup.md"
     ]
   },
   "quorum-mobile": {
@@ -174,7 +175,8 @@
       "/README.md",
       "/services/calling/farcaster-link.ts",
       "/services/api/quorumClient.ts",
-      "/services/farcaster/directCastAuth.ts"
+      "/services/farcaster/directCastAuth.ts",
+      "/services/apex/apexPaymentService.ts"
     ]
   },
   "base-account-sdk": {
@@ -186,7 +188,12 @@
       "/README.md",
       "/packages/account-sdk/package.json",
       "/packages/account-sdk/CHANGELOG.md",
-      "/packages/account-sdk/src/core/constants.ts"
+      "/packages/account-sdk/src/core/constants.ts",
+      "/packages/account-sdk/src/core/provider/interface.ts",
+      "/packages/account-sdk/src/util/checkCrossOriginOpenerPolicy.ts",
+      "/packages/account-sdk/src/core/telemetry/initCCA.ts",
+      "/packages/account-sdk/src/interface/builder/core/createBaseAccountSDK.ts",
+      "/packages/account-sdk/src/core/communicator/Communicator.ts"
     ]
   },
   "coinbase-smart-wallet": {
