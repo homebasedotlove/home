@@ -37,6 +37,9 @@ while read -r name url sha frozen sparse; do
     refresh=1
   elif [ ! -d "$dir/.git" ] || [ "$(git -C "$dir" rev-parse HEAD)" != "$sha" ]; then
     refresh=1
+  elif [ "$(git -C "$dir" config --get home.sparse || echo -)" != "$sparse" ]; then
+    # Same commit, different file list: a path was added to the pin.
+    refresh=1
   fi
   if [ "$refresh" = 1 ]; then
     rm -rf "$dir"
@@ -53,6 +56,7 @@ while read -r name url sha frozen sparse; do
       git -C "$dir" fetch --quiet --depth 1 origin "$ref"
     fi
     git -C "$dir" checkout --quiet FETCH_HEAD
+    git -C "$dir" config home.sparse "$sparse"
   fi
   printf '%-22s %s %s%s\n' "$name" "$(git -C "$dir" rev-parse --short HEAD)" "$(git -C "$dir" log -1 --format=%cs)" "$([ "$frozen" = 1 ] && echo '  frozen' || true)"
 done < <(node -e '

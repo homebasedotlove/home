@@ -3,8 +3,8 @@
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
  * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
  * docs/research/client-landscape.md, docs/research/hypersnap.md,
- * docs/research/both-networks.md and docs/research/optimal-design.md against
- * the sources they were read from.
+ * docs/research/both-networks.md, docs/research/optimal-design.md and
+ * docs/design/experience-walkthrough.md against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -1471,6 +1471,198 @@ if (!SNAPSHOT) {
   );
 }
 
+// --- docs/design/experience-walkthrough.md ------------------------------------------
+
+{
+  const hf = S['hypersnap-fork'];
+  const sc = S.snapchain;
+  const qc = S.quilcast;
+  const on = S['opencaster-now'];
+  const docs = S.docs;
+  const kernel = (rel) => readFileSync(join(HOME, 'packages/home-personalization/src', rel), 'utf8');
+
+  // --- what is on screen today: Home's own copy ---
+  const reasonsTs = kernel('reasons/index.ts');
+  check(
+    'the ten chip labels, in the order of the reason types',
+    ['Following', 'Following · older', 'Friend of a friend', 'Recasted', 'Replied to', 'Pinned', 'Popular in channel', 'Popular', 'Suggested', 'Promoted'],
+    [...reasonsTs.matchAll(/^\s+chip: '([^']+)',$/gm)].map((m) => m[1]),
+  );
+  check(
+    'the four group labels and the two sheet sentences',
+    { groups: ['People you follow', 'Through your network', 'Discovery', 'Promoted'], because: true, unknown: true },
+    {
+      groups: [...(reasonsTs.match(/export const GROUP_LABELS[^{]*\{([\s\S]*?)\};/)?.[1] ?? '').matchAll(/: '([^']+)'/g)].map((m) => m[1]),
+      because: reasonsTs.includes("return `You're seeing this because ${d.because}.`;"),
+      unknown: reasonsTs.includes("return `We don't have a description for this yet (${type}).`;"),
+    },
+  );
+  const patch = readFileSync(join(HOME, 'docs/integration/reference-patch/seam-and-chip.patch'), 'utf8');
+  const sheetButtons = ['Less of this', 'None of this', 'More of this'];
+  check(
+    'the patched client ships the sheet buttons, the score line and the hidden row',
+    { buttons: sheetButtons, score: true, noBoostForPromoted: true, hiddenRow: true },
+    {
+      buttons: sheetButtons.filter((b) => new RegExp(`^\\+\\s+${b}$`, 'm').test(patch)),
+      score: patch.includes('meta.score {score.toFixed(2)}'),
+      noBoostForPromoted: patch.includes('{descriptor?.boostable !== false && ('),
+      hiddenRow: patch.includes('data-testid="home-hidden-row"') && patch.includes('{UNDO_LABEL[row.cause]}'),
+    },
+  );
+  const receiptsTs = kernel('pipeline/receipts.ts');
+  const actionsTs = kernel('prefs/actions.ts');
+  check(
+    'receipts copy and mute durations as the page quotes them',
+    { summary: true, groupUndo: 'Turn back on', keywordUndo: 'Unmute', durations: ['24 hours', '7 days', '30 days', 'Forever'] },
+    {
+      summary: receiptsTs.includes("return `${n} cast${n === 1 ? '' : 's'} hidden on this page.`;"),
+      groupUndo: receiptsTs.match(/'muted-group': '([^']+)'/)?.[1],
+      keywordUndo: receiptsTs.match(/'muted-keyword': '([^']+)'/)?.[1],
+      durations: [...(actionsTs.match(/export const MUTE_DURATIONS = \[([\s\S]*?)\] as const;/)?.[1] ?? '').matchAll(/label: '([^']+)'/g)].map((m) => m[1]),
+    },
+  );
+  const specTypes = kernel('feedspec/types.ts');
+  check(
+    'a feed can be sourced from home, following, a channel, a list, a search or a blend',
+    ['home', 'following', 'channel', 'list', 'search', 'blend'],
+    [...specTypes.matchAll(/^\s*(?:export type Source\w+ = \{ )?kind: '([a-z]+)'/gm)].map((m) => m[1]),
+  );
+
+  // --- what a node gives a client ---
+  const http = hf.read('src/api/http.rs');
+  const stubsAt = http.indexOf('// Write action stubs');
+  const stubs = http.slice(stubsAt, http.indexOf('StatusCode::NOT_FOUND', stubsAt));
+  const stubbed = [
+    '(Method::POST, "/v2/farcaster/cast")',
+    '(Method::POST, "/v2/farcaster/reaction")',
+    '(Method::POST, "/v2/farcaster/follow")',
+    '(Method::POST, "/v2/farcaster/block")',
+    '(Method::POST, "/v2/farcaster/mute")',
+    '(Method::POST, "/v2/farcaster/channel/follow")',
+    '(Method::DELETE, "/v2/farcaster/channel/member")',
+    '(Method::POST, "/v2/farcaster/notifications/mark_seen")',
+    '(Method::POST, "/v2/farcaster/storage/buy")',
+    '(Method::POST, "/v2/farcaster/user/register")',
+  ];
+  check(
+    'a Hypersnap node answers 501 to channel follows, mutes, blocks, mark-seen and storage purchases',
+    { stubbed, notImplemented: true },
+    { stubbed: stubbed.filter((t) => stubs.includes(t)), notImplemented: stubs.includes('StatusCode::NOT_IMPLEMENTED') },
+  );
+  const handled = [
+    '"/v2/farcaster/feed/following" =>',
+    '"/v2/farcaster/feed/trending" =>',
+    '"/v2/farcaster/feed/channels" =>',
+    '"/v2/farcaster/channel/search" =>',
+    '"/v2/farcaster/channel/trending" =>',
+    '"/v2/farcaster/notifications" =>',
+    '"/v2/farcaster/cast/search" =>',
+    '"/v2/farcaster/user/search" =>',
+  ];
+  check('the reads each surface needs have handlers on a Hypersnap node', handled, handled.filter((t) => http.includes(t)));
+  const channelsRs = hf.read('src/api/channels.rs');
+  check(
+    'a node derives channels from casts, and a member is an account that posted',
+    { indexer: true, members: true, parent: true },
+    {
+      indexer: channelsRs.startsWith('//! Channels Indexer for tracking Farcaster channel activity.'),
+      members: channelsRs.includes('/// Number of unique users who have cast in this channel.\n    pub member_count: u64,'),
+      parent: channelsRs.includes('use crate::proto::cast_add_body::Parent;'),
+    },
+  );
+
+  const fs = on.read('apps/web-client/FEATURE_SUPPORT.md');
+  const opencasterSays = [
+    "Discover is trending; Hypersnap's `for_you` handler aliases trending, so we do not label it personalized.",
+    'Hypersnap leaves `viewer_context` empty.',
+    'The node omits reaction subtype and does not provide a complete historical inbox.',
+    'Saved channels are browser shortcuts, not network subscriptions. Participant counts represent accounts that posted. Subscription/member writes are upstream stubs and are not shown as supported actions.',
+    'Network block/mute writes are stubs.',
+    'Unsupported hosted features are not presented as working controls: Farcaster DMs, managed account registration, push delivery, miniapp execution/catalogs, trading, video processing, paid storage, protocol pins, channel subscription management or a personalized recommendation model.',
+  ];
+  check("another client's feature matrix on a Hypersnap node", opencasterSays, opencasterSays.filter((t) => fs.includes(t)));
+
+  // --- posting and follows ---
+  const castRs = sc.read('src/core/validations/cast.rs');
+  check(
+    'a cast may carry four embeds for every account since V20, and 10,000 bytes',
+    { four: true, gate: 'V20', bytes: true },
+    {
+      four: /if is_pro_user \|\| version\.is_enabled\(ProtocolFeature::IncreaseEmbedLimitForAllUsers\) \{\s+4\s+\} else \{\s+2\s+\}/.test(castRs),
+      gate: sc.read('src/version/version.rs').match(/ProtocolFeature::IncreaseEmbedLimitForAllUsers => self >= &EngineVersion::(V\d+)/)?.[1],
+      bytes: castRs.includes('Ok(CastType::TenKCast) if text_bytes.len() > 10_000 =>'),
+    },
+  );
+  check(
+    'a block is a link type, and follow compaction cannot delete it',
+    { accepted: true, durable: true },
+    {
+      accepted: sc.read('src/core/validations/link_tests.rs').includes('assert!(validations::link::validate_link_type("block").is_ok());'),
+      durable: sc.read('src/storage/store/account/link_store.rs').includes('own type (so a "follow" compaction can\'t delete "block" links)'),
+    },
+  );
+
+  // --- channels, messages: what only Farcaster's servers do ---
+  const apiMd = docs.read('docs/reference/farcaster/api.md');
+  const apiLines = [
+    'The hostname is always `https://api.farcaster.xyz`.',
+    'Authenticated endpoints use a self-signed token, signed as an App Key for FID:',
+    'List all channels. No parameters. Not paginated. Not authenticated.',
+    '- `POST /fc/channel-follows`',
+    '- `DELETE /fc/channel-follows`',
+  ];
+  check("following a channel is a call to Farcaster's API; listing channels is public", apiLines, apiLines.filter((t) => apiMd.includes(t)));
+  const dcMd = docs.read('docs/reference/farcaster/direct-casts.md');
+  let mentionDirect = 0;
+  for (const repo of [sc, hf]) {
+    for (const dir of ['src', 'proto']) {
+      for (const f of walk(join(repo.dir, dir), ['.rs', '.proto'])) {
+        if (/direct.?cast|direct.?message/i.test(readFileSync(f, 'utf8'))) mentionDirect += 1;
+      }
+    }
+  }
+  check(
+    "direct casts: outside the protocol by Farcaster's own page, and in neither node's source",
+    { stated: true, intent: true, filesMentioning: 0 },
+    {
+      stated: dcMd.includes('Direct casts are currently not part of the protocol.'),
+      intent: dcMd.includes('https://farcaster.xyz/~/inbox/create/[fid]?text=[message]'),
+      filesMentioning: mentionDirect,
+    },
+  );
+
+  // --- the reference client: what lives on Farcaster's servers ---
+  const clientApi = readFileSync(join(SNAPSHOT, 'packages/farcaster-client-data/src/client/FarcasterApiClient.ts'), 'utf8');
+  const endpoints = [...new Set([...clientApi.matchAll(/['`](\/v\d\/[A-Za-z0-9/_-]+)/g)].map((m) => m[1]))];
+  const withWord = (w) => endpoints.filter((e) => e.includes(w)).length;
+  check(
+    "the reference client's calls to Farcaster's servers, by surface",
+    { directCast: 33, wallet: 17, upload: 4, bookmark: 1, mutedUsers: true },
+    {
+      directCast: withWord('direct-cast'),
+      wallet: withWord('wallet'),
+      upload: withWord('upload'),
+      bookmark: withWord('bookmark'),
+      mutedUsers: endpoints.includes('/v2/get-muted-users'),
+    },
+  );
+  expectText(
+    "the reference web client's wallet page is one sentence",
+    readFileSync(join(SNAPSHOT, 'apps/farcaster-web/src/pages/wallet/WalletPage.tsx'), 'utf8'),
+    'Farcaster Wallet is available on Farcaster mobile.',
+  );
+
+  // --- how one live client handles what the networks do not ---
+  const qr = qc.read('README.md');
+  const quilcastSays = [
+    "Direct casts aren't part of the Farcaster protocol, so the custody key signs farcaster.xyz's authorization once and Quilcast keeps a token that opens direct casts and nothing else",
+    'Farcaster only gives upload URLs to accounts that have a Warpcast signer',
+    "Farcaster has neither, so they're Quilcast's own",
+    'you send about $0.20 of ETH on Optimism',
+  ];
+  check('Quilcast on its inbox, uploads, mutes and the price of an account', quilcastSays, quilcastSays.filter((t) => qr.includes(t)));
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -1541,6 +1733,7 @@ Not checkable offline; re-read when the page is revised:
   The production API refuses casts without opt-in (400)     https://github.com/farcasterxyz/client/issues/6  https://github.com/SmashThunderStone/client/pull/3
   Cassie Heart to app developers on the fork, 2026-11-04    https://github.com/farcasterorg/hypersnap/issues/51
   Whether the fork activated at its heights                 docs/research/optimal-design.md section 6.2 (needs a reachable node)
+  Whether Farcaster's app approves third-party keys, channel follows or the inbox without opt-in   docs/design/experience-walkthrough.md section 12 (needs an account)
   Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
   Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
   State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)

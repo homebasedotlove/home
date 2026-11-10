@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 230/230 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page and the design page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 246/246 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page and the experience walkthrough |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -300,6 +300,25 @@ Snapchain page was written.
     published SDK and no network, the messages the write path needs, and
     checks the SDK refuses what the protocol refuses. It runs in the
     `protocol-audit` workflow.
+- **The experience walkthrough, 2026-11-10.**
+  [`../design/experience-walkthrough.md`](../design/experience-walkthrough.md)
+  says what a reader sees on each surface and whose machines make it work.
+  - *The fork had not happened.* At 19:31 UTC on 10 November no repository
+    had moved since the previous read, and the schedule still projected
+    12 November 09:25 UTC. A re-read is scheduled for 13 November.
+  - *New claims.* 16: Home's own on-screen copy (chip labels, sheet
+    sentences, receipts, mute durations, feed sources), the reads and the
+    501 write stubs on a Hypersnap node, how a node derives channels, the
+    embed limit, block links, Farcaster's documentation on direct casts and
+    channel follows, the reference client's calls to Farcaster's servers by
+    surface, and what Opencaster and Quilcast say they can and cannot do.
+    246 of 246.
+  - *One tool fix.* The fetch script now notices when a pin's file list
+    changes at the same commit and fetches again.
+  - *Not verified.* No node or production endpoint was reachable, so no
+    surface was exercised live. Whether Farcaster's app still approves
+    another client's key, a channel follow or the inbox for an account that
+    has not accepted the new terms is unknown.
 
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing

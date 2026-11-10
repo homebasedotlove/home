@@ -286,6 +286,13 @@ to providers with one bounded fallback, forward signed binary messages to
 nodes, and hold the things a browser cannot (a Neynar key if one is used, a
 webhook endpoint). It stores no session that can act for a user.
 
+A fourth duty follows from §4.3 and was missing here: the service
+countersigns key requests as Home's app, so it holds Home's app custody key
+in a secret store. That key can attribute a key to Home. It cannot post for
+anyone. Added 2026-11-10 while writing
+[the experience walkthrough](../design/experience-walkthrough.md), which
+describes each surface a reader meets under this design.
+
 **Evidence.** A browser cannot post to Farcaster's public node: its preflight
 is refused (**pinned**: measured by another developer on 2026-10-16). It can
 post to the public Hypersnap node directly, which is why the two clients that

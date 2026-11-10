@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 230 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 246 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on

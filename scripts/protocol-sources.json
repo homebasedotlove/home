@@ -122,7 +122,8 @@
     "sparse": [
       "/LICENSE",
       "/README.md",
-      "/apps/web-client/README.md"
+      "/apps/web-client/README.md",
+      "/apps/web-client/FEATURE_SUPPORT.md"
     ]
   },
   "hypersnapweb-now": {
