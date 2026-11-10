@@ -2,7 +2,7 @@
 
 Three questions, answered from the sources that define the protocol: the
 specification and the FIPs that changed it, the contracts and their
-documentation, the Snapchain implementation at `v0.14.2`, and the published
+documentation, the Snapchain implementation at `v0.16.0`, and the published
 client libraries. Written 2026-10-09. Every number below that can be checked
 against a file is pinned by `scripts/audit-protocol-claims.mjs`; the rest
 names its source inline.
@@ -134,8 +134,8 @@ sequenced into shard 0 and fanned out:
 | `EVENT_TYPE_ID_REGISTER` (3) | IdRegistry | the fid exists, its custody and recovery addresses, transfers |
 | `EVENT_TYPE_SIGNER` (1) | KeyRegistry | a key was added or removed, with the app's `SignedKeyRequest` metadata |
 | `EVENT_TYPE_STORAGE_RENT` (4) | StorageRegistry | units rented, by whom, expiring when |
-| `EVENT_TYPE_TIER_PURCHASE` (5) | TierRegistry on Base | Pro status, which allows 10K casts (and, before V20, four embeds) |
-| `EVENT_TYPE_CHANNEL_REGISTER` (6) | channel registrar | channel ownership (gated to V21, not yet on mainnet) |
+| `EVENT_TYPE_TIER_PURCHASE` (5) | TierRegistry on Base | Pro status, which gated 10K casts and banners until V21 and four embeds until V20 |
+| `EVENT_TYPE_CHANNEL_REGISTER` (6) | channel registrar | channel ownership (gated to V24, not yet on mainnet) |
 
 The node configuration has one RPC URL for OP Mainnet, a second for Base and a
 third `l1_rpc_url` for Ethereum, the last needed to validate `.eth` username
@@ -190,7 +190,7 @@ wraps it with the proof that the user meant it.
 | `signer` | the 32-byte Ed25519 public key that signed |
 
 Size limits (`validations/message.rs`): 2,048 bytes of `data_bytes` for an
-ordinary message, 16,384 for a Pro user's 10K cast or a username proof, 65,536
+ordinary message, 16,384 for a 10K cast or a username proof, 65,536
 for a link compaction message.
 
 The message types in use today, from the Snapchain proto:
@@ -204,7 +204,7 @@ The message types in use today, from the Snapchain proto:
 | 5 | `LINK_ADD` | 15 | `LEND_STORAGE` |
 | 6 | `LINK_REMOVE` | 16 | `KEY_ADD` |
 | 7 | `VERIFICATION_ADD_ETH_ADDRESS` | 17 | `KEY_REMOVE` |
-| 8 | `VERIFICATION_REMOVE` | 18–21 | `CHANNEL_UPDATE`, `CHANNEL_MEMBER`, `CHANNEL_PIN`, `CHANNEL_MODERATE` (gated to V21) |
+| 8 | `VERIFICATION_REMOVE` | 18–21 | `CHANNEL_UPDATE`, `CHANNEL_MEMBER`, `CHANNEL_PIN`, `CHANNEL_MODERATE` (gated to V24) |
 
 ### 2.2 Hash, then sign
 
@@ -250,7 +250,7 @@ only; since V14 (FIP-238) its past messages stay.
 
 | Body | Rules (spec §2 and `validations/cast.rs`) |
 | --- | --- |
-| `CastAddBody` | text ≤ 320 bytes as `CAST`, 321–1024 as `LONG_CAST`, up to 10,000 as `TEN_K_CAST` for Pro; up to 4 embeds (URL or cast id) since V20; up to 10 mentions, each a fid with a byte position in `mentions_positions`, ascending and unique; an optional parent that is a cast id or a URL of 1–256 bytes (that URL is how FIP-2 channels work today) |
+| `CastAddBody` | text ≤ 320 bytes as `CAST`, 321–1024 as `LONG_CAST`, up to 10,000 as `TEN_K_CAST` (every fid since V21); up to 4 embeds (URL or cast id) since V20; up to 10 mentions, each a fid with a byte position in `mentions_positions`, ascending and unique; an optional parent that is a cast id or a URL of 1–256 bytes (that URL is how FIP-2 channels work today) |
 | `CastRemoveBody` | the 20-byte hash of the cast; it tombstones the add and is itself kept |
 | `ReactionBody` | type (like, recast) plus a target cast id or target URL |
 | `LinkBody` | a type string of ≤ 8 bytes (`follow`) and a target fid; an optional `displayTimestamp` ≤ the message timestamp |
@@ -273,7 +273,7 @@ with the code that does each step.
    mempool of the shard the fid routes to.
 3. **Sharding.** `shard = (sha256(fid as 8 bytes)[0..4] mod num_shards) + 1`.
    Mainnet has two data shards; shard 0 carries blocks, on-chain events and
-   the state that must be globally ordered (channels, verifications from V21).
+   the state that must be globally ordered (channels, verifications from V24).
 4. **Admission.** The mempool rejects duplicates, applies the feature gates for
    the current engine version, and charges the rate limiters: one `KEY_ADD`
    per minute per fid always; otherwise, where the operator enabled it,
@@ -346,7 +346,7 @@ works; `@farcaster/hub-nodejs` adds the gRPC clients for servers.
 | Read nodes | anyone; follow blocks, serve the full API, forward writes to validators | `read_node` config, `ReadNodeMempool` |
 | Shards | shard 0 for blocks, on-chain events and globally ordered state; data shards 1 and 2; fid → shard by SHA-256 | `routing.rs`, `/v1/info` |
 | Blocks | one-second target; header carries height, timestamp, protocol version, parent hash, state root, events hash; each transaction is one fid's user messages and system messages plus the account root afterwards | `consensus.rs`, `blocks.proto` |
-| Bootstrap | download the latest snapshot (about 200 GB) from the public R2 bucket `pub-d352dd8819104a778e20d08888c5a661.r2.dev`, then stream blocks from peers | `snapshot.rs`, getting started |
+| Bootstrap | download the latest snapshot (several hundred gigabytes) from the public R2 bucket `pub-d352dd8819104a778e20d08888c5a661.r2.dev`, then stream blocks from peers | `snapshot.rs`, getting started |
 | Hardware | 16 GB RAM, 4 cores, 2 TB disk, public IP with 3381–3383 open | getting started |
 
 ### 3.2 Transports and conventions
@@ -379,7 +379,7 @@ Everything is a keyed lookup; there is no query language and no join.
 | Accounts and keys | `fids`, `onChainIdRegistryEventByAddress`, `onChainSignersByFid`, `signersByFid` | the last returns on-chain and gasless keys with scopes and expiry, plus the nonces a `KEY_ADD` needs |
 | Storage | `storageLimitsByFid` | per-type limit and usage, unit cohorts, units |
 | Names | `userNameProofByName`, `userNameProofsByFid`; the fname server's `/transfers?name=` | |
-| Channels (V21) | `channelMetadata`, `channelMembers`, `channelFollowers`, `channelPin`, `channelModerations`, `channelOwner` | code present, not yet active on mainnet |
+| Channels (V24) | `channelMetadata`, `channelMembers`, `channelFollowers`, `channelPin`, `channelModerations`, `channelOwner` | code present, not yet active on mainnet |
 | Node state | `info` (version, shards, `nextEngineVersionTimestamp`), `currentPeers` | |
 
 A "following" timeline is therefore `linksByFid` for the reader, then
@@ -474,8 +474,8 @@ Home has to compute its own discovery reasons.
 | [farcasterxyz/protocol](https://github.com/farcasterxyz/protocol) `docs/OVERVIEW.md`, `docs/SPECIFICATION.md`, `vectors/` | `aa6bdfb`, 2026-06-18 | design rationale, message and CRDT rules, fname server |
 | FIPs [#98 Flexible Storage](https://github.com/farcasterxyz/protocol/discussions/98), [#103 Onchain Signers](https://github.com/farcasterxyz/protocol/discussions/103), [#133 Gateways](https://github.com/farcasterxyz/protocol/discussions/133), [#207 Snapchain](https://github.com/farcasterxyz/protocol/discussions/207), [#236 Farcaster Pro](https://github.com/farcasterxyz/protocol/discussions/236), [#238](https://github.com/farcasterxyz/protocol/discussions/238), [#266 Snapchain Signers](https://github.com/farcasterxyz/protocol/discussions/266), [#276 Channels](https://github.com/farcasterxyz/protocol/discussions/276), [#277 Config Registry](https://github.com/farcasterxyz/protocol/discussions/277) | read 2026-10-09 | why each on-chain piece exists; chain choices |
 | [farcasterxyz/contracts](https://github.com/farcasterxyz/contracts) `docs/docs.md` | `58d6b28`, 2026-08-13 | deployment map, invariants, migration, assumptions |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `src/`, `proto/`, `site/docs/` | `8f82bcc`, 2026-08-13, v0.14.2 | validation, mempool, consensus, sharding, events, connectors, API reference, whitepaper |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `src/`, `proto/`, `site/docs/` | `1405794`, 2026-11-04, v0.16.0 (re-pinned 2026-11-10) | validation, mempool, consensus, sharding, events, connectors, API reference, whitepaper |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | architecture pages, FAQ, developer guides |
-| `@farcaster/core` 0.20.0, `@farcaster/hub-nodejs` 0.17.0 | npm, 2026-07-29 | builders, signers, error codes, clients |
+| `@farcaster/core` 0.21.0, `@farcaster/hub-nodejs` 0.18.0 | npm, 2026-10-25 | builders, signers, error codes, clients |
 | [Dan Romero, 2023-08-22](https://x.com/dwr/status/1693986385315963024) | via search excerpt | the stated reasons for OP Mainnet |
 | Farcaster engineering note on HackMD (`hackmd.io/@farcasterxyz/rkfR8q0k2`) | via search excerpt only; blocked here | the Goerli-era deployment options |

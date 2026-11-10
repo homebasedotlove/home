@@ -8,6 +8,12 @@ pinned by `scripts/audit-protocol-claims.mjs`; vendor prices and the sampled
 clients' manifests are cited to the date they were read, because the vendor's
 pages are blocked from this sandbox and the manifests are not pinned sources.
 
+> **Since this page was written** (2026-10-14): Farcaster was sold again, its
+> production API now refuses casts without an opt-in, Neynar's hosted node
+> endpoints ask for a key or payment, and the network is about to fork. The
+> answers below were true on their date. What they mean now is in
+> [`optimal-design.md`](optimal-design.md) §1 and §3.
+
 ---
 
 ## 0. The short answers

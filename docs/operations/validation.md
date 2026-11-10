@@ -19,7 +19,8 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 193/193 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page and the both-networks page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 225/225 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page and the design page |
+| 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
 matter: everything prior tests Home against Home.
@@ -264,6 +265,38 @@ Snapchain page was written.
   predicted is now a pinned sentence in a third party's README, and the ballot
   contract and counts of the Network School vote are pinned from the census
   data file. The casts the page quotes are web-only and listed as such.
+- **Everything re-read, 2026-11-10.** For [`../research/optimal-design.md`](../research/optimal-design.md).
+  - *Against the new client snapshot `73a39bd` (2026-10-30).* `pnpm check:all`:
+    259 tests, types compatible, every drift scenario caught, 33 of 34 client
+    claims (the mobile seam line again). The reference patch applies cleanly,
+    and the fork gate passes there: the packages build, the three client-side
+    suites pass their 14 assertions, and the web app typechecks. The
+    production bundle was not rebuilt.
+  - *Against upstream heads.* 171 of the 193 protocol claims still held. Six
+    were Snapchain facts: 0.16.0, three engine versions activated in a week,
+    channels moved from V21 to V24, 10,000-byte casts opened to every fid, the
+    snapshot size. `snapchain` is re-pinned to `1405794` and the four pages
+    that state those facts are corrected. Neynar's spec, which dropped one
+    path, is re-pinned too. Sixteen were in pages that record
+    what a third party said on a date; those sources are now marked frozen,
+    so the weekly run against upstream heads leaves them at their commit and
+    reports only living claims.
+  - *One correction.* The Hypersnap page said Snapchain was MIT. It is
+    GPL-3.0, at the old pin and the new; the audit pins both.
+  - *New claims.* 32, on six sources: Hypersnap at its fork commit `ce9d003`
+    (the heights, the eight validators, the relay, native accounts, storage,
+    the routes), a fork of the reference client that went protocol-direct,
+    Quilcast, Opencaster and hypersnap.org as they stand, and Home's own
+    kernel where the design says it already fits. 225 of 225. A fresh fetch
+    of all twenty sources takes 17 seconds and 116 MB, because large
+    repositories are now fetched sparsely.
+  - *One tool fix.* Run against upstream heads, the audit crashed on a file a
+    repository had moved. A missing file now fails the claims that read it
+    and is listed, which is what that run is for.
+  - *One new gate.* `scripts/validate-write-path.mjs` builds, with the
+    published SDK and no network, the messages the write path needs, and
+    checks the SDK refuses what the protocol refuses. It runs in the
+    `protocol-audit` workflow.
 
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing

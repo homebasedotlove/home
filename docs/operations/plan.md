@@ -3,43 +3,56 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 140 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 225 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
-settles it. Written 2026-10-14.
+settles it. Written 2026-10-14. **The decision in §0 was revised on
+2026-11-10**; the steps below it stand except where marked.
 
 The pages behind this one: [the gap analysis](path-to-operational.md), [the
 runbook](setup-end-to-end.md), [the protocol facts](plugging-into-snapchain.md),
-[the mechanics](../research/protocol-mechanics.md) and [the
-landscape](../research/client-landscape.md).
+[the mechanics](../research/protocol-mechanics.md), [the
+landscape](../research/client-landscape.md) and, for the revised decision,
+[the design page](../research/optimal-design.md).
 
 ---
 
 ## 0. The decision
 
-Ship Home as a web client with **one UI and two data sources behind an
-adapter**, and let evidence from the network, not preference, decide which
-source carries real users first.
+**Revised 2026-11-10.** Ship Home as a web client with **one interface over a
+registry of data providers that spans both networks**, with Home's own ranking
+and reasons as the default feed. The reasoning and the evidence are in
+[the design page](../research/optimal-design.md); this is its summary.
 
-- **Source A, Farcaster's production API.** It is the only place the ranked
-  feed and the per-cast reason Home's why-chip reads actually exist, and the
-  template repository Home is built from tells forks to point at it. Use it to
-  put the first real readers on Home's domain **if** two tests pass and the
-  owner says yes.
-- **Source B, the protocol.** Snapchain through Neynar's free tier and
-  Farcaster's public read nodes, gasless signers, Sign In With Farcaster, and
-  Home's own ranking. It is the independent future, the fallback if Source A is
-  refused, and the only source that scales without permission. Start building
-  it now, on a free local devnet.
-- **Spend money once, on a read node, when usage says so.** Not before, and
+- **The protocol path is the product.** Reads from nodes and shaped APIs on
+  Farcaster and on Hypersnap, posting keys held on the device and authorised
+  by the reader's wallet, sign-in verified against a node, and a thin
+  stateless gateway. Build it now, on a free local devnet. This was
+  "Source B".
+- **Home ranks and explains.** The why-chip shows a reason Home computed and
+  the facts behind it. It no longer waits on a field Farcaster controls.
+- **The production API is an option, not a step.** This was "Source A", and
+  it was to carry the first readers. Since 2026-10-15 it refuses casts from
+  accounts that have not accepted Network School's social contract, and no
+  one has said a third-party origin may read from it. The adapter stays able
+  to show Farcaster's ranking beside Home's for a reader who wants it, off
+  until the origin test in §1.3 passes and the owner has an answer on terms.
+- **Both networks, visibly.** Hypersnap stops following Farcaster's
+  validators at block heights projected for 2026-11-12. Every item and every
+  write says which network and node it came from or went to, and the reader
+  chooses.
+- **Spend money when there are readers, on two read nodes.** Not before, and
   not on being a validator.
 - **Mobile and account creation last.** They carry the entire credential list
   and neither is needed to find out whether the legible feed is wanted.
 
-Why this and not "protocol only from day one": the differentiating feature
-runs on a field that protocol data does not carry. Why not "production API
-only": that path is unsanctioned for a deployed domain until someone says
-otherwise, and it leaves Home with no feed if the answer is no.
+What the version of 2026-10-14 said, and why it changed. It put the
+production API first because "the differentiating feature runs on a field
+that protocol data does not carry". That is still true of the field and no
+longer a reason: seven of the ten reasons can be computed from protocol data,
+with their evidence attached (design page §4.2), and the API that carries the
+field now enforces a contract on writes. "Source A" and "Source B" below
+mean the production API and the protocol path.
 
 ---
 
@@ -47,8 +60,11 @@ otherwise, and it leaves Home with no feed if the answer is no.
 
 ### 1.1 Re-pin to the current upstream snapshot
 
-**Do.** Replace every citation of snapshot `b6922e2` with `0c289ed`
-(2026-09-30), change the mobile seam line from 311 to 326, re-run the gate.
+**Do.** Replace every citation of snapshot `b6922e2` with the current upstream
+snapshot, which is `73a39bd` (2026-10-30) as of 2026-11-10 and was `0c289ed`
+when this step was written. Change the mobile seam line from 311 to 326 and
+re-run the gate. The old snapshot survives as `farcasterorg/client-snapshot`,
+so each cited line can be matched mechanically.
 
 **How.** The citations are in 8 files (`grep -rn b6922e2`); the seam line in 4.
 Then `SNAPSHOT=<checkout> pnpm check:all` and the fork gate from the
@@ -58,7 +74,10 @@ Then `SNAPSHOT=<checkout> pnpm check:all` and the fork gate from the
 `apps/farcaster-web/package.json` changed among its 34 files, `verify:compat`
 passes, all eleven drift mutations are caught, all 14 fork assertions pass, the
 web app typechecks, and 33 of 34 client claims hold with the seam line the only
-exception. Validated 2026-10-09 and re-run 2026-10-14. The `check` workflow
+exception. Validated 2026-10-09 and re-run 2026-10-14. Re-run 2026-11-10
+against `73a39bd` with the same results: the patch applies, two `package.json`
+files are the only patched files upstream changed, 259 tests, 14 fork
+assertions, the web typecheck, 33 of 34 claims. The `check` workflow
 clones upstream HEAD, so **CI is red on exactly this line until the re-pin**.
 
 **Done when.** `pnpm audit:claims` reports 34 of 34 against upstream HEAD.
@@ -124,7 +143,12 @@ and `curl localhost:3381/v1/info` returning `numShards: 2`.
 
 Each item is a change to the fork that the earlier passes already located. All
 of it is developed on the devnet and rehearsed on testnet before it touches a
-mainnet account.
+mainnet account. The table is the version of 2026-10-14. The revision of
+2026-11-10 keeps its order and changes two things: item 2 is now the default
+feed rather than a fallback label, and every item is built against a list of
+providers across both networks rather than one. The revised table, with a
+gateway, node settings and three preference facets added, is in
+[the design page](../research/optimal-design.md) §6.1.
 
 | # | Build | How | Evidence | Done when |
 | --- | --- | --- | --- | --- |
@@ -137,8 +161,9 @@ mainnet account.
 | 7 | **Storage headroom.** `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit | a small settings panel | the 2025 unit limits are pinned (audit: "2025 storage unit limits") | the number matches the node |
 
 Channels stay on the Client API until on-protocol channels reach mainnet;
-their message types are gated to V21, which is not on the schedule (audit:
-"V21 (channels) is not on the mainnet schedule").
+their message types are gated to V24, which is not on the schedule (audit:
+"V24 (channels) is not on the mainnet schedule"). They were gated to V21
+until October 2026, when V21 was used for something else.
 
 Items 1, 3 and 5 are where Home becomes a client of both networks at once:
 providers and nodes as configuration with a network tag on every item, login
@@ -153,10 +178,10 @@ a list of nodes with per-node status. The reasoning and three small additions
 
 | Signal | Action | Evidence |
 | --- | --- | --- |
-| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
+| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it; one per network once the fork holds ([design page](../research/optimal-design.md) §4.10) | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
 | Home wants Neynar's feeds and search at volume without running anything | Neynar Scale, $249 a month for 60M credits | Neynar's docs via search excerpts; **unverified** here |
-| Neynar's terms, prices or shapes change, or Home wants reads with no key and no credits | point the adapter at a **Hypersnap node**: `haatz.quilibrium.com` for development, Home's own later; same `/v2/farcaster/*` shapes | [`../research/hypersnap.md`](../research/hypersnap.md) §6: 103 of Neynar's 104 paths exist by name on a Hypersnap node; run its checks a–f first, because its validator list is already stale |
-| Never | become a validator; depend on the production API for anything but the ranked feed, and only while permitted | validators are a permissioned set of seven keys (audit: "latest validator set has seven keys") |
+| Neynar's terms, prices or shapes change, or Home wants reads with no key and no credits | point the adapter at a **Hypersnap node**: `haatz.quilibrium.com` for development, Home's own later; same `/v2/farcaster/*` shapes | [`../research/hypersnap.md`](../research/hypersnap.md) §6: all but one of the paths in Neynar's spec exist by name on a Hypersnap node; run its checks a–f first, because its validator list is already stale |
+| Never | become a validator; depend on the production API for anything. Its ranking is an option a reader can turn on, and only while permitted | validators are a permissioned set of seven keys (audit: "latest validator set has seven keys") |
 
 ---
 
@@ -179,11 +204,14 @@ a list of nodes with per-node status. The reasoning and three small additions
 
 | Claim the plan rests on | How it was validated |
 | --- | --- |
-| The patch applies to upstream HEAD and the fork gate passes there | `git apply --check`, `pnpm verify:compat`, `pnpm verify:compat:drift`, 14 fork assertions, `tsc`; 2026-10-09, re-run 2026-10-14 |
+| The patch applies to upstream HEAD and the fork gate passes there | `git apply --check`, `pnpm verify:compat`, `pnpm verify:compat:drift`, 14 fork assertions, `tsc`; 2026-10-09, re-run 2026-10-14, and again 2026-11-10 against `73a39bd` |
 | Home's own suite is green | `pnpm check:all`: 259 tests, compat, 11 drift scenarios, 34 claims at the pinned snapshot; see [validation](validation.md) |
 | The template invites forking and points local builds at the production API | pinned: "template README statements", "template licence" |
 | The why-chip's data exists only on that API | pinned: "feed items carry includeReason and score", "v2 spec has no for-you feed"; Snapchain's API is lists only (pinned: "HTTP routes the page relies on") |
 | Gasless signers, their limits, and the deeplink flow | pinned: 9 audit rows across the Snapchain and docs sources |
+| The device half of the write path works with the published SDK | run 2026-11-10: `pnpm validate:write-path`, 13 checks against `@farcaster/core` 0.21.0 |
+| The production API refuses casts without opt-in | web: two independent reports of 2026-10-15 and 10-16 ([design page](../research/optimal-design.md) §1.1); **untested** here |
+| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `ce9d003` |
 | Read nodes need no RPC and can write | pinned: 2 rows read from `src/main.rs` and `src/mempool/mempool.rs` |
 | Public read nodes exist | pinned: "public node registry"; their policy **untested** |
 | Neynar is the ecosystem default | six client manifests read 2026-10-14 (five depend on Neynar); both node guides recommend it (pinned: "both node guides recommend Neynar") |
@@ -204,7 +232,9 @@ against upstream HEAD and names any claim that moves.
 | Public nodes rate-limit or refuse writes | §1.3b; fall back to Neynar's hosted node, then an own read node |
 | Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
 | Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as reported for a day on 2026-10-14 | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
-| The Hypersnap pivot splits the network | a network tag on every item, dedupe by message hash, writes posted to a node on each network, Home's app fid never migrated ([`../research/both-networks.md`](../research/both-networks.md) §3); nothing to build until a release fixes `PIVOT_HEIGHT` |
+| The Hypersnap validator fork, projected for 2026-11-12, splits the network | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
+| The fork is postponed again or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
+| The production API closes to third-party origins, or its ranked feed is gated by the social contract | nothing depends on it since the revision of 2026-11-10; Home's own ranking and reasons are the default |
 | Readers cannot sign a gasless request from the Farcaster app | §2.4 on a device; the deeplink path with sponsorship is the fallback and is documented |
 | Testnet does not accept mainnet accounts | §1.3c; the devnet remains the test ground |
 | Upstream moves the seams again | the audits fail loudly and the patch re-applies; measured once already: one line moved in one snapshot |

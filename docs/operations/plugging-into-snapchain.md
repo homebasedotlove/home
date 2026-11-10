@@ -44,7 +44,7 @@ mainnet since 2026-05-07) wherever the user has a wallet.
 
 ## 1. What changed since Hubble
 
-The Snapchain repository at `v0.14.2` (2026-08-13) is the reference
+The Snapchain repository at `v0.16.0` (2026-10-28) is the reference
 implementation and the only one on mainnet. Hubble is retired. Facts a client
 author needs, with where each comes from:
 
@@ -75,7 +75,10 @@ holds the mainnet schedule. Features that matter to a client:
 | V18 | 2026-06-22 | One more free year on every already-rented storage unit |
 | V19 | 2026-07-27 | Block links (FIP #263) |
 | V20 | 2026-08-13 | Four embeds per cast for everyone (was two, four for Pro) |
-| V21 | **not scheduled** | On-protocol channels (FIP #276, draft). Code is in `0.14.1`, gated, "blocked on the mainnet registrar deployment" |
+| V21 | 2026-10-23 | 10,000-byte casts and profile banners for every fid, no longer only Pro (FIP #273) |
+| V22 | 2026-10-23 | Chained casts and a cast format version (FIP #278) |
+| V23 | 2026-10-29 | A transactions root in block and shard headers; unique on-chain event keys. Scheduled the day after its release |
+| V24 | **not scheduled** | On-protocol channels (FIP #276, draft). Code has been in since `0.14.1`, gated, "blocked on the mainnet registrar deployment"; it was moved from V21 to V24 in October 2026 |
 
 The protocol specification repository (2026-06-18) still documents neither
 `KEY_ADD` nor channels. Read the Snapchain repo, not the spec, for current
@@ -85,7 +88,7 @@ behaviour, and poll `GET /v1/info` for the next engine version timestamp.
 
 | Rule | Value |
 | --- | --- |
-| Plain cast text | 320 bytes; `LONG_CAST` up to 1024; `TEN_K_CAST` Pro only |
+| Plain cast text | 320 bytes; `LONG_CAST` up to 1024; `TEN_K_CAST` up to 10,000, for every fid since V21 (Pro only before) |
 | Embeds per cast | 4 since V20 |
 | Timestamp | Farcaster epoch seconds (from 2021-01-01); at most 10 minutes in the future (`ALLOWED_CLOCK_SKEW_SECONDS`; the docs page still says 15) |
 | Encoding on submit | `Message` protobuf as `application/octet-stream`, **`dataBytes` set and `data` unset** |
@@ -132,12 +135,12 @@ Three options, in increasing order of independence:
    **no "for you" endpoint**: nothing in the public vendor surface returns a
    ranking reason for a cast.
 3. **Your own node.** `getting-started.mdx` asks for 16 GB RAM, 4 cores, 2 TB
-   of disk and a public IP with 3381–3383 open; the snapshot is about 200 GB
+   of disk and a public IP with 3381–3383 open; the snapshot is several hundred gigabytes
    and takes hours to sync; the AWS walk-through budgets roughly $100 a month.
    The node's HTTP server sends `Access-Control-Allow-Origin: *` by default, so
    a browser can read it directly. Anything that needs an index the node lacks
    (a reverse-chronological "following" timeline is the first one) is built by
-   mirroring into Postgres with `@farcaster/shuttle` (1.0.3, 2026-07-29).
+   mirroring into Postgres with `@farcaster/shuttle` (1.0.5, 2026-10-28).
 
 Snapchain serves lists keyed by FID, by parent, by target and by mention. It
 has no feed, no search, no notifications and no ranking. A client built only on
@@ -146,8 +149,8 @@ fan out one `linksByFid` plus N `castsByFid` calls to build it, or mirror.
 
 ### 2.2 Writing
 
-Build the message with `@farcaster/core` 0.20.0 / `@farcaster/hub-nodejs`
-0.17.0 (both 2026-07-29; the builders set `dataBytes`), sign it with the user's
+Build the message with `@farcaster/core` 0.21.0 / `@farcaster/hub-nodejs`
+0.18.0 (both 2026-10-25; the builders set `dataBytes`), sign it with the user's
 Ed25519 signer, and POST it to `/v1/submitMessage` on a node you can reach.
 Then confirm it by reading it back or by following `/v1/events`, because
 inclusion is best-effort. The gRPC-web package `@farcaster/hub-web` is
@@ -192,7 +195,7 @@ auth address and the signer in one transaction.
 | Need | Mechanism | Library |
 | --- | --- | --- |
 | Prove who the visitor is | Sign In With Farcaster through `https://relay.farcaster.xyz`; the user scans or taps and the Farcaster app (or an auth address wallet) signs | `@farcaster/auth-client` 0.7.1, `@farcaster/auth-kit` 0.8.2 (2026-02-05) |
-| Inside a mini app | Quick Auth against `https://auth.farcaster.xyz`, returns a JWT | `@farcaster/miniapp-sdk` 0.3.0 |
+| Inside a mini app | Quick Auth against `https://auth.farcaster.xyz`, returns a JWT | `@farcaster/miniapp-sdk` 0.4.0 |
 | Call the Farcaster Client API | Self-signed bearer: base64url header `{fid, type:'app_key', key}`, payload `{exp}`, Ed25519 signature by a signer the FID has approved | any Ed25519 signer |
 
 Note the dependency: most authenticated Client API endpoints need an app key,
@@ -225,7 +228,7 @@ with `GET /v2/farcaster/user/fid/` to reserve a fresh FID.
 | Surface | Today | On the horizon |
 | --- | --- | --- |
 | Ranked home feed with reasons and scores | private `~api`; nothing public | nothing proposed |
-| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V21; registrations through a stock Basenames registrar, Base by default with Ethereum L1 still under consideration |
+| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V24; registrations through a stock Basenames registrar, Base by default with Ethereum L1 still under consideration |
 | Direct casts | off-protocol, API keys on request | FIP #226 draft since 2025-03 |
 | Blocks, verifications of connected accounts, primary addresses, starter packs | Client API | partly on protocol already (primary addresses since V5) |
 | Notifications, search, spam labels, quality scores, Pro | backend | nothing public |
@@ -316,7 +319,7 @@ Concretely:
    (1024 as long casts, 10 KB for Pro); 4 embeds; 1000 messages per block.
 5. **Delivery is best-effort.** A successful `submitMessage` can still miss a
    block; `dataBytes` is mandatory; confirmation means reading back.
-6. **Half the product is off-protocol** (section 2.6): channels until V21
+6. **Half the product is off-protocol** (section 2.6): channels until V24
    ships on mainnet, moderation, direct casts, notifications, search, labels,
    Pro. The documented way in is `api.farcaster.xyz`, which needs an approved
    signer to call.
@@ -325,7 +328,7 @@ Concretely:
    provider is the same company. Running a node buys read independence, not a
    vote.
 8. **Running a node is real ops.** 16 GB RAM, 4 cores, 2 TB, public IP,
-   ~200 GB snapshot, hours to sync, ~$100/month on AWS; Postgres, Redis and
+   a snapshot of several hundred gigabytes, hours to sync, ~$100/month on AWS; Postgres, Redis and
    Node 21 for shuttle.
 9. **The target moves every few weeks.** Five engine versions between May and
    August 2026; the spec repository lags the code; libraries must track
@@ -343,15 +346,15 @@ Repositories were shallow-cloned; the commit date is the state read.
 
 | Source | State read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `8f82bcc`, 2026-08-13, v0.14.2 | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `1405794`, 2026-11-04, v0.16.0 (re-pinned 2026-11-10 from `8f82bcc`) | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
 | [farcasterxyz/protocol](https://github.com/farcasterxyz/protocol) | `aa6bdfb`, 2026-06-18 | specification, FIP discussions [#225](https://github.com/farcasterxyz/protocol/discussions/225), [#226](https://github.com/farcasterxyz/protocol/discussions/226), [#229](https://github.com/farcasterxyz/protocol/discussions/229), [#238](https://github.com/farcasterxyz/protocol/discussions/238), [#262](https://github.com/farcasterxyz/protocol/discussions/262), [#263](https://github.com/farcasterxyz/protocol/discussions/263), [#266](https://github.com/farcasterxyz/protocol/discussions/266), [#269](https://github.com/farcasterxyz/protocol/discussions/269), [#272](https://github.com/farcasterxyz/protocol/discussions/272), [#276](https://github.com/farcasterxyz/protocol/discussions/276), [#277](https://github.com/farcasterxyz/protocol/discussions/277) |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | Client API reference, signer requests, apps, contracts, direct casts |
 | [farcasterxyz/contracts](https://github.com/farcasterxyz/contracts) | `58d6b28`, 2026-08-13 | StorageRegistry, SnapchainConfigRegistry, TierRegistry |
 | [farcasterxyz/auth-monorepo](https://github.com/farcasterxyz/auth-monorepo) | `ae3dffd`, 2026-03-30 | SIWF relay |
 | [farcasterxyz/miniapps](https://github.com/farcasterxyz/miniapps) | `8a052e4`, 2026-08-04 | Quick Auth |
-| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `6c6307d`, 2026-08-07 | v2 API and hosted Snapchain API specs |
+| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `0c4d078`, 2026-11-02 (re-pinned 2026-11-10 from `6c6307d`) | v2 API and hosted Snapchain API specs |
 | [farcasterxyz/client](https://github.com/farcasterxyz/client) | `b6922e2` | what the reference client calls |
-| npm registry | read 2026-10-05 | `@farcaster/core` 0.20.0, `hub-nodejs` 0.17.0, `hub-web` 0.13.0, `shuttle` 1.0.3, `auth-client` 0.7.1, `auth-kit` 0.8.2, `miniapp-sdk` 0.3.0 |
+| npm registry | read 2026-11-10 | `@farcaster/core` 0.21.0, `hub-nodejs` 0.18.0, `hub-web` 0.14.0, `shuttle` 1.0.5, `auth-client` 0.7.1, `auth-kit` 0.8.2, `miniapp-sdk` 0.4.0 |
 | [Neynar: "Neynar is acquiring Farcaster"](https://neynar.com/blog/neynar-is-acquiring-farcaster), [The Block](https://www.theblock.co/amp/post/386549/haun-backed-neynar-acquires-farcaster-after-founders-pivot-to-wallet-app) | 2026-01-21 | stewardship |
 | [Farcaster blog: "Snapchain is now live"](https://farcaster.blog/snapchain-is-now-live) | 2025-04 | mainnet cut-over |
 | [Neynar developer pricing](https://dev.neynar.com/pricing) (via search snippets; page blocked here) | 2026 | plan tiers |

@@ -22,6 +22,8 @@ on:
       - docs/operations/plan.md
       - docs/research/hypersnap.md
       - docs/research/both-networks.md
+      - docs/research/optimal-design.md
+      - scripts/validate-write-path.mjs
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh
       - scripts/protocol-sources.json
@@ -41,6 +43,10 @@ jobs:
             https://github.com/farcasterxyz/client packages/farcaster-adapter/.snapshot
       - run: bash scripts/fetch-protocol-sources.sh
       - run: node scripts/audit-protocol-claims.mjs
+      # The device half of the write path, against the published SDK: a scoped
+      # gasless key, a cast, a reaction and a follow, built and validated offline.
+      - run: npm i --prefix .write-path-deps --no-audit --no-fund @farcaster/core@0.21.0
+      - run: node scripts/validate-write-path.mjs
 
   latest:
     runs-on: ubuntu-latest

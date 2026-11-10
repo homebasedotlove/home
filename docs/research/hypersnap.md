@@ -13,6 +13,14 @@ web-only and marked as such. hypersnap.org, the public node and the news sites
 are blocked from this sandbox, so what they say is taken from the repositories
 that generate them and from search excerpts.
 
+> **Since this page was written.** The validator-list stall it predicted
+> happened on 2026-10-22, and on 2026-11-09 Hypersnap scheduled its own
+> validator set at fixed block heights, projected for 2026-11-12, with a relay,
+> free accounts and no storage rent. After that it is no longer a read node of
+> Farcaster's network. This page is kept as it was read on 2026-10-23 and its
+> claims are pinned at those commits. The current state and what it means for
+> Home are in [`optimal-design.md`](optimal-design.md).
+
 ---
 
 ## 0. The short answers
@@ -211,7 +219,7 @@ one with extras.
 | Signer onboarding | Farcaster's onboarding and `/v2/signed-key-request` | sponsored or managed signers; SIWN (retired Aug 2026) | 501; gasless `KEY_ADD` signed by the custody wallet (Opencaster shows the flow) | gasless `KEY_ADD` or an on-chain `KeyGateway` add |
 | Login | Farcaster's own | Neynar's SIWN/SIWF relay | 501; the client verifies custody signatures itself | the client verifies custody signatures itself |
 | Media, push, mini-app host, DMs | yes | media and notifications products | no, no, notification plumbing only, no | no |
-| Server licence and terms | closed; Farcaster's terms | closed; Neynar's terms | GPL-3.0; whatever `haatz`'s operator allows (no posted policy found) | MIT |
+| Server licence and terms | closed; Farcaster's terms | closed; Neynar's terms | GPL-3.0; whatever `haatz`'s operator allows (no posted policy found) | GPL-3.0 |
 | Age and maintenance | years; owner changed 2026-01 and 2026-10 | years; staff largely moved to Network School 2026-10 (web) | eight months; 119 commits; principal author one person; validator list already stale (§2.3) | the canonical implementation, 0.14.3 |
 | Cost to run | nothing, if permitted | nothing to $249 a month | a read node's machine plus index memory and disk; `haatz` is free with no SLA | a read node's machine, about $100 a month |
 
@@ -279,9 +287,10 @@ AGPL-3.0 in an MIT repository would relicense Home.
   means trusting one operator's node with no posted terms, which is also
   Opencaster's position ("the upstream node remains a network availability
   dependency").
-- **Licence.** GPL-3.0 for the node, AGPL-3.0 for Opencaster, MIT for Snapchain
-  and the reference client. Running GPL software is unrestricted; Home's own
-  code stays MIT as long as it links to neither.
+- **Licence.** GPL-3.0 for the node and for Snapchain itself, AGPL-3.0 for
+  Opencaster, MIT for the reference client. (This page first said Snapchain was
+  MIT; it is not, and the audit now pins both licences.) Running GPL software is
+  unrestricted; Home's own code stays MIT as long as it links to neither.
 - **Governance, both sides.** Farcaster: Neynar bought it on 2026-01-21;
   Network School bought the app, the protocol repositories and related products
   from Neynar on 2026-10-15, announced a rebrand to "Network State Protocol"
@@ -350,7 +359,7 @@ validator-list check above added to the weekly audit.
 | [arcacomputer/hypersnapweb](https://github.com/arcacomputer/hypersnapweb) | `02ef0f0`, 2026-09-02 | hypersnap.org's curated facts: organisation date, public node, requirements, token notice |
 | [arcabotai/hypersnap-web](https://github.com/arcabotai/hypersnap-web) (Opencaster) | `ef608f8`, 2026-10-22 | §4: licence, gateway, Worker, signing model, scopes, exclusions, beta status |
 | [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `8f82bcc` pinned; `85c49b0` 2026-10-22 for the v18 sets and 0.14.3 | §2.3, §3: read-node signature verification, onchain-config scripts, validator history |
-| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `6c6307d`, 2026-08-07 | §0, §3: the 104 `/v2/farcaster/*` paths Hypersnap is compared against |
+| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `6c6307d`, 2026-08-07 when read; the audit now compares against the current spec and asserts "all but one path" | §0, §3: the 104 `/v2/farcaster/*` paths Hypersnap is compared against |
 | farcasterorg/protocol discussions [#4](https://github.com/farcasterorg/protocol/discussions/4), [#5](https://github.com/farcasterorg/protocol/discussions/5), [#13](https://github.com/farcasterorg/protocol/discussions/13), [#19](https://github.com/farcasterorg/protocol/discussions/19) | web, 2026-10-22 | §2.1–2.2 |
 | Press on the Network School acquisition and on the fork's token discussion | web excerpts, 2026-10-22 | §2.2, §5; **unverified** beyond the excerpts |
 

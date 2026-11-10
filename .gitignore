@@ -14,3 +14,6 @@ packages/*/src/**/*.js.map
 
 # Clones made by scripts/fetch-protocol-sources.sh
 .protocol-sources/
+
+# The published SDK, installed on demand for scripts/validate-write-path.mjs
+.write-path-deps/

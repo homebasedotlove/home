@@ -16,7 +16,8 @@
     "verify:compat:drift": "pnpm --filter farcaster-adapter verify:compat:drift",
     "audit:claims": "node scripts/audit-claims.mjs",
     "audit:protocol": "node scripts/audit-protocol-claims.mjs",
-    "fetch:protocol-sources": "bash scripts/fetch-protocol-sources.sh"
+    "fetch:protocol-sources": "bash scripts/fetch-protocol-sources.sh",
+    "validate:write-path": "node scripts/validate-write-path.mjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

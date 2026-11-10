@@ -2,8 +2,9 @@
 /**
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
  * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
- * docs/research/client-landscape.md, docs/research/hypersnap.md and
- * docs/research/both-networks.md against the sources they were read from.
+ * docs/research/client-landscape.md, docs/research/hypersnap.md,
+ * docs/research/both-networks.md and docs/research/optimal-design.md against
+ * the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -91,12 +92,30 @@ const has = (text, needle) =>
 const expectText = (label, text, needle) => check(label, true, has(text, needle));
 const count = (text, rx) => (text.match(rx) ?? []).length;
 
+// A file that moved upstream must fail the claims that read it, not crash the
+// run: the weekly job against upstream HEAD exists to name what moved.
+const movedFiles = [];
 function source(name) {
   const dir = join(SOURCES, name);
   if (!existsSync(dir)) return null;
   return {
     dir,
-    read: (rel) => readFileSync(join(dir, rel), 'utf8'),
+    read: (rel) => {
+      try {
+        return readFileSync(join(dir, rel), 'utf8');
+      } catch {
+        if (!movedFiles.includes(`${name}/${rel}`)) movedFiles.push(`${name}/${rel}`);
+        return '';
+      }
+    },
+    json: (rel) => {
+      try {
+        return JSON.parse(readFileSync(join(dir, rel), 'utf8'));
+      } catch {
+        if (!movedFiles.includes(`${name}/${rel}`)) movedFiles.push(`${name}/${rel}`);
+        return {};
+      }
+    },
     exists: (rel) => existsSync(join(dir, rel)),
     head() {
       try {
@@ -132,7 +151,7 @@ if (missing.length) {
   const changelog = sc.read('CHANGELOG.md');
   check(
     'Snapchain release the page describes',
-    '[0.14.2] - 2026-08-13',
+    '[0.16.0] - 2026-10-28',
     changelog.match(/^## (\[[^\]]+\] - \d{4}-\d{2}-\d{2})/m)?.[1],
   );
 
@@ -149,7 +168,7 @@ if (missing.length) {
       .toISOString()
       .slice(0, 10);
   }
-  const dated = ['V5', 'V11', 'V14', 'V16', 'V17', 'V18', 'V19', 'V20'];
+  const dated = ['V5', 'V11', 'V14', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23'];
   check(
     'mainnet activation dates of the engine versions the page dates',
     {
@@ -161,10 +180,13 @@ if (missing.length) {
       V18: '2026-06-22',
       V19: '2026-07-27',
       V20: '2026-08-13',
+      V21: '2026-10-23',
+      V22: '2026-10-23',
+      V23: '2026-10-29',
     },
     Object.fromEntries(dated.map((v) => [v, schedule[v]])),
   );
-  check('V21 (channels) is not on the mainnet schedule', false, 'V21' in schedule);
+  check('V24 (channels) is not on the mainnet schedule', false, 'V24' in schedule);
 
   // Walk the arms of `is_enabled`. Grouped arms (`A | B | C => V21`) and the
   // comments between them mean a per-feature regex is not enough: collect the
@@ -195,8 +217,11 @@ if (missing.length) {
       StorageExpiryExtension2026: '18',
       BlockLinks: '19',
       IncreaseEmbedLimitForAllUsers: '20',
-      ChannelMessages: '21',
-      ChannelFollows: '21',
+      UngateProMessageVariants: '21',
+      ChainedCasts: '22',
+      HeaderTransactionsRoot: '23',
+      ChannelMessages: '24',
+      ChannelFollows: '24',
     },
     Object.fromEntries(
       [
@@ -208,6 +233,9 @@ if (missing.length) {
         'StorageExpiryExtension2026',
         'BlockLinks',
         'IncreaseEmbedLimitForAllUsers',
+        'UngateProMessageVariants',
+        'ChainedCasts',
+        'HeaderTransactionsRoot',
         'ChannelMessages',
         'ChannelFollows',
       ].map((f) => [f, gate(f)]),
@@ -289,7 +317,11 @@ if (missing.length) {
   const cast = sc.read('src/core/validations/cast.rs');
   expectText('plain cast text limit 320 bytes', cast, 'text_bytes.len() > 320');
   expectText('long cast text limit 1024 bytes', cast, 'text_bytes.len() > 1024');
-  expectText('10K casts need Pro', cast, /CastType::TenKCast\) if !is_pro_user/);
+  expectText(
+    '10K casts are open to every fid from V21 (Pro only before it)',
+    cast,
+    /CastType::TenKCast\)\s+if !is_pro_user && !version\.is_enabled\(ProtocolFeature::UngateProMessageVariants\)/,
+  );
   expectText(
     'embed cap lifted for everyone behind IncreaseEmbedLimitForAllUsers',
     cast,
@@ -362,8 +394,8 @@ if (missing.length) {
   const start = sc.read('site/docs/pages/getting-started.mdx');
   check(
     'node requirements',
-    ['16 GB of RAM', '4 CPU cores', '2 TB of free storage', 'ports 3381 - 3383', 'about 200 GB'],
-    ['16 GB of RAM', '4 CPU cores', '2 TB of free storage', 'ports 3381 - 3383', 'about 200 GB'].filter((t) => start.includes(t)),
+    ['16 GB of RAM', '4 CPU cores', '2 TB of free storage', 'ports 3381 - 3383', 'The snapshot is several hundred gigabytes'],
+    ['16 GB of RAM', '4 CPU cores', '2 TB of free storage', 'ports 3381 - 3383', 'The snapshot is several hundred gigabytes'].filter((t) => start.includes(t)),
   );
   expectText('AWS guide budgets ~$100/month', sc.read('site/docs/pages/guides/running-a-node.mdx'), '$100/month');
   check(
@@ -776,7 +808,8 @@ if (!SNAPSHOT) {
   const hd = S['hypersnap-docs-web'];
   const hw = S.hypersnapweb;
   const oc = S.opencaster;
-  const sc = S.snapchain;
+  // Upstream as it stood when the page was written; `snapchain` itself has since been re-pinned.
+  const sc = S['snapchain-8f82bcc'];
   const lines = (text) => text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
 
   // what Hypersnap is
@@ -906,13 +939,14 @@ if (!SNAPSHOT) {
   }
   const oas = S.OAS.read('src/api/spec.yaml');
   const oasPaths = new Set([...oas.matchAll(/^ {2}(\/v2\/farcaster\/[^:\n]+):/gm)].map((m) => m[1].replace(/\/$/, '')));
+  // Written as "all but one" so it holds as Neynar adds and removes paths: the
+  // page counted 103 of 104 on 2026-10-23, and the spec has since dropped one.
   check(
-    'Hypersnap route literals versus the paths in Neynar OpenAPI',
-    { hypersnap: 140, neynar: 104, shared: 103, neynarOnly: ['/v2/farcaster/fungible/owner/relevant/bulk'] },
+    'Hypersnap route literals cover all but one path in Neynar OpenAPI',
+    { hypersnap: 140, missing: 1, neynarOnly: ['/v2/farcaster/fungible/owner/relevant/bulk'] },
     {
       hypersnap: apiRoutes.size,
-      neynar: oasPaths.size,
-      shared: [...apiRoutes].filter((p) => oasPaths.has(p)).length,
+      missing: oasPaths.size - [...apiRoutes].filter((p) => oasPaths.has(p)).length,
       neynarOnly: [...oasPaths].filter((p) => !apiRoutes.has(p)).sort(),
     },
   );
@@ -985,7 +1019,7 @@ if (!SNAPSHOT) {
   expectText('the docs name the public node', hd.read('src/playground.md'), 'haatz.quilibrium.com');
 
   // what hypersnap.org is generated from
-  const site = JSON.parse(hw.read('src/data/farcasterorg-sources.json'));
+  const site = hw.json('src/data/farcasterorg-sources.json');
   check(
     'hypersnap.org curated facts',
     { org: '2026-02-15', node: 'https://haatz.quilibrium.com', prefix: '/v2/farcaster', requirements: ['16 GB RAM', '4 CPU cores or vCPUs', '1.5 TB free storage', 'Public IP address', 'Ports 3381-3383 exposed on TCP and UDP'], notice: 'The network has not yet released a token. Running a node at this time will not earn tokens.' },
@@ -1025,13 +1059,13 @@ if (!SNAPSHOT) {
 // --- docs/research/both-networks.md -------------------------------------------------
 
 {
-  const sl = S['snapchain-latest'];
+  const sl = S.snapchain;
   const ma = S['farcasterorg-miniapps'];
   const fl = S.fatline;
   const ce = S['farcaster-census'];
 
   // Farcaster side after 2026-10-15: the protocol work continued
-  check('Snapchain release after the deal', '[0.14.3] - 2026-10-15', sl.read('CHANGELOG.md').match(/^## (\[[^\]]+\] - \d{4}-\d{2}-\d{2})/m)?.[1]);
+  expectText('Snapchain release on the day of the deal', sl.read('CHANGELOG.md'), /^## \[0\.14\.3\] - 2026-10-15$/m);
   const val = sl.read('validators.toml');
   check(
     'the v18 validator swap: heights and names',
@@ -1063,8 +1097,8 @@ if (!SNAPSHOT) {
     'the farcasterorg packages and versions',
     { sdk: ['@farcasterorg/miniapp-sdk', '0.4.0'], auth: ['@farcasterorg/quick-auth', '0.2.0'] },
     {
-      sdk: [JSON.parse(ma.read('packages/miniapp-sdk/package.json')).name, JSON.parse(ma.read('packages/miniapp-sdk/package.json')).version],
-      auth: [JSON.parse(ma.read('packages/quick-auth/package.json')).name, JSON.parse(ma.read('packages/quick-auth/package.json')).version],
+      sdk: [ma.json('packages/miniapp-sdk/package.json').name, ma.json('packages/miniapp-sdk/package.json').version],
+      auth: [ma.json('packages/quick-auth/package.json').name, ma.json('packages/quick-auth/package.json').version],
     },
   );
   const qa = ma.read('packages/quick-auth/README.md');
@@ -1112,7 +1146,7 @@ if (!SNAPSHOT) {
 
   // the vote, counted from public data
   expectText('the census is MIT', ce.read('LICENSE'), 'MIT License');
-  const census = JSON.parse(ce.read('data/final-numbers.json'));
+  const census = ce.json('data/final-numbers.json');
   check(
     'the ballot contract and the counts the page quotes',
     { contract: '0x4ecfed276c566aeb49da1f3a888e8dbb7263028d (Base)', holders: 24578, asOf: 'Base block 52,840,567 = 2026-10-20T04:28:01Z', announcement: '2026-10-15T17:47Z' },
@@ -1130,18 +1164,284 @@ if (!SNAPSHOT) {
   );
 }
 
+// --- docs/research/optimal-design.md ------------------------------------------------
+
+{
+  const hf = S['hypersnap-fork'];
+  const sc = S.snapchain;
+  const sm = S.smashcast;
+  const qc = S.quilcast;
+  const on = S['opencaster-now'];
+  const hwn = S['hypersnapweb-now'];
+
+  // --- Farcaster's side, as it stands ---
+  check(
+    'Snapchain and Hypersnap are both GPL-3.0',
+    { snapchain: true, snapchainAtOldPin: true, hypersnap: true },
+    {
+      snapchain: /GNU GENERAL PUBLIC LICENSE\s+Version 3/.test(sc.read('LICENSE')),
+      snapchainAtOldPin: /GNU GENERAL PUBLIC LICENSE\s+Version 3/.test(S['snapchain-8f82bcc'].read('LICENSE')),
+      hypersnap: /GNU GENERAL PUBLIC LICENSE\s+Version 3/.test(hf.read('LICENSE')),
+    },
+  );
+  const scLog = sc.read('CHANGELOG.md');
+  const logLines = [
+    '## [0.15.0] - 2026-10-23',
+    '- *(cast)* Allow 10k casts and banners for all users, not just Pro (#1054)',
+    '- *(version)* Schedule V21 and V22 on mainnet for 2026-10-23 12:00 UTC (#1083)',
+    '## [0.16.0] - 2026-10-28',
+    '- *(consensus)* Tighten validation of decided values and peer messages (#1089)',
+  ];
+  check('Snapchain changelog: two releases in the week after the deal', logLines, logLines.filter((t) => scLog.includes(t)));
+  let scMentionsHypersnap = 0;
+  for (const dir of ['src', 'site/docs']) {
+    for (const f of walk(join(sc.dir, dir), ['.rs', '.mdx', '.md'])) {
+      if (/hypersnap/i.test(readFileSync(f, 'utf8'))) scMentionsHypersnap += 1;
+    }
+  }
+  check('Snapchain source and docs do not mention Hypersnap', 0, scMentionsHypersnap);
+
+  // --- the fork, as scheduled in code ---
+  check('Hypersnap version at the fork commit', '0.17.4', hf.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]);
+  const fv = hf.read('validators.toml');
+  const forkLines = [
+    '# Initial Hypersnap fork: eight validators collected in issue #51.',
+    '# Height snapshot: 2026-11-06 09:25:20 UTC; projected activation: 2026-11-12 09:25:20 UTC.',
+    '# Postponed by three days so peers can prepare after consensus was lost.',
+    '# Activation time is an estimate; consensus activates at the exact heights below.',
+  ];
+  check('the fork schedule as written in validators.toml', forkLines, forkLines.filter((t) => fv.includes(t)));
+  const sets = [...fv.matchAll(/\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)\nshard_ids = \[ (\d) \]\nvalidator_public_keys = \[\n([\s\S]*?)\n\]/g)].map((m) => ({
+    at: Number(m[1].replaceAll('_', '')),
+    shard: Number(m[2]),
+    keys: [...m[3].matchAll(/"([0-9a-f]{64})"/g)].map((k) => k[1]),
+  }));
+  const forkSets = sets.filter((s) => s.at >= 50_000_000);
+  const farcasterKeys = new Set(sets.filter((s) => s.at < 50_000_000).flatMap((s) => s.keys));
+  check(
+    'fork heights, eight validators per shard, none of them a Farcaster validator',
+    { heights: { 0: 50433538, 1: 51119199, 2: 50954121 }, keysPerShard: [8, 8, 8], distinctKeys: 8, sharedWithFarcaster: 0 },
+    {
+      heights: Object.fromEntries(forkSets.map((s) => [s.shard, s.at]).sort()),
+      keysPerShard: forkSets.map((s) => s.keys.length),
+      distinctKeys: new Set(forkSets.flatMap((s) => s.keys)).size,
+      sharedWithFarcaster: [...new Set(forkSets.flatMap((s) => s.keys))].filter((k) => farcasterKeys.has(k)).length,
+    },
+  );
+  const table = (name) => {
+    const body = fv.slice(fv.indexOf(`[${name}]`)).split('\n\n')[0];
+    return Object.fromEntries([...body.matchAll(/^"(\d)" = ([\d_]+)$/gm)].map((m) => [m[1], Number(m[2].replaceAll('_', ''))]));
+  };
+  check(
+    'gossip topics and native registration switch at the same heights',
+    { gossip: { 0: 50433538, 1: 51119199, 2: 50954121 }, native: { 0: 50433538, 1: 51119199, 2: 50954121 } },
+    { gossip: table('gossip.topic_cutovers'), native: table('consensus.native_registration.activation_heights') },
+  );
+  check('Hypersnap now carries the v18 sets it lacked on 2026-10-22', true, fv.includes('bd465c947fe1acfac219fec2fb2ae1e8a13e2acd0498c413f2e54c946ea95095'));
+  const fver = hf.read('src/version/version.rs');
+  const fmain = fver.slice(fver.indexOf('ENGINE_VERSION_SCHEDULE_MAINNET'), fver.indexOf('ENGINE_VERSION_SCHEDULE_TESTNET'));
+  const fsched = {};
+  for (const m of fmain.matchAll(/active_at:\s*(\d+),[^\n]*\n\s*version:\s*EngineVersion::V(\d+)/g)) {
+    fsched[`V${m[2]}`] = new Date(Number(m[1]) * 1000).toISOString().slice(0, 10);
+  }
+  check(
+    'Hypersnap follows the engine schedule through V23; channels are V24 and unscheduled on both',
+    { V21: '2026-10-23', V22: '2026-10-23', V23: '2026-10-29', V24: false, channelsAtV24: true },
+    { V21: fsched.V21, V22: fsched.V22, V23: fsched.V23, V24: 'V24' in fsched, channelsAtV24: /ProtocolFeature::ChannelMessages\s*\|\s*ProtocolFeature::VerificationsOnShardZero => self >= &EngineVersion::V24/.test(fver) },
+  );
+
+  // --- the relay ---
+  const shuttle = hf.read('docs/shuttle.md');
+  const shuttleLines = [
+    "network's mempool. It does not relay consensus, block certificates, on-chain\nevents, Fname system transfers, or Hyper envelopes.",
+    'Existing Snapchain validators will not relay the new topics',
+    'signers and storage. The shuttle cannot transfer those prerequisites between\nnetworks; RPC validation failures are logged and skipped.',
+    'A successful publish means gossipsub queued the message to subscribed peers, not\nthat consensus included it.',
+    'Both sides use the same Farcaster network ID.',
+  ];
+  check('relay documentation statements', shuttleLines, shuttleLines.filter((t) => shuttle.includes(t)));
+  const relay = hf.read('src/shuttle/relay.rs');
+  check(
+    'the relay carries message types 1-8 and 11-21 and never a native account',
+    { types: true, nativeSkipped: true, keyAdd: true, bytesVerbatim: true },
+    {
+      types: hf.read('src/shuttle/config.rs').includes('(1..=8).chain(11..=21).collect()'),
+      nativeSkipped: /if crate::native_registration::is_native_fid\(data\.fid\)\s*\|\| data\.r#type == proto::MessageType::NativeOnboard as i32\s*\{\s*return None;/.test(relay),
+      keyAdd: relay.includes('| (16, Some(Body::KeyAddBody(_)))') && relay.includes('| (17, Some(Body::KeyRemoveBody(_)))'),
+      bytesVerbatim: relay.includes('// Preserve signed bytes verbatim.'),
+    },
+  );
+  expectText('README: what the relay is', hf.read('README.md'), "The standalone `shuttle` binary relays compatible signed user messages from each\nnetwork's committed blocks to the opposite mempool");
+
+  // --- native accounts and storage ---
+  const native = hf.read('docs/native-registration.md');
+  const nativeLines = [
+    'work, validator-assigned FIDs beginning at `4294967296` (`2^32`), and a',
+    'The port includes no token, staking, reward, fee-market, Falcon, or validator-election\nchanges.',
+    'native FIDs as decimal strings; use `BigInt` or strings in clients.',
+    'The release uses a 22-bit minimum difficulty',
+    'Storage slots stop affecting admission, storage-derived message rate limits,\nverification quotas, and quota pruning at each shard\'s configured fork height.',
+    'Neither native registrations nor messages authored by native FIDs are\nrelayed to Snapchain by the shuttle',
+  ];
+  check('native registration documentation statements', nativeLines, nativeLines.filter((t) => native.includes(t)));
+  check(
+    'native fids start at 2^32 and storage limits switch off with the fork',
+    { first: '1 << 32', gate: true, unlimited: true },
+    {
+      first: hf.read('src/native_registration.rs').match(/pub const FIRST_NATIVE_FID: u64 = ([^;]+);/)?.[1],
+      gate: /pub fn storage_limits_disabled\(&self\) -> bool \{[\s\S]{0,400}crate::native_registration::fork_active\(/.test(hf.read('src/storage/store/stores.rs')),
+      unlimited: /if self\.storage_limits_disabled\(\) \{[\s\S]{0,900}limit: u64::MAX,/.test(hf.read('src/storage/store/stores.rs')),
+    },
+  );
+
+  // --- telling the networks apart, and the node role ---
+  const fhttp = hf.read('src/network/http_server.rs');
+  const shttp = sc.read('src/network/http_server.rs');
+  check(
+    'only a Hypersnap node answers the native-registration routes',
+    { hypersnap: ['"/v1/nativeAccount"', '"/v1/nativeRegistration"'], snapchain: [] },
+    {
+      hypersnap: ['"/v1/nativeAccount"', '"/v1/nativeRegistration"'].filter((r) => fhttp.includes(r)),
+      snapchain: ['"/v1/nativeAccount"', '"/v1/nativeRegistration"'].filter((r) => shttp.includes(r)),
+    },
+  );
+  const infoMsg = hf.read('proto/definitions/request_response.proto');
+  check(
+    '/v1/info names no network',
+    ['version', 'db_stats', 'peerId', 'num_shards', 'shard_infos', 'next_engine_version_timestamp'],
+    [...infoMsg.slice(infoMsg.indexOf('message GetInfoResponse {'), infoMsg.indexOf('}', infoMsg.indexOf('message GetInfoResponse {'))).matchAll(/^\s+(?:repeated )?\w+ (\w+) = \d+;/gm)].map((m) => m[1]),
+  );
+  expectText('a node infers its role; old read_node settings are ignored', hf.read('site/docs/pages/node-types.mdx'), 'Legacy `read_node` and `SNAPCHAIN_READ_NODE` settings are ignored');
+
+  // --- the API a client would read ---
+  const fapiRoutes = new Set();
+  for (const f of walk(join(hf.dir, 'src/api'), ['.rs'])) {
+    for (const m of readFileSync(f, 'utf8').matchAll(/"(\/v2\/farcaster\/[^" ]*)"/g)) {
+      const p = m[1].replace(/\/$/, '');
+      if (!/cool-app|nonsense/.test(p)) fapiRoutes.add(p);
+    }
+  }
+  const oasSpec = S.OAS.read('src/api/spec.yaml');
+  const oasSet = new Set([...oasSpec.matchAll(/^ {2}(\/v2\/farcaster\/[^:\n]+):/gm)].map((m) => m[1].replace(/\/$/, '')));
+  check(
+    'route coverage of the pinned Neynar spec at the fork commit',
+    { hypersnap: 140, neynar: 103, shared: 102 },
+    { hypersnap: fapiRoutes.size, neynar: oasSet.size, shared: [...fapiRoutes].filter((p) => oasSet.has(p)).length },
+  );
+  const fapi = hf.read('src/api/http.rs');
+  const needed = ['feed/following', 'feed/trending', 'feed/channels', 'feed/user/replies_and_recasts', 'following/suggested', 'followers/relevant', 'cast/metrics', 'cast/conversation', 'notifications', 'user/bulk', 'reactions/cast', 'channel'];
+  check(
+    'the reads Home needs to rank and explain have handlers, not stubs',
+    needed,
+    needed.filter((r) => new RegExp(`"/v2/farcaster/${r}"[^\\n]*=> \\{`).test(fapi)),
+  );
+  check(
+    '"for you" is still trending; trending filters by the app that registered the signing key',
+    { alias: true, include: true, exclude: true, viewer: true },
+    {
+      alias: fapi.includes('// "For you" feed — alias to trending as personalization'),
+      include: hf.read('docs/trending-feed.md').includes('| `include_signer_fids` | Return casts signed by keys registered by any of these app FIDs. |'),
+      exclude: hf.read('docs/trending-feed.md').includes('| `exclude_signer_fids` | Skip casts signed by keys registered by any of these app FIDs. |'),
+      viewer: fapi.includes('params.get("viewer_fid")'),
+    },
+  );
+  expectText('writes still answer 501 on the v2 API', fapi, 'Write operations require submitting signed Farcaster messages via the gRPC SubmitMessage endpoint');
+
+  // --- a fork of the reference client that went protocol-direct ---
+  expectText('SmashCast keeps the reference client licence', sm.read('LICENSE'), 'Copyright (c) 2026 Neynar, Inc.');
+  const smr = sm.read('packages/farcaster-protocol/README.md');
+  const smLines = [
+    '## What was checked against mainnet (16 Oct 2026)',
+    '| `https://haatz.quilibrium.com` | Default. Snapchain 0.13.5, `Access-Control-Allow-Origin: *`, `OPTIONS /v1/submitMessage` returns 204, so the browser can submit without a proxy. |',
+    '| `https://snap.farcaster.xyz:3381` | Read replica, version 0.14.2. `OPTIONS /v1/submitMessage` is 404, so a browser preflight fails. Server-side validate/submit still parse 0.18.11 messages. |',
+    'This costs no gas. It is not proven with a real custody signature in this repo',
+    '`0.18.11` ships the `KEY_ADD` protobuf and `makeMessage`, but not `makeKeyAdd` / `getGaslessSignedKeyRequestMetadata`',
+    "is the user's own casts plus `castsByFid` for the first page of follows (`linksByFid`, 24 accounts, 4 casts each), merged newest-first.",
+  ];
+  check('SmashCast protocol package statements', smLines, smLines.filter((t) => smr.includes(t)));
+  check(
+    'the gasless key signing domain, in a client and in Snapchain',
+    { client: true, snapchain: 'Farcaster KeyAdd' },
+    {
+      client: /export const GASLESS_KEY_DOMAIN = \{\s*name: 'Farcaster KeyAdd',\s*version: '1',\s*chainId: 1,/.test(sm.read('packages/farcaster-protocol/src/constants.ts')),
+      snapchain: sc.read('src/core/validations/key.rs').match(/pub const KEY_DOMAIN_NAME: &str = "([^"]+)";/)?.[1],
+    },
+  );
+
+  // --- clients that already read a node directly ---
+  expectText('Quilcast is MIT', qc.read('LICENSE'), 'MIT License');
+  const qcLines = [
+    'It talks straight to [Hypersnap](https://hypersnap.org), the Farcaster network that Quilibrium runs, rather than through a hosted API, and your signing keys stay in your own browser.',
+    'writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`',
+    'it depends on the Hypersnap node it reads from (`haatz.quilibrium.com` by default, changeable in Settings)',
+  ];
+  check('Quilcast README statements', qcLines, qcLines.filter((t) => qc.read('README.md').includes(t)));
+  const onLines = [
+    'Production configuration currently uses the public Haatz node as its primary during the private-node reinstall',
+    'Eligible reads make at most one backup attempt after transport failure, timeout or HTTP 5xx, within one 20-second deadline.',
+    'Signed submissions are never replayed automatically',
+  ];
+  check("Opencaster's gateway policy today", onLines, onLines.filter((t) => on.read('apps/web-client/README.md').includes(t)));
+  const snapTs = hwn.read('src/lib/snap.ts');
+  check(
+    'hypersnap.org on the token and on client developers',
+    { contract: true, disclaimer: true, clients: true },
+    {
+      contract: snapTs.includes('contract: "0x49B5a631F54927c0007232844f06FE18cbf69786"') && snapTs.includes('chain: "Ethereum"'),
+      disclaimer: snapTs.includes('// A listing is not evidence of issuer authority or adopted protocol economics.'),
+      clients: snapTs.includes("A maintainer intends app-FID-usage-attributed coverage for full-client developers and acknowledges the proposal's omission; not a payable entitlement."),
+    },
+  );
+
+  // --- running nodes, and small facts the design leans on ---
+  const fatlineReadme = S.fatline.read('README.md');
+  const costLines = ['~$2.50/day', '(~400 GB compressed, ~600 GB unpacked)', 'Farcaster: in sync at 12:25 UTC (5 h 43 min after it answered)'];
+  check("one operator's measured cost, snapshot size and sync time for a read node", costLines, costLines.filter((t) => fatlineReadme.includes(t)));
+  check(
+    'the following feed can include recasts; a relayed duplicate is dropped by hash',
+    { withRecasts: true, dedupe: true },
+    {
+      withRecasts: hf.read('src/api/http.rs').includes('params.get("with_recasts")'),
+      dedupe: hf.read('docs/shuttle.md').includes('publish may be delivered again, which mempool message hashes deduplicate.'),
+    },
+  );
+  check(
+    'why browser-posting clients default to the Hypersnap node',
+    { writable: true, preflightFails: true },
+    {
+      writable: sm.read('packages/farcaster-protocol/src/constants.ts').includes("/** Writable public Snapchain node. CORS allows browser submitMessage. */\nexport const DEFAULT_HUB_URL = 'https://haatz.quilibrium.com';"),
+      preflightFails: sm.read('packages/farcaster-protocol/src/constants.ts').includes("/** Official read replica. Browser submit preflight fails (OPTIONS 404). */\nexport const SNAP_READ_HUB_URL = 'https://snap.farcaster.xyz:3381';"),
+    },
+  );
+
+  // --- Home's own code, where the design says it already fits ---
+  const reasons = readFileSync(join(HOME, 'packages/home-personalization/src/reasons/index.ts'), 'utf8');
+  const sourcesTs = readFileSync(join(HOME, 'packages/home-client-core/src/sources.ts'), 'utf8');
+  check(
+    'the kernel already has the reason taxonomy and the fetcher seam the design uses',
+    { types: 10, groups: ['direct', 'network', 'discovery', 'promoted'], leafFetcher: true, sourceError: true, allFailed: true },
+    {
+      types: [...(reasons.match(/export const REASON_TYPES = \[([\s\S]*?)\] as const;/)?.[1] ?? '').matchAll(/'([a-z-]+)'/g)].length,
+      groups: [...(reasons.match(/export const REASON_GROUPS = \[([\s\S]*?)\] as const;/)?.[1] ?? '').matchAll(/'([a-z]+)'/g)].map((m) => m[1]),
+      leafFetcher: sourcesTs.includes('export type LeafFetcher = ('),
+      sourceError: sourcesTs.includes('export type SourceError = { source: LeafSource; error: unknown };'),
+      allFailed: sourcesTs.includes('export class AllSourcesFailedError extends Error'),
+    },
+  );
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
 if (NETWORK) {
   const wanted = {
-    '@farcaster/core': '0.20.0',
-    '@farcaster/hub-nodejs': '0.17.0',
-    '@farcaster/hub-web': '0.13.0',
-    '@farcaster/shuttle': '1.0.3',
+    '@farcaster/core': '0.21.0',
+    '@farcaster/hub-nodejs': '0.18.0',
+    '@farcaster/hub-web': '0.14.0',
+    '@farcaster/shuttle': '1.0.5',
     '@farcaster/auth-client': '0.7.1',
     '@farcaster/auth-kit': '0.8.2',
-    '@farcaster/miniapp-sdk': '0.3.0',
+    '@farcaster/miniapp-sdk': '0.4.0',
     '@farcasterorg/quick-auth': '0.2.0',
     '@farcasterorg/miniapp-sdk': '0.4.0',
   };
@@ -1197,6 +1497,9 @@ Not checkable offline; re-read when the page is revised:
   Sampled client manifests (herocast, nounspace, litecast, tofui, opencast) read 2026-10-14 on GitHub
   OP Mainnet announcement, 2023-08-22                  https://x.com/dwr/status/1693986385315963024
   FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
+  The production API refuses casts without opt-in (400)     https://github.com/farcasterxyz/client/issues/6  https://github.com/SmashThunderStone/client/pull/3
+  Cassie Heart to app developers on the fork, 2026-11-04    https://github.com/farcasterorg/hypersnap/issues/51
+  Whether the fork activated at its heights                 docs/research/optimal-design.md section 6.2 (needs a reachable node)
   Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
   Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
   State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)
@@ -1204,5 +1507,10 @@ Not checkable offline; re-read when the page is revised:
   Casts quoted in both-networks.md (Rish, Balaji, Cassie)  read from haatz by bettercallzaal/ZAOOS docs 2666/2680 and jpfraneto/fatline; hashes in the page
   FIP #19 sections 16-17 and Appendix A, edited 2026-10-12  https://github.com/orgs/farcasterorg/discussions/19
 `);
+if (movedFiles.length) {
+  console.log(`Files the claims read that are no longer at their path (${movedFiles.length}):`);
+  for (const f of movedFiles) console.log(`  ${f}`);
+  console.log('');
+}
 console.log(failed ? `${failed} of ${results.length} claims FAILED.` : `All ${results.length} claims hold against these sources.`);
 process.exit(failed ? 1 : 0);

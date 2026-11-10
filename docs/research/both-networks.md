@@ -11,6 +11,14 @@ Neither the production API, the public nodes nor farcaster.xyz are reachable
 from this sandbox, so no cast was re-read here and every quotation from one is
 attributed to the note that read it.
 
+> **Since this page was written.** The fork arrived sooner and smaller than
+> §3 describes: a validator swap at fixed heights projected for 2026-11-12,
+> with a relay and free accounts, and without the token, fees or Falcon keys
+> of the specification. Farcaster's production API has also started refusing
+> casts from accounts that have not accepted the social contract. The design
+> that follows from both is in [`optimal-design.md`](optimal-design.md); §4
+> here is superseded by its §4 to §6.
+
 ---
 
 ## 0. The short answers
@@ -263,7 +271,7 @@ reader can filter on.
 
 | Source | Read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `961d12b`, 2026-10-23 (pinned as `snapchain-latest`) | here | 0.14.3, the v18 validator sets and heights, the onchain-config pull, the validator docs page (seven keys, five Neynar), the `fc cast-add` flags |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `961d12b`, 2026-10-23 when read; re-pinned 2026-11-10 to `1405794` as `snapchain` | here | 0.14.3, the v18 validator sets and heights, the onchain-config pull, the validator docs page (seven keys, five Neynar), the `fc cast-add` flags |
 | [farcasterorg/hypersnap](https://github.com/farcasterorg/hypersnap) `2e8733d`, 2026-10-16 (pinned) | here | no fork code, validator list without v18, branch dates |
 | [farcasterorg/miniapps](https://github.com/farcasterorg/miniapps) `1cef64e`, 2026-10-14 (pinned as `farcasterorg-miniapps`) | here | the quick-auth and SDK packages: licence, versions, token format, hub endpoints, "no auth server" |
 | [jpfraneto/fatline](https://github.com/jpfraneto/fatline) `148e728`, 2026-10-22 (pinned as `fatline`) | here | the stall, the two-network comparison, the node-selector rule, the prize text and clarification, the x402 note |

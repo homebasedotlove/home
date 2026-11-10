@@ -202,7 +202,7 @@ The fifteen private endpoints the core screens use, and where each goes:
 | `/v2/user`, `/v2/user-by-username`, `/v2/me` | node `userDataByFid`, `userNameProofByName`; the session for `me` |
 | `/v2/followers`, `/v2/following` | node `linksByTargetFid`, `linksByFid`; Neynar `followers`, `following` with profiles attached |
 | `/v2/cast-likes`, `/v2/cast-recasters`, `/v2/recasts` | node `reactionsByCast`; Neynar `reactions/cast` |
-| `/v2/all-channels`, `/v2/channel` | Client API `fc/channels` family (needs an approved signer) until V21 lands on mainnet, then node `channelMetadata` |
+| `/v2/all-channels`, `/v2/channel` | Client API `fc/channels` family (needs an approved signer) until V24 lands on mainnet, then node `channelMetadata` |
 | `/v2/signed-key-request` | the service's signer routes |
 | `/v2/onboarding` | gone; onboarding is SIWF plus a signer |
 | `/v1/generate-image-upload-url`, `/v1/prepare-video-upload`, `/v1/upload-video-with-tus`, `/v1/uploaded-video` | `/media/upload-url`; video is a later milestone |
@@ -340,10 +340,10 @@ Each line is a yes or no. Stop at the first no.
 
 | Source | State read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `README.md`, `docker-compose*.yml`, `Dockerfile`, `cli/README.md`, `cli/src/main.rs`, `src/main.rs`, `src/network/mesh/nodes.rs`, `src/bin/setup_local_testnet.rs`, `site/docs` | `8f82bcc`, 2026-08-13, v0.14.2 | node runbook, read-node template, devnet, `fc`, public node registry, connector start conditions |
-| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `6c6307d`, 2026-08-07 | hosted node, publish-message, webhooks, signers, storage |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `README.md`, `docker-compose*.yml`, `Dockerfile`, `cli/README.md`, `cli/src/main.rs`, `src/main.rs`, `src/network/mesh/nodes.rs`, `src/bin/setup_local_testnet.rs`, `site/docs` | `1405794`, 2026-11-04, v0.16.0 (re-pinned 2026-11-10) | node runbook, read-node template, devnet, `fc`, public node registry, connector start conditions |
+| [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `0c4d078`, 2026-11-02 (re-pinned 2026-11-10) | hosted node, publish-message, webhooks, signers, storage |
 | [farcasterxyz/auth-monorepo](https://github.com/farcasterxyz/auth-monorepo) | `ae3dffd`, 2026-03-30 | SIWF verification path and relay |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | signer requests, feed guide, account guides |
 | [farcasterxyz/client](https://github.com/farcasterxyz/client) | `0c289ed`, 2026-09-30 | the seams and endpoints the fork uses |
-| `@farcaster/core` 0.20.0, `@farcaster/hub-nodejs` 0.17.0, `@farcaster/auth-kit` 0.8.2 | npm | builders, clients, sign-in |
+| `@farcaster/core` 0.21.0, `@farcaster/hub-nodejs` 0.18.0, `@farcaster/auth-kit` 0.8.2 | npm | builders, clients, sign-in |
 | Neynar pricing and compute-unit pages | search excerpts only; blocked here | plan and credit figures |
