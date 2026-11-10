@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 246/246 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page and the experience walkthrough |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 266/266 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough and the messages-and-wallet page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -319,6 +319,22 @@ Snapchain page was written.
     surface was exercised live. Whether Farcaster's app still approves
     another client's key, a channel follow or the inbox for an account that
     has not accepted the new terms is unknown.
+- **Messages and a wallet, 2026-11-10.**
+  [`../research/messages-and-wallet.md`](../research/messages-and-wallet.md)
+  tests two preferences against code: Hypersnap for messages, Coinbase
+  Smart Wallet for the wallet.
+  - *What the code decided.* Hypersnap has no message type for private
+    messages; the Hypersnap team's messenger, Quorum, does the job with MIT
+    libraries. Both nodes approve a gasless key by recovering an ordinary
+    key from 65 bytes, so a smart wallet can be the money wallet and cannot
+    be the account key.
+  - *New claims.* 20, on eight new sources: Quorum's three repositories,
+    Coinbase's SDK and wallet contract, wagmi, and XMTP's documentation and
+    main repository. 266 of 266 across 28 sources.
+  - *Not verified.* Coinbase's and XMTP's documentation sites and all news
+    sites are blocked here, so their repositories were read instead. No
+    message was sent and no wallet was connected. Whether Quilibrium permits
+    other clients on Quorum's servers is unknown.
 
 The three unproven items above are unchanged: no request has reached the
 production API, the authenticated shell has not booted against it, and nothing

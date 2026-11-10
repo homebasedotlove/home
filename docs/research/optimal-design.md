@@ -429,6 +429,13 @@ A validator. Anything that holds, moves or displays a token. Its own account
 registry. Direct messages. A second interface per network. A stance on the
 social contract, expressed in the product.
 
+**Revised 2026-11-10.** Two items on that list were reopened at the owner's
+request and are answered in
+[messages and wallet](messages-and-wallet.md). Direct messages become an
+opt-in provider, Quorum first, after two checks. A Wallet surface may
+connect the reader's own wallet, show balances and send, and Home still
+never holds a key that moves money. The rest of the list stands.
+
 ---
 
 ## 5. Where it lands in the code

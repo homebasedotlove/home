@@ -3,8 +3,9 @@
  * Re-verify every checkable claim in docs/operations/plugging-into-snapchain.md,
  * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
  * docs/research/client-landscape.md, docs/research/hypersnap.md,
- * docs/research/both-networks.md, docs/research/optimal-design.md and
- * docs/design/experience-walkthrough.md against the sources they were read from.
+ * docs/research/both-networks.md, docs/research/optimal-design.md,
+ * docs/design/experience-walkthrough.md and docs/research/messages-and-wallet.md
+ * against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -1663,6 +1664,262 @@ if (!SNAPSHOT) {
   check('Quilcast on its inbox, uploads, mutes and the price of an account', quilcastSays, quilcastSays.filter((t) => qr.includes(t)));
 }
 
+// --- docs/research/messages-and-wallet.md -------------------------------------------
+
+{
+  const sc = S.snapchain;
+  const hf = S['hypersnap-fork'];
+  const qc = S.quilcast;
+  const qs = S['quorum-shared'];
+  const qd = S['quorum-desktop'];
+  const qm = S['quorum-mobile'];
+  const xd = S['xmtp-docs'];
+  const lx = S.libxmtp;
+  const sdk = S['base-account-sdk'];
+  const sw = S['coinbase-smart-wallet'];
+  const wg = S.wagmi;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+
+  // --- messages: nothing on either network ---
+  const types = (src) =>
+    Object.fromEntries(
+      [...(src.read('proto/definitions/message.proto').match(/enum MessageType \{([\s\S]*?)\n\}/)?.[1] ?? '').matchAll(/^\s*MESSAGE_TYPE_([A-Z_0-9]+) = (\d+);/gm)]
+        .filter((m) => m[1] !== 'NONE')
+        .map((m) => [m[1], Number(m[2])]),
+    );
+  const scTypes = types(sc);
+  const hfTypes = types(hf);
+  check(
+    'Hypersnap carries the message types Snapchain does, plus account registration',
+    { snapchain: 19, onlyOnHypersnap: { NATIVE_ONBOARD: 160 }, onlyOnSnapchain: [] },
+    {
+      snapchain: Object.keys(scTypes).length,
+      onlyOnHypersnap: Object.fromEntries(Object.entries(hfTypes).filter(([k]) => !(k in scTypes))),
+      onlyOnSnapchain: Object.keys(scTypes).filter((k) => !(k in hfTypes)),
+    },
+  );
+
+  // --- messages: how two clients reach Farcaster's inbox ---
+  const dmRelay = qc.read('server/dm.mjs');
+  const upload = qc.read('server/upload.mjs');
+  check(
+    "Quilcast reaches Farcaster's inbox through a relay that presents as farcaster.xyz",
+    { inbox: true, token: true, sig65: true, origin: true, ownSiteOnly: true, signedText: true },
+    {
+      inbox: dmRelay.includes("inbox: ['GET', '/v2/direct-cast-inbox', ['category', 'filter', 'cursor', 'limit']],"),
+      token: dmRelay.includes('`/v2/get-dc-auth-token?${new URLSearchParams({ message, signature })}`'),
+      sig65: dmRelay.includes('!/^0x[0-9a-f]{130}$/i.test(signature)'),
+      origin: upload.includes("export const FC_HEADERS = { origin: 'https://farcaster.xyz', referer: 'https://farcaster.xyz/', accept: 'application/json' }"),
+      ownSiteOnly: upload.includes("// farcaster.xyz's API answers its own site only"),
+      signedText: qc.read('src/write.ts').includes('URI: https://client.farcaster.xyz/v2/get-dc-auth-token'),
+    },
+  );
+  const dcAuth = qm.read('services/farcaster/directCastAuth.ts');
+  check(
+    "Quorum's mobile app reaches Farcaster's inbox the same way",
+    { origin: true, ownSiteOnly: true, sameAsQuilcast: true },
+    {
+      origin: dcAuth.includes("export const FARCASTER_SITE_HEADERS = {\n  origin: 'https://farcaster.xyz',"),
+      ownSiteOnly: dcAuth.includes("/** farcaster.xyz's API answers its own site only. */"),
+      sameAsQuilcast: flat(dcAuth).includes('`/v2/get-dc-auth-token` exchanges it for the token. Quilcast opens messages * the same way.'),
+    },
+  );
+
+  // --- messages: Quorum ---
+  const qsPkg = qs.json('package.json');
+  const cryptoTypes = qs.read('src/crypto/types.ts');
+  check(
+    'Quorum: an MIT library with X3DH, Double Ratchet and Triple Ratchet on Curve448',
+    { name: '@quilibrium/quorum-shared', version: '2.1.0-45', license: 'MIT', sections: ['X3DH Key Agreement', 'Double Ratchet', 'Triple Ratchet'], curve448: true, wasm: true, readme: true },
+    {
+      name: qsPkg.name,
+      version: qsPkg.version,
+      license: qsPkg.license,
+      sections: [...cryptoTypes.matchAll(/^\/\/ ============ (X3DH Key Agreement|Double Ratchet|Triple Ratchet) ============$/gm)].map((m) => m[1]),
+      curve448: cryptoTypes.includes("type: 'ed448';") && cryptoTypes.includes("type: 'x448';"),
+      wasm: qs.read('src/crypto/wasm-provider.ts').includes('js_triple_ratchet_encrypt(params: string): string;'),
+      readme: qs.read('README.md').includes('End-to-end encryption (Wasm-based) and Ed448 message signing.'),
+    },
+  );
+  const qdReadme = qd.read('README.md');
+  const qdCfg = qd.read('src/config/config.quorum.ts');
+  check(
+    "Quorum's applications are copyleft, in beta on the web, and speak to one company's servers",
+    { desktop: true, mobile: true, beta: true, api: true, ws: true, wasmSdk: '^2.1.0-2' },
+    {
+      desktop: /GNU AFFERO GENERAL PUBLIC LICENSE\s+Version 3/.test(qd.read('LICENSE')),
+      mobile: /GNU GENERAL PUBLIC LICENSE\s+Version 3/.test(qm.read('LICENSE')),
+      beta: qdReadme.includes('- **Web Browser** - [Live app (beta)](https://app.quorummessenger.com/)'),
+      api: qdCfg.includes("const PROD_API_URL = 'https://api.quorummessenger.com';"),
+      ws: qdCfg.includes("const PROD_WS_URL = 'wss://api.quorummessenger.com/ws';"),
+      wasmSdk: qd.json('package.json').dependencies?.['@quilibrium/quilibrium-js-sdk-channels'],
+    },
+  );
+  const cryptoDoc = qd.read('.agents/docs/cryptographic-architecture.md');
+  check(
+    'Quorum uses Double Ratchet for one-to-one and Triple Ratchet for groups',
+    { dm: true, groups: true },
+    {
+      dm: cryptoDoc.includes('| **Double Ratchet** | DMs (1:1 conversations) | Optimal for two-party communication |'),
+      groups: cryptoDoc.includes('| **Triple Ratchet** | Spaces (group conversations) | Efficient for multi-party groups |'),
+    },
+  );
+  expectText(
+    "Quorum's own team built a rig to investigate lost and undecryptable messages",
+    flat(qdReadme),
+    'for the DM transport investigation: reproducing decrypt failures, measuring send-vs-arrive loss, and testing session recovery unattended.',
+  );
+  const fcLink = qm.read('services/calling/farcaster-link.ts');
+  const quorumClient = qm.read('services/api/quorumClient.ts');
+  check(
+    'a Farcaster account and a Quorum inbox are linked by two signatures and found by fid',
+    { custodySigns: true, quorumSigns: true, bidirectional: true, byFid: true, indexTrustsQuorumSide: true },
+    {
+      custodySigns: fcLink.includes('const fcMessage = `quorum:link:${quorumAddress}`;'),
+      quorumSigns: fcLink.includes('const quorumMessage = `farcaster:link:${custodyAddress}`;'),
+      bidirectional: fcLink.includes(' * Generate a bidirectional Farcaster ↔ Quorum identity link.'),
+      byFid: quorumClient.includes('return await this.fetch(`/users/by-fid/${fid}`, {'),
+      indexTrustsQuorumSide: flat(quorumClient).includes('written whenever a user posts a public profile with a * Farcaster link whose Quorum-side signature verifies.'),
+    },
+  );
+
+  // --- messages: XMTP ---
+  const xFaq = xd.read('docs/pages/chat-apps/intro/faq.mdx');
+  const xStart = xd.read('docs/pages/fund-agents-apps/get-started.md');
+  const xIdentity = xd.read('docs/pages/protocol/identity.mdx');
+  const xLines = [
+    'Currently supported identity types include Ethereum EOAs, Ethereum smart contract wallets, and passkeys.',
+    '- Multiple installations can access the same inbox (up to 10)',
+  ];
+  check('XMTP identities: ordinary wallets, smart contract wallets and passkeys; ten installations', xLines, xLines.filter((t) => xIdentity.includes(t)));
+  check(
+    'XMTP: audited MLS, about $5 per 100,000 messages, a gateway for chat apps, nodes run by one company as of April 2026',
+    { audit: true, fee: true, usdc: true, gateway: true, operator: true, mainnetExpected: true },
+    {
+      audit: xFaq.includes('its use of Messaging Layer Security (MLS) was completed by [NCC Group](https://www.nccgroup.com/) in Dec 2024.'),
+      fee: xd.read('docs/pages/fund-agents-apps/calculate-fees.mdx').includes('Network fees are estimated to cost $5 per 100,000 chat messages, inclusive of all fee types.'),
+      usdc: xd.read('docs/pages/fund-agents-apps/calculate-fees.mdx').includes('**All XMTP network fees are paid in USDC**'),
+      gateway: xStart.includes('[Deploy your gateway service](/fund-agents-apps/run-gateway) (required for chat apps only)'),
+      operator: xFaq.includes('with all nodes currently hosted by XMTP Labs. XMTP Labs currently absorbs all message storage and retrieval costs.'),
+      mainnetExpected: xStart.includes('Mainnet of the decentralized XMTP Network is expected to launch in early 2026.'),
+    },
+  );
+  const scwChains = Object.keys(lx.json('crates/xmtp_id/src/scw_verifier/chain_urls_default.json'));
+  const browserPkg = lx.json('sdks/browser/package.json');
+  check(
+    'XMTP verifies smart wallets on eleven chains including Ethereum, Optimism and Base; its browser storage has one owner',
+    { chains: 11, wanted: ['eip155:1', 'eip155:10', 'eip155:8453'], pkg: '@xmtp/browser-sdk', license: 'MIT', oneOwner: true, repoLicense: true },
+    {
+      chains: scwChains.length,
+      wanted: ['eip155:1', 'eip155:10', 'eip155:8453'].filter((c) => scwChains.includes(c)),
+      pkg: browserPkg.name,
+      license: browserPkg.license,
+      oneOwner: lx.read('sdks/browser/README.md').includes('OPFS has one owner per origin. A second tab that opens persistent storage gets'),
+      repoLicense: lx.read('LICENSE').startsWith('MIT License'),
+    },
+  );
+
+  // --- wallet: what a smart wallet can sign for a Farcaster account ---
+  const recoverFn = (src) => {
+    const t = src.read('src/core/validations/key.rs');
+    const at = t.indexOf('fn recover_from_typed_data(');
+    return t.slice(at, t.indexOf('\n}\n', at));
+  };
+  const scKey = sc.read('src/core/validations/key.rs');
+  check(
+    'a gasless key is approved by recovering an ordinary key from 65 bytes, identically on both nodes',
+    { length: true, recover: true, mustEqualCustody: true, sameOnHypersnap: true, noContractPath: true },
+    {
+      length: recoverFn(sc).includes('if signature.len() != 65 {\n        return Err(ValidationError::InvalidSignature);'),
+      recover: recoverFn(sc).includes('sig.recover_address_from_prehash(&prehash)'),
+      mustEqualCustody: scKey.includes("/// EIP-712 custody signature; recovered signer must equal the FID's custody address."),
+      sameOnHypersnap: recoverFn(sc).length > 100 && recoverFn(sc) === recoverFn(hf),
+      noContractPath: !/1271|isValidSignature|contract_signature/.test(scKey),
+    },
+  );
+  const nativeReg = hf.read('src/native_registration.rs');
+  check(
+    'a Hypersnap-only account is registered by an ordinary key',
+    { length: true, recover: true },
+    {
+      length: nativeReg.includes('if b.custody_signature.len() != 65 || !matches!(b.custody_signature[64], 0 | 1 | 27 | 28) {'),
+      recover: /\.recover_address_from_prehash\(&digest\)\s+\.map_err\(\|_\| invalid\("invalid custody signature"\)\)\?\s+!= Address::from\(custody\)/.test(nativeReg),
+    },
+  );
+  const chainsFn = sc.read('src/connectors/onchain_events/mod.rs');
+  check(
+    'an address on a profile may be a contract wallet, checked on a chain, with the claim on Ethereum or Optimism',
+    { verifier: true, claimChains: '[0, 1, 5, 10, 420]', outOfConsensus: true, rpcChains: ['1', '10', '8453'] },
+    {
+      verifier: sc.read('src/core/validations/contract_signature.rs').startsWith('//! On-chain signature verification for EOA, ERC-1271, and ERC-6492 signatures.'),
+      claimChains: sc.read('src/core/validations/verification.rs').match(/const EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS: \[u16; 5\] = (\[[^\]]+\]);/)?.[1],
+      outOfConsensus: sc.read('src/core/validations/verification.rs').includes('// Verification of contract signatures must happen out of consensus loop.\n        1 => Ok(()),'),
+      rpcChains: [...(chainsFn.match(/pub fn from_chain_id\(chain_id: u32\) -> Option<Self> \{([\s\S]*?)_ => None/)?.[1] ?? '').matchAll(/(\d+) => Some\(Chain::/g)].map((m) => m[1]),
+    },
+  );
+  check(
+    "Farcaster's contracts and its sign-in verifier accept contract signatures",
+    { idRegistry: true, gateways: true, signIn: true, jfs: true },
+    {
+      idRegistry: S.contracts.read('src/IdRegistry.sol').includes('isValid = idOf[custodyAddress] == fid && SignatureChecker.isValidSignatureNow(custodyAddress, digest, sig);'),
+      gateways: S.contracts.read('src/abstract/Signatures.sol').includes('if (!SignatureChecker.isValidSignatureNow(signer, digest, sig)) {'),
+      signIn: S['auth-monorepo'].read('packages/auth-client/README.md').includes('An Ethereum connector, used to query the Farcaster contracts and verify smart contract wallet signatures.'),
+      jfs: S['auth-monorepo'].read('packages/jfs/src/index.ts').includes('* When provided, supports ERC-1271, ERC-6492, and ERC-8010 signatures.'),
+    },
+  );
+
+  // --- wallet: Coinbase Smart Wallet as it stands ---
+  const swReadme = sw.read('README.md');
+  const swBullets = ['- Multiple owners', '- Passkey owners and Ethereum address owners', '- Cross-chain replayability for owner updates and other actions: sign once, update everywhere. '];
+  check(
+    'the smart wallet contract: MIT, many owners, passkeys or addresses, signatures bound to chain and address',
+    { bullets: swBullets, mit: true, bound: true, addOwner: true, erc4337: true },
+    {
+      bullets: swBullets.filter((t) => swReadme.includes(t)),
+      mit: sw.read('LICENSE.md').startsWith('MIT License'),
+      bound: flat(sw.read('src/ERC1271.sol')).includes('The domain separator of this outer hash contains the chain id and address of this contract'),
+      addOwner: sw.read('src/MultiOwnable.sol').includes('function addOwnerAddress(address owner) external virtual onlyOwner {'),
+      erc4337: swReadme.includes('[ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) compliant smart contract wallet from Coinbase.'),
+    },
+  );
+  const sdkPkg = sdk.json('packages/account-sdk/package.json');
+  check(
+    "Coinbase's SDK: name, version, licence, its third product name, and the window it opens",
+    { name: '@base-org/account', version: '2.6.0', license: 'Apache-2.0', released: true, rebrand: true, window: true },
+    {
+      name: sdkPkg.name,
+      version: sdkPkg.version,
+      license: sdkPkg.license,
+      released: sdk.read('packages/account-sdk/CHANGELOG.md').includes('## [2.6.0](https://github.com/base/account-sdk/compare/account-v2.5.13...account-v2.6.0) (2026-10-29)'),
+      rebrand: sdk.read('README.md').includes('> **Rebrand:** Base Account is now Coinbase Wallet. The npm package remains `@base-org/account` — it has not been renamed or merged. `@base-org/account` is still the current recommended SDK for connecting to Coinbase Wallet until the next-generation Coinbase Wallet SDK is ready.'),
+      window: sdk.read('packages/account-sdk/src/core/constants.ts').includes("export const CB_KEYS_URL = 'https://keys.coinbase.com/connect';"),
+    },
+  );
+  const baseConnector = wg.read('packages/connectors/src/baseAccount.ts');
+  check(
+    'wagmi ships a connector for it',
+    { version: '8.2.4', connector: true, wraps: true },
+    {
+      version: wg.json('packages/connectors/package.json').version,
+      connector: baseConnector.includes('export function baseAccount(parameters: BaseAccountParameters = {}) {'),
+      wraps: baseConnector.includes("import type { createBaseAccountSDK, ProviderInterface } from '@base-org/account'"),
+    },
+  );
+  const webPkg = JSON.parse(readFileSync(join(SNAPSHOT, 'apps/farcaster-web/package.json'), 'utf8'));
+  check(
+    'the reference web client already uses wagmi, with no connectors listed and a vendor for its embedded wallet',
+    { wagmi: true, connectorsPkg: true, vendor: true, empty: true, embedded: true },
+    {
+      wagmi: 'wagmi' in webPkg.dependencies,
+      connectorsPkg: '@wagmi/connectors' in webPkg.dependencies,
+      vendor: '@privy-io/react-auth' in webPkg.dependencies,
+      empty: readFileSync(join(SNAPSHOT, 'apps/farcaster-web/src/utils/wagmi.ts'), 'utf8').includes('  transports,\n  connectors: [],\n});'),
+      embedded: readFileSync(join(SNAPSHOT, 'apps/farcaster-web/src/contexts/WalletProvider.tsx'), 'utf8').includes('// Get Warpcast embedded wallet'),
+    },
+  );
+  expectText('Home is MIT, so only MIT and Apache libraries can be used', readFileSync(join(HOME, 'LICENSE'), 'utf8'), 'MIT License');
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -1677,6 +1934,11 @@ if (NETWORK) {
     '@farcaster/miniapp-sdk': '0.4.0',
     '@farcasterorg/quick-auth': '0.2.0',
     '@farcasterorg/miniapp-sdk': '0.4.0',
+    '@base-org/account': '2.6.0',
+    '@wagmi/connectors': '8.2.4',
+    '@xmtp/browser-sdk': '7.1.0',
+    '@quilibrium/quorum-shared': '2.1.0-45',
+    '@quilibrium/quilibrium-js-sdk-channels': '2.1.0-2',
   };
   for (const [pkg, v] of Object.entries(wanted)) {
     try {
@@ -1734,6 +1996,12 @@ Not checkable offline; re-read when the page is revised:
   Cassie Heart to app developers on the fork, 2026-11-04    https://github.com/farcasterorg/hypersnap/issues/51
   Whether the fork activated at its heights                 docs/research/optimal-design.md section 6.2 (needs a reachable node)
   Whether Farcaster's app approves third-party keys, channel follows or the inbox without opt-in   docs/design/experience-walkthrough.md section 12 (needs an account)
+  Farcaster direct-cast drafts (FIP 226 draft, FIP 99 idea, issue 5 closed)   https://github.com/farcasterxyz/protocol/discussions/226 /99 and issues/5
+  No messaging proposal in the Hypersnap organisation        https://github.com/farcasterorg/hypersnap/issues and https://github.com/orgs/farcasterorg/discussions
+  Base App renamed back to Coinbase Wallet, 2026-09-10       https://github.com/coinbase/coinbase-wallet-sdk/pull/1911 and news summaries (sites blocked here)
+  Quorum Mobile "full Farcaster support"                     https://x.com/QuilibriumInc/status/2006480591034995194 (search summary)
+  XMTP mainnet and fee status after April 2026               https://docs.xmtp.org/fund-agents-apps/get-started (blocked from this sandbox)
+  Whether Quilibrium permits other clients on Quorum's servers   no published terms found; ask before building
   Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
   Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
   State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)

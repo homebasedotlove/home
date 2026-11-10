@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 246 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 266 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -194,7 +194,9 @@ a list of nodes with per-node status. The reasoning and three small additions
   storage, custody handling. The download page already sends new readers to the
   Farcaster app, and the official client only signs people up on mobile
   (audit: "only mobile signs up in the official client").
-- **Direct casts.** Off-protocol; FIP-226 is a draft from 2025.
+- **Direct casts.** Off-protocol; FIP-226 is a draft from 2025. Messages by
+  another route, and a connect-only wallet, are planned in
+  [`../research/messages-and-wallet.md`](../research/messages-and-wallet.md).
 - **A learned ranking model.** The kernel's scorer plus derivable reasons
   first; a model needs data Home does not have yet.
 
@@ -235,6 +237,9 @@ against upstream HEAD and names any claim that moves.
 | The Hypersnap validator fork, projected for 2026-11-12, splits the network | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
 | The fork is postponed again or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
 | The production API closes to third-party origins, or its ranked feed is gated by the social contract | nothing depends on it since the revision of 2026-11-10; Home's own ranking and reasons are the default |
+| Quilibrium does not permit other clients on Quorum's servers, or Quorum loses messages | the two checks in [messages and wallet](../research/messages-and-wallet.md) §3, before any build; XMTP is the fallback |
+| Coinbase retires or restricts its wallet SDK | the wallet is one wagmi connector beside every wallet the browser exposes ([messages and wallet](../research/messages-and-wallet.md) §7) |
+| A reader's account is owned by a smart wallet | such an account cannot approve a gasless key on either network; Home says so at sign-in and offers the on-chain key path later ([messages and wallet](../research/messages-and-wallet.md) §4) |
 | Readers cannot sign a gasless request from the Farcaster app | §2.4 on a device; the deeplink path with sponsorship is the fallback and is documented |
 | Testnet does not accept mainnet accounts | §1.3c; the devnet remains the test ground |
 | Upstream moves the seams again | the audits fail loudly and the patch re-applies; measured once already: one line moved in one snapshot |

@@ -111,7 +111,10 @@
     "frozen": true,
     "sparse": [
       "/LICENSE",
-      "/README.md"
+      "/README.md",
+      "/server/dm.mjs",
+      "/server/upload.mjs",
+      "/src/write.ts"
     ]
   },
   "opencaster-now": {
@@ -133,6 +136,104 @@
     "frozen": true,
     "sparse": [
       "/src/lib/snap.ts"
+    ]
+  },
+  "quorum-shared": {
+    "url": "https://github.com/QuilibriumNetwork/quorum-shared.git",
+    "sha": "c00c61e099fe9e682c982bc952b4e712c7a4a576",
+    "date": "2026-08-24",
+    "frozen": true,
+    "sparse": [
+      "/README.md",
+      "/package.json",
+      "/src/crypto/types.ts",
+      "/src/crypto/wasm-provider.ts"
+    ]
+  },
+  "quorum-desktop": {
+    "url": "https://github.com/QuilibriumNetwork/quorum-desktop.git",
+    "sha": "db04b991dfb0f7c9db330bd4f816b08aaa4a6811",
+    "date": "2026-08-25",
+    "frozen": true,
+    "sparse": [
+      "/LICENSE",
+      "/README.md",
+      "/package.json",
+      "/src/config/config.quorum.ts",
+      "/.agents/docs/cryptographic-architecture.md",
+      "/src/dev/tests/harness/README.md"
+    ]
+  },
+  "quorum-mobile": {
+    "url": "https://github.com/QuilibriumNetwork/quorum-mobile.git",
+    "sha": "37c0fe69422ac4b431ef5f0c34ac074f3d51ed2e",
+    "date": "2026-10-23",
+    "frozen": true,
+    "sparse": [
+      "/LICENSE",
+      "/README.md",
+      "/services/calling/farcaster-link.ts",
+      "/services/api/quorumClient.ts",
+      "/services/farcaster/directCastAuth.ts"
+    ]
+  },
+  "base-account-sdk": {
+    "url": "https://github.com/base/account-sdk.git",
+    "sha": "1c31057036570361d2044c7de170f39664624b1b",
+    "date": "2026-10-29",
+    "frozen": true,
+    "sparse": [
+      "/README.md",
+      "/packages/account-sdk/package.json",
+      "/packages/account-sdk/CHANGELOG.md",
+      "/packages/account-sdk/src/core/constants.ts"
+    ]
+  },
+  "coinbase-smart-wallet": {
+    "url": "https://github.com/coinbase/smart-wallet.git",
+    "sha": "a4e83fd36c47b64cb4e21e1fa6bb9b04181a66da",
+    "date": "2026-07-17",
+    "frozen": true,
+    "sparse": [
+      "/README.md",
+      "/LICENSE.md",
+      "/src/ERC1271.sol",
+      "/src/MultiOwnable.sol"
+    ]
+  },
+  "wagmi": {
+    "url": "https://github.com/wevm/wagmi.git",
+    "sha": "e6d5dad16a2a4232eaf4df8b31305f45e4c5f52d",
+    "date": "2026-11-09",
+    "frozen": true,
+    "sparse": [
+      "/packages/connectors/src/baseAccount.ts",
+      "/packages/connectors/package.json"
+    ]
+  },
+  "xmtp-docs": {
+    "url": "https://github.com/xmtp/docs-xmtp-org.git",
+    "sha": "8b513c9f3fa202ac8ae56684b68b6acf187354e5",
+    "date": "2026-04-07",
+    "frozen": true,
+    "sparse": [
+      "/docs/pages/chat-apps/intro/faq.mdx",
+      "/docs/pages/fund-agents-apps/calculate-fees.mdx",
+      "/docs/pages/fund-agents-apps/get-started.md",
+      "/docs/pages/chat-apps/core-messaging/create-a-signer.mdx",
+      "/docs/pages/protocol/identity.mdx"
+    ]
+  },
+  "libxmtp": {
+    "url": "https://github.com/xmtp/libxmtp.git",
+    "sha": "ab6fdcd20fc429e5c5b0e64d1e64608bf92ec4f9",
+    "date": "2026-11-06",
+    "frozen": true,
+    "sparse": [
+      "/LICENSE",
+      "/sdks/browser/README.md",
+      "/sdks/browser/package.json",
+      "/crates/xmtp_id/src/scw_verifier/chain_urls_default.json"
     ]
   }
 }

@@ -52,8 +52,8 @@ Home reading from nodes on both networks and signing on the reader's device.
 | Posting | One composer, one signature on the device, one status per network | Home's gateway forwards to a node on each network | **Designed**; signing validated |
 | Follows | Public, portable follows; private lists; mutes that are Home's own | protocol for follows and blocks; the device for lists and mutes | lists and mutes **Kernel**; follow writes **Designed** |
 | Channels | Browse, read, post into any channel; add a channel to a feed | protocol for casts; Farcaster's servers for membership | **Designed**; a real channel follow is not available |
-| Messages | No inbox. A Message button that opens Farcaster's own composer | **Farcaster's servers** | **New here** |
-| Wallet | None. The reader's own wallet signs in and approves keys | the reader's wallet | **New here** |
+| Messages | First build: no inbox, and a Message button that opens Farcaster's own composer. Later: an opt-in encrypted inbox | **Farcaster's servers**, then Quorum's | **New here**; plan in [messages and wallet](../research/messages-and-wallet.md) |
+| Wallet | First build: none; the reader's own wallet signs in and approves keys. Later: a surface that connects a wallet and holds nothing | the reader's wallet | **New here**; plan in [messages and wallet](../research/messages-and-wallet.md) |
 | Notifications | Mentions, replies, reactions and follows, read while Home is open | a node | **Designed**; no push at first |
 | Search | People, casts and channels; a search can be saved as a feed | a node | **Designed**; saved-search source **Kernel** |
 | Profile | Read everything; edit name, bio, picture; username read-only at first | protocol | **Designed** |
@@ -287,19 +287,21 @@ navigation, because a control that cannot work should not be drawn. A
 profile has a *Message* button that opens Farcaster's own composer for that
 person in a new tab, which works for readers who also use Farcaster's app.
 
-If readers ask for more, there are two routes, and the first is the one to
-take:
+**Revised the same day.** This section first said that Farcaster's inbox
+would be the route to take if readers asked for more.
+[Messages and wallet](../research/messages-and-wallet.md) looked closer and
+reversed that. The two clients that read Farcaster's inbox do it through a
+relay that presents as Farcaster's own site, and the inbox is not encrypted
+end to end. The plan now is:
 
-1. **Farcaster's inbox, through Farcaster's servers,** as Quilcast does it:
-   the custody wallet signs one authorisation and the client keeps a token
-   that opens direct casts and nothing else. It reaches everyone already on
-   Farcaster. It also puts a Farcaster session on Home's side, under
-   Network School's terms, and whether accounts that declined those terms
-   can use it is **unverified**.
-2. **An open messaging protocol keyed to verified addresses.** Independent
-   of Farcaster, and empty on day one.
+1. **Quorum first.** It is the encrypted messenger built by the team behind
+   Hypersnap, with MIT libraries and a signed link to a Farcaster account.
+   Two checks come before building: permission, and a delivery test.
+2. **XMTP second,** and first if either check fails. It finds people by the
+   addresses they verified, and works with a smart wallet.
+3. **Farcaster's inbox stays a link.**
 
-Either would be opt-in and labelled with whose servers carry the messages.
+Any inbox is opt-in and labelled with whose servers carry the messages.
 
 ---
 
@@ -323,6 +325,13 @@ The reader's own wallet is asked for a signature in exactly these places:
 
 So there are no tips, no token pages, no trading and no send in Home. A
 profile shows the addresses its owner verified, read-only.
+
+**What comes after the first build.**
+[Messages and wallet](../research/messages-and-wallet.md) plans a Wallet
+surface that connects a wallet and still holds nothing, with Coinbase Smart
+Wallet offered first. It found one hard limit: a smart wallet cannot approve
+Home's posting keys on either network, so the wallet that owns the Farcaster
+account and the wallet that holds money are two named things.
 
 ---
 
@@ -384,8 +393,8 @@ came true.*
 
 | Decision | Why | Overturned if |
 | --- | --- | --- |
-| No inbox; a Message button that opens Farcaster's composer | Messages are on nobody's network; the only working route runs through one company's servers and terms | Readers ask, in which case Farcaster's inbox is added as an opt-in |
-| No wallet in Home | The reference web client has none; a wallet adds custody risk and no customisation | A mini app host is built, which needs a wallet bridge |
+| No inbox in the first build; a Message button that opens Farcaster's composer | Messages are on nobody's network; the only working route runs through one company's servers and terms | The two checks in [messages and wallet](../research/messages-and-wallet.md) pass, in which case Quorum is added as an opt-in |
+| No wallet in the first build, and never one that holds keys | The reference web client has none; a wallet that holds keys adds custody risk | Superseded in part: a connect-only Wallet surface is planned in [messages and wallet](../research/messages-and-wallet.md) |
 | No uploads in the first build | No network hosts media; hosting it is a cost and a moderation duty | The gateway exists and a bucket is budgeted |
 | Mini apps open in a new tab | Hosting them means brokering wallet requests | As above |
 | Saved casts on the device | The only other place is Farcaster's servers | Either network adds a bookmark message |
