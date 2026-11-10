@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 225 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 230 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -178,7 +178,7 @@ a list of nodes with per-node status. The reasoning and three small additions
 
 | Signal | Action | Evidence |
 | --- | --- | --- |
-| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it; one per network once the fork holds ([design page](../research/optimal-design.md) §4.10) | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
+| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it: a Hypersnap node first, because it has the feed and search routes built in, and a Snapchain node second ([design page](../research/optimal-design.md) §4.10) | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
 | Home wants Neynar's feeds and search at volume without running anything | Neynar Scale, $249 a month for 60M credits | Neynar's docs via search excerpts; **unverified** here |
 | Neynar's terms, prices or shapes change, or Home wants reads with no key and no credits | point the adapter at a **Hypersnap node**: `haatz.quilibrium.com` for development, Home's own later; same `/v2/farcaster/*` shapes | [`../research/hypersnap.md`](../research/hypersnap.md) §6: all but one of the paths in Neynar's spec exist by name on a Hypersnap node; run its checks a–f first, because its validator list is already stale |
 | Never | become a validator; depend on the production API for anything. Its ranking is an option a reader can turn on, and only while permitted | validators are a permissioned set of seven keys (audit: "latest validator set has seven keys") |

@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 225/225 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page and the design page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 230/230 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page and the design page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -283,11 +283,14 @@ Snapchain page was written.
     reports only living claims.
   - *One correction.* The Hypersnap page said Snapchain was MIT. It is
     GPL-3.0, at the old pin and the new; the audit pins both.
-  - *New claims.* 32, on six sources: Hypersnap at its fork commit `ce9d003`
+  - *New claims.* 37, on six sources: Hypersnap at its fork commit `ce9d003`
     (the heights, the eight validators, the relay, native accounts, storage,
     the routes), a fork of the reference client that went protocol-direct,
     Quilcast, Opencaster and hypersnap.org as they stand, and Home's own
-    kernel where the design says it already fits. 225 of 225. A fresh fetch
+    kernel where the design says it already fits. Five of them answer whether
+    one Hypersnap node can be Home's reader of Farcaster: the fork is
+    configuration, and without its schedule the same binary stays on
+    Farcaster's chain. 230 of 230. A fresh fetch
     of all twenty sources takes 17 seconds and 116 MB, because large
     repositories are now fetched sparsely.
   - *One tool fix.* Run against upstream heads, the audit crashed on a file a

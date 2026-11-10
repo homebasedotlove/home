@@ -1414,6 +1414,47 @@ if (!SNAPSHOT) {
     },
   );
 
+  // --- one node: what a Hypersnap node follows, and what decides it ---
+  const forkHeights = ['50_433_538', '50433538', '51_119_199', '51119199', '50_954_121', '50954121'];
+  let rustFilesNamingForkHeights = 0;
+  for (const f of walk(join(hf.dir, 'src'), ['.rs'])) {
+    const text = readFileSync(f, 'utf8');
+    if (forkHeights.some((h) => text.includes(h))) rustFilesNamingForkHeights += 1;
+  }
+  check('the fork is configuration: no Rust source names its heights', 0, rustFilesNamingForkHeights);
+  check(
+    'without a schedule, mainnet keeps Farcaster gossip topics and storage limits',
+    { legacyTopics: true, storageLimitsStay: true },
+    {
+      legacyTopics: /if self\.cutovers\.is_empty\(\) \{\s*return vec!\[self\.network != proto::FarcasterNetwork::Mainnet\];/.test(hf.read('src/network/topic_schedule.rs')),
+      storageLimitsStay: /pub fn storage_limits_disabled\(&self\) -> bool \{\s*if self\.native_registration\.activation_heights\.is_empty\(\) \{\s*return false;/.test(hf.read('src/storage/store/stores.rs')),
+    },
+  );
+  const forkCompose = hf.read('docker-compose.mainnet.yml');
+  const peerSet = (text) => new Set((text.match(/bootstrap_peers = "([^"]+)"/)?.[1] ?? '').split(',').map((p) => p.trim()).filter(Boolean));
+  const forkPeers = peerSet(forkCompose);
+  const upstreamPeers = peerSet(sc.read('docker-compose.mainnet.yml'));
+  check(
+    "the stock install takes the fork from a mounted validators.toml and lists only Farcaster's bootstrap peers",
+    { mounted: true, fetched: true, peers: 9, sameAsUpstream: 9, peersInValidatorsToml: false },
+    {
+      mounted: forkCompose.includes('- ./validators.toml:/app/validators.toml:ro') && forkCompose.includes('cat /app/validators.toml >> config.toml'),
+      fetched: hf.read('scripts/hypersnap.sh').includes('fetch_file_from_repo "$VALIDATORS_FILE_PATH" "validators.toml"'),
+      peers: forkPeers.size,
+      sameAsUpstream: [...forkPeers].filter((p) => upstreamPeers.has(p)).length,
+      peersInValidatorsToml: /bootstrap_peers|direct_peers|\/ip4\//.test(fv),
+    },
+  );
+  check(
+    'a read node re-executes blocks and stops on a root mismatch; the relay needs a node on each side',
+    { rootCheck: true, relayNeedsBoth: true },
+    {
+      rootCheck: hf.read('src/storage/store/engine.rs').includes('"Shard root mismatch"') && sc.read('src/storage/store/engine.rs').includes('"Shard root mismatch"'),
+      relayNeedsBoth: shuttle.includes("replace the two RPC endpoints and gossip peer lists with your\nnodes' addresses. RPC must be the gRPC endpoint. Both nodes must retain blocks"),
+    },
+  );
+  expectText("one operator's Hypersnap node outgrew its disk", fatlineReadme, 'Our Hypersnap node also keeps 1 day of blocks: every block since genesis outgrew its 685 GB disk.');
+
   // --- Home's own code, where the design says it already fits ---
   const reasons = readFileSync(join(HOME, 'packages/home-personalization/src/reasons/index.ts'), 'utf8');
   const sourcesTs = readFileSync(join(HOME, 'packages/home-client-core/src/sources.ts'), 'utf8');

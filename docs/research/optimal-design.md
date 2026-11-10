@@ -371,6 +371,51 @@ and found that the two "side by side need two servers" (**pinned**:
 releases within a day (§1.1) and, on the Hypersnap side, a validator list
 that has been wrong once and rescheduled once.
 
+#### Can one Hypersnap node be Home's way of reading Farcaster?
+
+Asked on 2026-11-10, about a day and a half before the projected fork. Yes,
+in two different senses, and the difference is one file.
+
+The fork is configuration. No Rust source in Hypersnap names its heights
+(**pinned**). The new validator sets, the gossip switch and native
+registration all come from `validators.toml`, which the stock install fetches
+from the repository and mounts into the node (**pinned**). Without that
+schedule, a Hypersnap binary on mainnet keeps Farcaster's gossip topics and
+keeps storage limits on (**pinned**).
+
+| How the node is run | What it follows | Farcaster content it holds | Feeds, search and webhooks built in | What can go wrong |
+| --- | --- | --- | --- | --- |
+| Stock Snapchain | Farcaster's validators | all of it, exactly | no | releases must be installed within a day |
+| Hypersnap as installed | Farcaster's validators until each shard's fork height, then the eight community validators | everything up to the fork; after it, identity from OP Mainnet as before, plus the messages the relay carries | yes | the relay is a courtesy, not consensus (§1.2); a node started after the fork is given only Farcaster's nine bootstrap peers, and the relay's notes say Farcaster's validators "will not relay the new topics", so it may need Hypersnap peers added by hand (an inference from the files, not observed) |
+| Hypersnap software with Farcaster's validator list | Farcaster's validators | all of it, exactly | yes | unsupported. A read node re-executes every block and stops on a root mismatch (**pinned**), so it halts at the first consensus change Hypersnap does not port. One operator switched to exactly this on 2026-10-22 (**pinned**: `fatline`) |
+
+So a Hypersnap node is possible as Home's reader of Farcaster, and after
+2026-11-12 it is a mirror rather than a copy: complete for identity, complete
+for history, and as complete for new messages as the relay is on the day.
+
+Whether it makes sense:
+
+- **It is the most useful single node Home could run.** It is the only one of
+  the three with the feed, search, notification and webhook routes that
+  §4.2 builds on, and it needs no key. A Snapchain node gives lists and
+  nothing else.
+- **It cannot be the only thing Home reads Farcaster through.** Keep a
+  Farcaster-side provider behind the gateway for the two things a mirror
+  cannot vouch for: whether an item is on Farcaster, and whether the reader's
+  own write arrived there. The public node is enough for that at first.
+- **The third row is a workaround, not a plan.** It depends on a maintainer
+  porting another network's consensus changes after she has said the two
+  "will drift".
+- **Not this week, and not before there are readers.** The fork has been
+  postponed once and is days away; the software went from 0.13.5 to 0.17.4 in
+  under four weeks; one operator's node outgrew a 685 GB disk (**pinned**). The
+  devnet costs nothing and is where the next four build items run.
+
+When the time comes: a Hypersnap node as installed, as the primary read
+provider. A Snapchain node second, when volume or the relay's record calls
+for it; with both, Home can run its own relay, which needs a node on each
+side (**pinned**) and improves the mirror for everyone.
+
 ### 4.11 What Home will not build
 
 A validator. Anything that holds, moves or displays a token. Its own account
@@ -449,7 +494,7 @@ School, about third-party reads of the production API.
 | Home still builds and passes against the current reference client | `SNAPSHOT=<client at 73a39bd> pnpm check:all` | 259 tests pass; types compatible; every drift scenario caught; 33 of 34 client claims, the exception being the mobile seam line known since 2026-10-14 |
 | The fork patch still applies | `git apply --check` on `73a39bd` | clean; 34 files; the only patched files upstream touched are two `package.json` |
 | The patched fork still works | the fork gate of the reference patch README on `73a39bd`: install, build the packages, the three client-side suites, `tsc` | 14 of 14 assertions pass and the web app typechecks; the production bundle was not rebuilt |
-| Every protocol claim in the repository | `pnpm audit:protocol` at the pinned commits | 225 of 225, across 20 sources |
+| Every protocol claim in the repository | `pnpm audit:protocol` at the pinned commits | 230 of 230, across 20 sources |
 | Which earlier claims upstream had moved | the same audit at upstream heads, before re-pinning | 171 of 193 held; 6 were Snapchain facts, now re-pinned and corrected in the pages that state them; 16 were in dated witnesses of what a third party said on a day, now frozen at that day |
 | The write path's device half | `node scripts/validate-write-path.mjs` with `@farcaster/core` 0.21.0 | 13 of 13: scoped, expiring key add with an app requester; cast, reaction and follow signed and valid; stable bytes; refusals; a fid above 2^32 |
 | The audit names what moved instead of crashing | run at upstream heads after a repository restructured | fixed: a missing file now fails its claims and is listed |
