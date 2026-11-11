@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 277/277 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough and the messages-and-wallet page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 287/287 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -342,6 +342,18 @@ Snapchain page was written.
     switches or a return visit. They also pin its size, the notice shown
     when a browser blocks it, and the optional app account that pays
     within a limit without a window. 277 of 277.
+- **A fork on Base, 2026-11-11.**
+  [`../research/base-fork-feasibility.md`](../research/base-fork-feasibility.md)
+  asks whether Farcaster or Hypersnap could be forked onto Base.
+  - *What the code decided.* Only registries are on-chain today: accounts,
+    keys and storage on Optimism, Pro and channel ownership on Base, and
+    Farcaster's validator list on Ethereum. Messages are on no chain.
+    Contract signatures are checked outside consensus, so keys for smart
+    wallets belong in an on-chain registry, not a signed message.
+  - *New claims.* 10, all on sources already pinned. 287 of 287.
+  - *Not verified.* Nothing was deployed or run. Base's fees and hosted
+    chains were read only through search summaries. Whether Hypersnap
+    would honour a Base registry has not been asked.
   - *Not verified.* Coinbase's and XMTP's documentation sites and all news
     sites are blocked here, so their repositories were read instead. No
     message was sent and no wallet was connected. Whether Quilibrium permits

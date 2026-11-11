@@ -436,6 +436,11 @@ opt-in provider, Quorum first, after two checks. A Wallet surface may
 connect the reader's own wallet, show balances and send, and Home still
 never holds a key that moves money. The rest of the list stands.
 
+**Examined 2026-11-11.** Whether to fork a network onto Base is answered in
+[the Base feasibility page](base-fork-feasibility.md). "A validator" stays
+on this list. An account registry on Base is proposed there only as
+something Hypersnap would honour, not as a network of Home's own.
+
 ---
 
 ## 5. Where it lands in the code

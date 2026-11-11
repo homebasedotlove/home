@@ -4,8 +4,8 @@
  * docs/research/protocol-mechanics.md, docs/operations/setup-end-to-end.md,
  * docs/research/client-landscape.md, docs/research/hypersnap.md,
  * docs/research/both-networks.md, docs/research/optimal-design.md,
- * docs/design/experience-walkthrough.md and docs/research/messages-and-wallet.md
- * against the sources they were read from.
+ * docs/design/experience-walkthrough.md, docs/research/messages-and-wallet.md and
+ * docs/research/base-fork-feasibility.md against the sources they were read from.
  *
  * That page argues from numbers — engine versions and their dates, per-unit
  * storage limits, rate-limit constants, message-type ids, node requirements,
@@ -2011,6 +2011,98 @@ if (!SNAPSHOT) {
   );
 }
 
+// --- docs/research/base-fork-feasibility.md -----------------------------------------
+
+{
+  const sc = S.snapchain;
+  const hf = S['hypersnap-fork'];
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const oc = sc.read('src/connectors/onchain_events/mod.rs');
+
+  const contractsFn = oc.slice(oc.indexOf('    fn contracts(&self) -> Vec<Contract> {'));
+  const opArm = contractsFn.slice(contractsFn.indexOf('node_local_state::Chain::Optimism => vec!['), contractsFn.indexOf('node_local_state::Chain::Base => {'));
+  const baseArm = contractsFn.slice(contractsFn.indexOf('node_local_state::Chain::Base => {'), contractsFn.indexOf('                contracts\n            }'));
+  check(
+    'a node follows accounts, keys and storage on Optimism, and Pro and channel ownership on Base',
+    { optimism: ['storage_registry', 'key_registry', 'id_registry'], baseTier: true, baseChannel: true, channelUnsettled: true, firstBlocks: { op: '108864739', base: '31180908' } },
+    {
+      optimism: [...opArm.matchAll(/Contract::(\w+)\(\)/g)].map((m) => m[1]),
+      baseTier: baseArm.includes('None => Contract::tier_registry(),'),
+      baseChannel: baseArm.includes('kind: ContractKind::ChannelRegistrarController,') && baseArm.includes('// The mainnet controller address is added as a constant once the'),
+      channelUnsettled: flat(oc).includes('and the chain the channel /// registry ends up on for mainnet is not settled.'),
+      firstBlocks: {
+        op: oc.match(/const OP_MAINNET_FIRST_BLOCK: u64 = (\d+);/)?.[1],
+        base: oc.match(/const BASE_MAINNET_FIRST_BLOCK: u64 = (\d+);/)?.[1],
+      },
+    },
+  );
+  check(
+    'the registry addresses a node follows',
+    { id: '00000000Fc6c5F01Fc30151999387Bb99A9f489b', key: '00000000Fc1237824fb747aBDE0FF18990E59b7e', storage: '00000000fcce7f938e7ae6d3c335bd6a1a7c593d', tier: '0x00000000fc84484d585C3cF48d213424DFDE43FD' },
+    {
+      id: oc.match(/pub fn id_registry\(\) -> Self \{\s+Contract \{\s+address: address!\("([^"]+)"\)/)?.[1],
+      key: oc.match(/pub fn key_registry\(\) -> Self \{\s+Contract \{\s+address: address!\("([^"]+)"\)/)?.[1],
+      storage: oc.match(/pub fn storage_registry\(\) -> Self \{\s+Contract \{\s+address: address!\("([^"]+)"\)/)?.[1],
+      tier: oc.match(/pub fn tier_registry\(\) -> Self \{\s+Contract \{\s+address: address!\("([^"]+)"\)/)?.[1],
+    },
+  );
+  check(
+    'names are resolved from ENS on Ethereum and from Basenames on Base',
+    { l1: true, base: true },
+    {
+      l1: oc.includes('static ETH_L1_ENS_REGISTRY: Address = address!("00000000000C2E074eC69A0dFb2997BA6C7d2e1e");'),
+      base: oc.includes('static BASE_MAINNET_ENS_REGISTRY: Address = address!("0xB94704422c2a1E396835A571837Aa5AE53285a95");'),
+    },
+  );
+  check(
+    'the six kinds of on-chain event a node stores',
+    ['SIGNER', 'SIGNER_MIGRATED', 'ID_REGISTER', 'STORAGE_RENT', 'TIER_PURCHASE', 'CHANNEL_REGISTER'],
+    [...(sc.read('proto/definitions/onchain_event.proto').match(/enum OnChainEventType \{([\s\S]*?)\n\}/)?.[1] ?? '').matchAll(/^\s*EVENT_TYPE_([A-Z_]+) = \d+;/gm)].map((m) => m[1]).filter((n) => n !== 'NONE'),
+  );
+
+  const nodeTypes = sc.read('site/docs/pages/node-types.mdx');
+  const nodeLines = [
+    '- A **read node** (`read_node = true`) follows the chain, stores the full state and serves the HTTP and gRPC APIs. Anyone can run one, and it is what [`snapchain.sh`](/guides/managing-a-node) installs.',
+    '| Validator set and peers | Pulled from the onchain config registry at boot, then watched | Static: `validators.toml` and the compose file |',
+    '| Block pruning | Never | Optional (`pruning.block_retention`) |',
+    '**Validators** pull three keys from the `SnapchainConfigRegistry` contract every time they boot:',
+    'The registry lives on Ethereum mainnet at [`0x00000000fc51aD6eb74EAE89ba4b01b1776fBA85`](https://etherscan.io/address/0x00000000fc51aD6eb74EAE89ba4b01b1776fBA85) for mainnet.',
+  ];
+  check("Farcaster's validators read their list from a contract on Ethereum; read nodes are open and use a file", nodeLines, nodeLines.filter((t) => nodeTypes.includes(t)));
+
+  const validatorsPage = sc.read('site/docs/pages/validators.mdx');
+  const operators = [...validatorsPage.matchAll(/^\| `[0-9a-f]+\.\.\.[0-9a-f]+`\s*\| (\w+) \|$/gm)].map((m) => m[1]);
+  check(
+    "Farcaster's documented validators: seven keys, three operators, five of seven to commit",
+    { count: 7, byOperator: { Neynar: 5, Uno: 1, Degen: 1 }, quorum: true },
+    {
+      count: operators.length,
+      byOperator: Object.fromEntries([...new Set(operators)].map((o) => [o, operators.filter((x) => x === o).length])),
+      quorum: validatorsPage.includes('A block commits once more than two thirds of them have signed it, which is five of seven'),
+    },
+  );
+  expectText(
+    'contract signatures are checked before the queue, not in consensus',
+    flat(sc.read('src/mempool/l1_validator.rs')),
+    '//! Consensus only checks that these messages are well-formed, because the //! answers depend on chain RPCs that validators may see differently.',
+  );
+  expectText(
+    'the design target was more than 9,000 messages a second',
+    sc.read('site/docs/pages/whitepaper.mdx'),
+    'The initial release of snapchain should support a TPS of [> 9000]',
+  );
+  check(
+    "Hypersnap's own registration path is about 1,400 lines, and it keeps a conformance suite",
+    { lines: 1425, ported: true, conformance: true },
+    {
+      lines: hf.read('src/native_registration.rs').split('\n').length - 1,
+      ported: hf.read('docs/native-registration.md').includes("This selectively ports `pow`'s native registration"),
+      conformance: hf.exists('tests/conformance/README.md'),
+    },
+  );
+  expectText("Farcaster's contracts are MIT", S.contracts.read('LICENSE.md'), 'The MIT License (MIT)');
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -2093,6 +2185,8 @@ Not checkable offline; re-read when the page is revised:
   Quorum Mobile "full Farcaster support"                     https://x.com/QuilibriumInc/status/2006480591034995194 (search summary)
   XMTP mainnet and fee status after April 2026               https://docs.xmtp.org/fund-agents-apps/get-started (blocked from this sandbox)
   Whether Quilibrium permits other clients on Quorum's servers   no published terms found; ask before building
+  Farcaster message volumes in 2024; Base hosted chains (beta, waitlist) and single sequencer   news and documentation search summaries, 2026-11-11 (sites blocked here)
+  Whether Hypersnap would honour an account and key registry on Base   not asked yet; docs/research/base-fork-feasibility.md section 6
   Hypersnap fork meeting, open consensus, tokenization   https://github.com/farcasterorg/protocol/discussions/4 /13 /5 /19
   Network School acquired Farcaster from Neynar, 2026-10-15  press excerpts read 2026-10-22; farcasterxyz/client and snapchain unchanged
   State of the public Hypersnap node                   curl -s https://haatz.quilibrium.com/v1/info (blocked from this sandbox)

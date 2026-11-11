@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 277 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 287 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -237,6 +237,7 @@ against upstream HEAD and names any claim that moves.
 | The Hypersnap validator fork, projected for 2026-11-12, splits the network | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
 | The fork is postponed again or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
 | The production API closes to third-party origins, or its ranked feed is gated by the social contract | nothing depends on it since the revision of 2026-11-10; Home's own ranking and reasons are the default |
+| Home is tempted to start a third network to get accounts owned by smart wallets | [`../research/base-fork-feasibility.md`](../research/base-fork-feasibility.md): propose an account and key registry on Base to Hypersnap first; a separate validator set only with partners |
 | Quilibrium does not permit other clients on Quorum's servers, or Quorum loses messages | the two checks in [messages and wallet](../research/messages-and-wallet.md) §3, before any build; XMTP is the fallback |
 | Coinbase retires or restricts its wallet SDK | the wallet is one wagmi connector beside every wallet the browser exposes ([messages and wallet](../research/messages-and-wallet.md) §7) |
 | A reader's account is owned by a smart wallet | such an account cannot approve a gasless key on either network; Home says so at sign-in and offers the on-chain key path later ([messages and wallet](../research/messages-and-wallet.md) §4) |
