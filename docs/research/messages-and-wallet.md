@@ -294,6 +294,67 @@ restricts which sites may open its window, or if either network starts
 accepting contract signatures for posting keys. The last would let one
 Coinbase Smart Wallet be both roles.
 
+### 7.1 Approvals, interaction by interaction
+
+Asked directly on 2026-11-11: what the reader approves, and when. Home's
+side is design. The SDK's side is **pinned**. What Coinbase's window draws
+is Coinbase's page and could not be read from here.
+
+**What one approval is.** The reader presses a button in Home. A window
+420 by 700 pixels opens on `keys.coinbase.com`, carrying Home's name and
+address. The reader reviews the request there and confirms with the device
+passkey: a face, a fingerprint, a PIN or a security key. The window closes
+and Home continues. The contract requires a passkey assertion for every
+signature, so every approval includes that confirmation.
+
+**What needs no approval.** Anything Home can read or decide in the page:
+returning to Home after connecting, reading balances, switching between
+Base and Optimism, checking a payment's status, disconnecting.
+
+| The reader does | Coinbase approvals | Anything else |
+| --- | --- | --- |
+| Connects the wallet, once per browser | 1: create or choose a wallet, allow Home | nothing |
+| Comes back another day | 0 | nothing; the session is remembered in the browser |
+| Views balances, receives, switches network | 0 | nothing |
+| Shows the address on the Farcaster profile | 1: sign the claim | the account key approves the profile key once, if it has not already |
+| Pays a person | 1 per payment | nothing |
+| Buys Farcaster storage | 1 | needs ETH on Optimism |
+| Turns on quick pay, if Home offers it | 1: create an app account with a spending limit | nothing |
+| Pays within that limit afterwards | 0 | signed by a key in this browser |
+| Pays over the limit | 1 | nothing |
+| Opens an XMTP inbox, if built | 1 per browser | none per message |
+| Uses a mini app, if hosted | 1 per signature or payment the app asks for | Home's own "allow this app" first |
+| Signs in, posts, likes, follows, links Quorum | 0 | these belong to the account key and the posting key, never to Coinbase's wallet |
+
+**Paying a person, step by step.**
+
+1. On a profile, the reader presses **Pay**.
+2. Home's sheet shows the recipient's verified address, the token, the
+   network and the amount. The reader presses **Continue**.
+3. Coinbase's window opens with the payment. The reader confirms with the
+   passkey. The window closes.
+4. Home shows the payment as pending, then confirmed, read from the chain.
+
+Closing the window instead cancels the payment and changes nothing.
+
+**When the browser blocks the window.** The SDK draws its own notice in
+Home's page: "Home wants to continue in Coinbase Wallet. This action
+requires your permission to open a new window." with **Continue** and
+**Cancel**. Home avoids it by opening the window only from a button press.
+
+**Quick pay is a trade.** It removes the window for small payments by
+putting a key in the browser that can spend up to a limit. That key cannot
+be exported, but it is the first key in Home's storage that moves money.
+If offered, it is off by default and the reader sets the limit.
+
+**Gas.** Each payment costs gas in ETH from the wallet. The SDK accepts a
+sponsorship address per chain, so Home could pay instead; what that
+requires from Coinbase is **unverified**.
+
+**Unverified.** The wording and layout inside Coinbase's window. Whether a
+first payment on a new chain shows anything extra while the wallet is set
+up there. How the window behaves inside another app's built-in browser.
+
 ---
 
 ## 8. How the two choices fit together

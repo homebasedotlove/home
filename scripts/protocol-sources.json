@@ -193,7 +193,11 @@
       "/packages/account-sdk/src/util/checkCrossOriginOpenerPolicy.ts",
       "/packages/account-sdk/src/core/telemetry/initCCA.ts",
       "/packages/account-sdk/src/interface/builder/core/createBaseAccountSDK.ts",
-      "/packages/account-sdk/src/core/communicator/Communicator.ts"
+      "/packages/account-sdk/src/core/communicator/Communicator.ts",
+      "/packages/account-sdk/src/sign/base-account/Signer.ts",
+      "/packages/account-sdk/src/util/web.ts",
+      "/packages/account-sdk/src/store/store.ts",
+      "/packages/account-sdk/src/kms/crypto-key/index.ts"
     ]
   },
   "coinbase-smart-wallet": {

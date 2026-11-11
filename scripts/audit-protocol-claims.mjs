@@ -1956,6 +1956,59 @@ if (!SNAPSHOT) {
       mainnetFunding: /\| Payer wallets can be funded on Mainnet\s+\| 🔴\s+\|/.test(xStart),
     },
   );
+
+  // --- approvals, interaction by interaction ---
+  const signerTs = sdkSrc('sign/base-account/Signer.ts');
+  const toWindowAt = signerTs.indexOf("        case 'eth_ecRecover':");
+  const toWindow = signerTs.slice(toWindowAt, signerTs.indexOf('return this.sendRequestToPopup(request) as Promise<T>;', toWindowAt));
+  const needWindow = ['personal_sign', 'eth_signTypedData_v4', 'eth_sendTransaction', 'wallet_sendCalls'];
+  check(
+    "signatures and payments open Coinbase's window; accounts, chain and reads are answered in the page",
+    { window: needWindow, chainIdLocal: true, switchLocalFirst: true, readsGoToRpc: true },
+    {
+      window: needWindow.filter((m) => toWindow.includes(`case '${m}':`)),
+      chainIdLocal: signerTs.includes("        case 'eth_chainId':\n          return numberToHex(this.chain.id) as T;"),
+      switchLocalFirst: signerTs.includes('    const localResult = this.updateChain(chainId);\n    if (localResult) return null;'),
+      readsGoToRpc: signerTs.includes('          return fetchRPCRequest(request, this.chain.rpcUrl) as Promise<T>;'),
+    },
+  );
+  const webTs = sdkSrc('util/web.ts');
+  check(
+    "the window's size, what it is told about the page, and the notice shown when a browser blocks it",
+    { width: '420', height: '700', origin: true, title: true, message: true, buttons: ['Continue', 'Cancel'] },
+    {
+      width: webTs.match(/const POPUP_WIDTH = (\d+);/)?.[1],
+      height: webTs.match(/const POPUP_HEIGHT = (\d+);/)?.[1],
+      origin: webTs.includes('    origin: window.location.origin,'),
+      title: webTs.includes("const POPUP_BLOCKED_TITLE = '{app} wants to continue in Coinbase Wallet';"),
+      message: webTs.includes("const POPUP_BLOCKED_MESSAGE = 'This action requires your permission to open a new window.';"),
+      buttons: [...webTs.matchAll(/text: '(Continue|Cancel)',/g)].map((m) => m[1]),
+    },
+  );
+  check(
+    'the connection is remembered in the browser, and reconnecting asks for accounts without a window',
+    { persisted: true, reconnect: true, firstConnect: true },
+    {
+      persisted: sdkSrc('store/store.ts').includes('storage: createJSONStorage(() => localStorage),'),
+      reconnect: /if \(rest\.isReconnecting\)[\s\S]{0,200}method: 'eth_accounts',/.test(baseConnector),
+      firstConnect: baseConnector.includes("method: 'wallet_connect',"),
+    },
+  );
+  check(
+    'quick pay: an app account whose key cannot be exported, funded by a spending limit, with gas sponsorship as an option',
+    { keyNotExtractable: true, fundingDefault: true, routesThroughMain: true, sponsorship: true },
+    {
+      keyNotExtractable: sdkSrc('kms/crypto-key/index.ts').includes('const keypair = await WebCryptoP256.createKeyPair({ extractable: false });'),
+      fundingDefault: sdkSrc('core/provider/interface.ts').includes("   * @default 'spend-permissions'\n   */\n  funding?: SubAccountFundingMode;"),
+      routesThroughMain: signerTs.includes('// If we have never had a spend permission, we need to do this tx through the global account'),
+      sponsorship: sdkSrc('core/provider/interface.ts').includes('  paymasterUrls?: Record<number, string>;'),
+    },
+  );
+  expectText(
+    'a passkey owner signs with a WebAuthn assertion, so every approval needs the passkey',
+    swReadme,
+    'If the signer is a secp256r1 public key, `signatureData` should be the the ABI encoding of a [`WebAuthnAuth`]',
+  );
 }
 
 // --- network (optional) ------------------------------------------------------------

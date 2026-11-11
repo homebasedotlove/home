@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 272/272 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough and the messages-and-wallet page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 277/277 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough and the messages-and-wallet page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -337,6 +337,11 @@ Snapchain page was written.
     server and its MIT library is incomplete; Farcaster's inbox token covers
     text only; XMTP had not marked its browser SDK ready in April. 272 of
     272.
+  - *Approvals, asked the next day.* Five more claims pin when Coinbase's
+    window opens: for every signature and payment, never for reads, chain
+    switches or a return visit. They also pin its size, the notice shown
+    when a browser blocks it, and the optional app account that pays
+    within a limit without a window. 277 of 277.
   - *Not verified.* Coinbase's and XMTP's documentation sites and all news
     sites are blocked here, so their repositories were read instead. No
     message was sent and no wallet was connected. Whether Quilibrium permits
