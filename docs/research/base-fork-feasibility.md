@@ -6,6 +6,12 @@ put it on Base, what exactly would be on-chain, how Home would read both in
 a sustainable and compatible way, and how everything stays readable with a
 decentralized set of nodes.
 
+**Since this page was written:** the fork activated on the evening of
+2026-11-12 ([design page §10](optimal-design.md#10-after-the-fork-re-read-2026-11-13)).
+One finding there bears on §4: on-chain events do not cross the relay, and
+a Hypersnap validator follows Optimism only where its operator set an
+endpoint. A registry on Base would face the same condition.
+
 **pinned** means checked by `scripts/audit-protocol-claims.mjs` against a
 named commit. **web** means read through a search on 2026-11-11.
 **unverified** means one secondary source, or none.
@@ -213,12 +219,12 @@ make a second one pointless.
 
 | Claim | Where it was read |
 | --- | --- |
-| Which contracts are followed on which chain | `snapchain@1405794` `src/connectors/onchain_events/mod.rs` |
-| The six on-chain event kinds | `snapchain@1405794` `proto/definitions/onchain_event.proto` |
-| Validators read their list from a contract on Ethereum; read nodes from a file | `snapchain@1405794` `site/docs/pages/node-types.mdx` |
-| Seven validators, three operators, five of seven | `snapchain@1405794` `site/docs/pages/validators.mdx` |
-| Contract signatures are checked outside consensus | `snapchain@1405794` `src/mempool/l1_validator.rs` |
-| Design target above 9,000 a second | `snapchain@1405794` `site/docs/pages/whitepaper.mdx` |
-| Hypersnap's registration path and its size; its conformance suite | `hypersnap@ce9d003` `src/native_registration.rs`, `tests/conformance` |
+| Which contracts are followed on which chain | `snapchain@43ca24d` `src/connectors/onchain_events/mod.rs` |
+| The six on-chain event kinds | `snapchain@43ca24d` `proto/definitions/onchain_event.proto` |
+| Validators read their list from a contract on Ethereum; read nodes from a file | `snapchain@43ca24d` `site/docs/pages/node-types.mdx` |
+| Seven validators, three operators, five of seven | `snapchain@43ca24d` `site/docs/pages/validators.mdx` |
+| Contract signatures are checked outside consensus | `snapchain@43ca24d` `src/mempool/l1_validator.rs` |
+| Design target above 9,000 a second | `snapchain@43ca24d` `site/docs/pages/whitepaper.mdx` |
+| Hypersnap's registration path and its size; its conformance suite | `hypersnap@a85fd22` `src/native_registration.rs`, `tests/conformance` |
 | Farcaster's contracts are MIT and accept contract owners | `farcasterxyz/contracts@58d6b28` |
 | 2024 message volumes; Base's hosted chains and sequencer | search summaries of news and documentation; sites blocked here |

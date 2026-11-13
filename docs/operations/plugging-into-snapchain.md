@@ -110,7 +110,8 @@ year**; the docs repository still says "$7 today" on its messages page, which
 is stale text from the old denomination. The live `usdUnitPrice()` could not be
 read from here.
 
-**Rate limits** (`src/mempool/mempool.rs`): when a node enables them, a FID may
+**Rate limits** (`src/mempool/mempool.rs`): on by default since 2026-11-11, and
+an operator can turn them off. With them on, a FID may
 submit `max(100, total storage allowance ÷ 10)` messages per hour. `KEY_ADD` is
 always capped at one per minute per FID; `KEY_REMOVE` is never limited.
 `LIVE_AT` heartbeats get 5000 per unit per hour on their own budget. Blocks
@@ -346,7 +347,7 @@ Repositories were shallow-cloned; the commit date is the state read.
 
 | Source | State read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `1405794`, 2026-11-04, v0.16.0 (re-pinned 2026-11-10 from `8f82bcc`) | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `43ca24d`, 2026-11-12, v0.16.0 plus unreleased commits (re-pinned 2026-11-13 from `1405794`) | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
 | [farcasterxyz/protocol](https://github.com/farcasterxyz/protocol) | `aa6bdfb`, 2026-06-18 | specification, FIP discussions [#225](https://github.com/farcasterxyz/protocol/discussions/225), [#226](https://github.com/farcasterxyz/protocol/discussions/226), [#229](https://github.com/farcasterxyz/protocol/discussions/229), [#238](https://github.com/farcasterxyz/protocol/discussions/238), [#262](https://github.com/farcasterxyz/protocol/discussions/262), [#263](https://github.com/farcasterxyz/protocol/discussions/263), [#266](https://github.com/farcasterxyz/protocol/discussions/266), [#269](https://github.com/farcasterxyz/protocol/discussions/269), [#272](https://github.com/farcasterxyz/protocol/discussions/272), [#276](https://github.com/farcasterxyz/protocol/discussions/276), [#277](https://github.com/farcasterxyz/protocol/discussions/277) |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | Client API reference, signer requests, apps, contracts, direct casts |
 | [farcasterxyz/contracts](https://github.com/farcasterxyz/contracts) | `58d6b28`, 2026-08-13 | StorageRegistry, SnapchainConfigRegistry, TierRegistry |

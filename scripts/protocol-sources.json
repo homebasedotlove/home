@@ -1,8 +1,8 @@
 {
   "snapchain": {
     "url": "https://github.com/farcasterxyz/snapchain.git",
-    "sha": "1405794471d7edf701e3f93658e0f600ef3b112b",
-    "date": "2026-11-04"
+    "sha": "43ca24d748759758bade1a402172409b6122526e",
+    "date": "2026-11-12"
   },
   "snapchain-8f82bcc": {
     "url": "https://github.com/farcasterxyz/snapchain.git",
@@ -90,8 +90,19 @@
   },
   "hypersnap-fork": {
     "url": "https://github.com/farcasterorg/hypersnap.git",
+    "sha": "a85fd221bb311fc2b25670a8215e6ce41e231e8a",
+    "date": "2026-11-13"
+  },
+  "hypersnap-ce9d003": {
+    "url": "https://github.com/farcasterorg/hypersnap.git",
     "sha": "ce9d0037687b2f48fd351f4c5b10ab28f12b78fa",
-    "date": "2026-11-09"
+    "date": "2026-11-09",
+    "frozen": true,
+    "sparse": [
+      "/validators.toml",
+      "/Cargo.toml",
+      "/docs/shuttle.md"
+    ]
   },
   "smashcast": {
     "url": "https://github.com/SmashThunderStone/client.git",
@@ -245,6 +256,37 @@
       "/sdks/browser/README.md",
       "/sdks/browser/package.json",
       "/crates/xmtp_id/src/scw_verifier/chain_urls_default.json"
+    ]
+  },
+  "quilcast-post-fork": {
+    "url": "https://github.com/backmeupplz/quilcast.git",
+    "sha": "3d7e6ecd8092bff9c6af18c20dec6a7d07cd6182",
+    "date": "2026-11-13",
+    "frozen": true,
+    "sparse": [
+      "/package.json",
+      "/src/join.tsx",
+      "/src/write.ts"
+    ]
+  },
+  "snapdiff": {
+    "url": "https://github.com/schmrdty/snapdiff.git",
+    "sha": "ad49a2090a1a7fb14f87c26f33350ced41a7e088",
+    "date": "2026-11-13",
+    "frozen": true,
+    "sparse": [
+      "/LICENSE",
+      "/README.md",
+      "/docs/MULTI-NODE.md"
+    ]
+  },
+  "zaoos-fork-result": {
+    "url": "https://github.com/bettercallzaal/ZAOOS.git",
+    "sha": "9690fcab9d5a8f25f3ffcf39914421adc4637a7a",
+    "date": "2026-11-12",
+    "frozen": true,
+    "sparse": [
+      "/research/infrastructure/643-hypersnap-run-a-node/README.md"
     ]
   }
 }

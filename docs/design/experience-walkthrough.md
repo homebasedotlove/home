@@ -13,13 +13,11 @@ Every upstream fact below is pinned by `scripts/audit-protocol-claims.mjs`.
 
 ## 0. Read this first
 
-**The fork has not happened.** This page was written at 2026-11-10 19:31 UTC.
-Hypersnap's validator set changes at fixed block heights, and the file that
-schedules them projects 2026-11-12 09:25:20 UTC. No repository this project
-reads had moved since the last read: Hypersnap is at `ce9d003`, Snapchain at
-`1405794`, the reference client at `73a39bd`. So "did it hold" has no answer
-yet. A re-read is scheduled for 2026-11-13 09:30 UTC and will be recorded in
-[After the fork](#after-the-fork).
+**The fork happened after this page was written.** The page dates from
+2026-11-10 19:31 UTC, when the schedule projected 2026-11-12 09:25 UTC. The
+heights were moved twelve hours on the morning they were due, and the fork
+activated that evening. The re-read of 2026-11-13 is recorded in
+[After the fork](#after-the-fork), and the rows it changes are marked there.
 
 **Nothing here was exercised against a live node.** The sandbox this was
 written in cannot reach `haatz.quilibrium.com`, `snap.farcaster.xyz` or
@@ -108,8 +106,9 @@ the custody key. Two routes, neither as clean:
 
 Home does not create accounts in its first build. It says so and links out.
 A Farcaster account is registered on Optimism, which Quilcast prices at
-about $0.20 of ETH. After the fork, Hypersnap registers accounts free with a
-proof of work, and those accounts exist on Hypersnap only.
+about $0.20 of ETH. Since the fork, Hypersnap registers accounts free with a
+proof of work, and those accounts exist on Hypersnap only. Quilcast shipped
+that signup the night of the fork.
 
 ---
 
@@ -351,6 +350,7 @@ can be saved as a feed source; that part is **Kernel**.
 verified addresses, and which app signed each cast. Editing covers display
 name, bio and picture, with the second key. The username is read-only in
 the first build, because usernames are issued by a registry Farcaster runs.
+An account that exists only on Hypersnap has no username at all.
 
 **Mini apps — New here.** A mini app in a cast renders as a card that opens
 the app's own site in a new tab. Home does not host mini apps in its first
@@ -383,9 +383,37 @@ knows about the reader exports as one file and imports on another device.
 
 ### After the fork
 
-*To be filled by the re-read scheduled for 2026-11-13 09:30 UTC: whether the
-heights were reached, whether they were moved again, and which rows above
-came true.*
+Re-read 2026-11-13 at 09:31 UTC. The full record is in
+[the design page](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13).
+No node could be reached from here, so this rests on Hypersnap's commits
+and three other projects' records.
+
+**It held, on the second schedule.** The heights were moved twelve hours
+on the morning of 12 November. The fork activated that evening, and blocks
+were still being produced four and a half hours later, after one
+85-second pause and one fix.
+
+| Row above | What happened |
+| --- | --- |
+| Feed | True now. The two networks produce their own blocks, so a cast can exist on one only |
+| Posting | True now, and wider than expected: see Accounts |
+| Follows | Not yet observed; it follows from storage limits ending on Hypersnap |
+| Channels | Unchanged. The relay does not carry channel messages unless an operator lists them |
+| Accounts | True now. Free Hypersnap accounts exist |
+
+**Three things the table did not anticipate.**
+
+- **Hypersnap-only accounts have no username.** Usernames come from a
+  server that knows only Optimism accounts. Home shows the display name
+  and the id.
+- **New Farcaster accounts may not appear on Hypersnap.** On-chain events
+  do not cross the relay. Quilcast's code says an account registered on
+  Optimism after the fork never reaches Hypersnap. That was not measured
+  here. If it holds, a reader who joins Farcaster today posts to one
+  network only, and Home's status line says so.
+- **Sign-in must look on both networks.** An account can now exist on
+  either one alone, so Home asks each network for the account before it
+  offers to post there.
 
 ---
 
@@ -419,17 +447,18 @@ needs Home's app custody key in a secret store, as the
 
 | Claim | Where it was read |
 | --- | --- |
-| The fork schedule and projection | `farcasterorg/hypersnap@ce9d003` `validators.toml` |
+| The fork schedule, first and second | `farcasterorg/hypersnap@ce9d003` and `@a85fd22`, `validators.toml` |
+| That it activated, and what followed | `bettercallzaal/ZAOOS@9690fca`, `schmrdty/snapdiff@ad49a20`, `backmeupplz/quilcast@3d7e6ec` |
 | Ten reasons, four groups, their labels and sentences | `packages/home-personalization/src/reasons/index.ts` |
 | The why-chip, its three buttons and the hidden row | `docs/integration/reference-patch/seam-and-chip.patch` |
 | Mute durations; receipts copy | `packages/home-personalization/src/prefs/actions.ts`, `src/pipeline/receipts.ts` |
-| `for_you` is trending; writes answer 501 | `hypersnap@ce9d003` `src/api/http.rs` |
-| Channels on a node are derived from casts; members are posters | `hypersnap@ce9d003` `src/api/channels.rs`; `Opencaster@a3a3685` `FEATURE_SUPPORT.md` |
+| `for_you` is trending; writes answer 501 | `hypersnap@a85fd22` `src/api/http.rs` |
+| Channels on a node are derived from casts; members are posters | `hypersnap@a85fd22` `src/api/channels.rs`; `Opencaster@a3a3685` `FEATURE_SUPPORT.md` |
 | A node leaves the viewer's like state empty; no complete inbox | `Opencaster@a3a3685` `apps/web-client/FEATURE_SUPPORT.md` |
-| 10,000-byte casts for every account; four embeds | `snapchain@1405794` `src/core/validations/cast.rs`, `src/version/version.rs` |
-| 200 follows per current storage unit | `snapchain@1405794` `src/storage/store/stores.rs` |
-| Block links are durable from engine version 19 | `snapchain@1405794` `src/version/version.rs`, `link_store.rs` |
-| Channel messages and follows wait for engine version 24 | `snapchain@1405794` `src/version/version.rs` |
+| 10,000-byte casts for every account; four embeds | `snapchain@43ca24d` `src/core/validations/cast.rs`, `src/version/version.rs` |
+| 200 follows per current storage unit | `snapchain@43ca24d` `src/storage/store/stores.rs` |
+| Block links are durable from engine version 19 | `snapchain@43ca24d` `src/version/version.rs`, `link_store.rs` |
+| Channel messages and follows wait for engine version 24 | `snapchain@43ca24d` `src/version/version.rs` |
 | Direct casts are not part of the protocol; the intent URL | `farcasterxyz/docs@3a02c82` `docs/reference/farcaster/direct-casts.md` |
 | Channel follow is a call to Farcaster's API with an app-key token; the channel list is public | `farcasterxyz/docs@3a02c82` `docs/reference/farcaster/api.md` |
 | The reference client's wallet page and endpoint counts | `farcasterxyz/client@73a39bd` `WalletPage.tsx`, `FarcasterApiClient.ts` |

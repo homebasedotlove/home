@@ -15,6 +15,12 @@ are as extracted. **unverified** means one secondary source. The production
 API, the public nodes, farcaster.xyz and x.com cannot be reached from this
 sandbox, so nothing here was tested against a live network.
 
+**Updated 2026-11-13: the fork activated on the evening of 12 November.**
+What happened, and what it changes here, is in
+[§10](#10-after-the-fork-re-read-2026-11-13). Sections 0 to 9 are as written
+on 10 November, with the schedule, version and relay facts brought up to
+the commit now pinned.
+
 ---
 
 ## 0. The short answers
@@ -29,7 +35,7 @@ sandbox, so nothing here was tested against a live network.
 - **Three facts changed the plan of 2026-10-14.** Farcaster's production API
   now refuses casts from accounts that have not accepted Network School's
   social contract (§1.1). Hypersnap stops following Farcaster's validators at
-  fixed block heights projected for 2026-11-12, with its own eight validators,
+  fixed block heights, reached on the evening of 2026-11-12, with its own eight validators,
   a relay, free accounts and no storage rent (§1.2). And Farcaster's own
   network activated three engine versions in a week, one of them a day after
   its release (§1.1). A client that depends on one party's servers, or
@@ -87,17 +93,19 @@ within a day.
 | 11-08, 11-09 | Three changes merge: the validator set, "shuttle relay service + gossip cutover", and "free onboarding". | **web** for the merges; **pinned** for what they contain |
 | 11-09 | The fork block is moved: "Postponed by three days so peers can prepare after consensus was lost." Projected activation 2026-11-12 09:25:20 UTC, "an estimate; consensus activates at the exact heights". Two commits titled as consensus fixes land the same day. What "consensus was lost" refers to is not explained anywhere read. | **pinned**: `validators.toml` |
 
-What the fork is, from the code at `ce9d003` (all **pinned**):
+What the fork is, from the code at `a85fd22` (all **pinned**; the heights
+are the second schedule, see §10):
 
-- **A validator swap, at heights.** Shard 0 at block 50,433,538, shard 2 at
-  50,954,121, shard 1 at 51,119,199. From those blocks a Hypersnap node
+- **A validator swap, at heights.** Shard 0 at block 50,477,529, shard 2 at
+  50,996,940, shard 1 at 51,161,786. From those blocks a Hypersnap node
   accepts blocks signed by eight community validators, none of whose keys is
   in any Farcaster validator set. Gossip moves to `hypersnap/*` topics at the
   same heights. "Existing Snapchain validators will not relay the new topics."
 - **A relay in both directions.** The `shuttle` "relays compatible signed user
   messages from each network's committed blocks to the opposite mempool". It
-  carries message types 1 to 8 and 11 to 21, byte for byte, including gasless
-  key adds. It "does not relay consensus, block certificates, on-chain events,
+  carries message types 1 to 8 and 11 to 17 by default, byte for byte,
+  including gasless key adds; channel types 18 to 21 only where an operator
+  lists them. It "does not relay consensus, block certificates, on-chain events,
   Fname system transfers, or Hyper envelopes", and it "cannot transfer"
   prerequisites such as registration, signers and storage. "A successful
   publish means gossipsub queued the message to subscribed peers, not that
@@ -140,7 +148,7 @@ a feed the reader can inspect and tune.
 | | Farcaster (Snapchain) | Hypersnap |
 | --- | --- | --- |
 | Validators | seven keys, five needed to commit; five listed as Neynar's, whose team is now at Network School | eight community operators, named in `validators.toml` |
-| Software and licence | Snapchain 0.16.0, GPL-3.0 | Hypersnap 0.17.4, a fork, GPL-3.0 |
+| Software and licence | Snapchain 0.16.0, GPL-3.0 | Hypersnap 0.17.7, a fork, GPL-3.0 |
 | Engine rules | V23 | the same schedule through V23, ported by hand |
 | Identity | fids on OP Mainnet | the same fids, plus native fids from 2^32 |
 | New account | an OP Mainnet transaction and storage rent | free: custody signature and proof of work |
@@ -413,9 +421,9 @@ Whether it makes sense:
 - **The third row is a workaround, not a plan.** It depends on a maintainer
   porting another network's consensus changes after she has said the two
   "will drift".
-- **Not this week, and not before there are readers.** The fork has been
-  postponed once and is days away; the software went from 0.13.5 to 0.17.4 in
-  under four weeks; one operator's node outgrew a 685 GB disk (**pinned**). The
+- **Not this week, and not before there are readers.** The fork was
+  postponed twice before it activated; the software went from 0.13.5 to
+  0.17.7 in under five weeks; one operator's node outgrew a 685 GB disk (**pinned**). The
   devnet costs nothing and is where the next four build items run.
 
 When the time comes: a Hypersnap node as installed, as the primary read
@@ -486,7 +494,7 @@ curl -s https://snap.farcaster.xyz:3381/v1/info | jq '.shardInfos[] | {shardId, 
 curl -s -o /dev/null -w '%{http_code}\n' https://haatz.quilibrium.com/v1/nativeRegistration
 curl -s -o /dev/null -w '%{http_code}\n' https://snap.farcaster.xyz:3381/v1/nativeRegistration
 
-# 3. Has the fork activated? Shard 0 passes 50,433,538 and the route above
+# 3. Has the fork activated? Shard 0 passes 50,477,529 and the route above
 #    reports that the next block admits registration.
 curl -s https://haatz.quilibrium.com/v1/nativeRegistration | jq .
 
@@ -543,9 +551,9 @@ accepted by a node. `plan.md` §1.3 and §6.2 above are those tests.
 
 | Source | Read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `1405794`, 2026-11-04 (pinned as `snapchain`; `8f82bcc` kept as `snapchain-8f82bcc`) | here | 0.15.0, 0.16.0, V21 to V23, channels at V24, GPL-3.0, no mention of Hypersnap |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `43ca24d`, 2026-11-12 (pinned as `snapchain`, re-pinned 2026-11-13 from `1405794`; `8f82bcc` kept as `snapchain-8f82bcc`) | here | 0.15.0, 0.16.0, V21 to V23, channels at V24, GPL-3.0, no mention of Hypersnap |
 | [neynarxyz/OAS](https://github.com/neynarxyz/OAS) `0c4d078`, 2026-11-02 (re-pinned) | here | the 103 shaped paths a Hypersnap node is compared against |
-| [farcasterorg/hypersnap](https://github.com/farcasterorg/hypersnap) `ce9d003`, 2026-11-09 (pinned as `hypersnap-fork`) | here | the fork schedule and validators, relay, native registration, storage, API routes, node roles |
+| [farcasterorg/hypersnap](https://github.com/farcasterorg/hypersnap) `a85fd22`, 2026-11-13 (pinned as `hypersnap-fork`, re-pinned from `ce9d003`, which is kept as `hypersnap-ce9d003` for the first schedule) | here | the fork schedule and validators, relay, native registration, storage, API routes, node roles |
 | [farcasterxyz/client](https://github.com/farcasterxyz/client) `73a39bd`, 2026-10-30 | here | the gates and the patch; README statements |
 | [SmashThunderStone/client](https://github.com/SmashThunderStone/client) `152a46b`, 2026-10-17 (pinned as `smashcast`) | here | a reference-client fork on the protocol; the preflight measurements; the key domain |
 | [backmeupplz/quilcast](https://github.com/backmeupplz/quilcast) `f2eedb9`, 2026-11-10 (pinned) | here | a live direct-to-node client |
@@ -561,3 +569,81 @@ accepted by a node. `plan.md` §1.3 and §6.2 above are those tests.
 [SmashThunderStone/client#3]: https://github.com/SmashThunderStone/client/pull/3
 [ivcained/fiddy#67]: https://github.com/ivcained/fiddy/pull/67
 [ivcained/fiddy#75]: https://github.com/ivcained/fiddy/pull/75
+
+---
+
+## 10. After the fork: re-read 2026-11-13
+
+Asked on 2026-11-10: re-read the repositories after the fork and say whether
+it held. Re-read on 2026-11-13 at 09:31 UTC.
+
+**Not verified.** No node on either network can be reached from this
+sandbox, so no height was read here. The outcome below rests on Hypersnap's
+own commits and on three other projects' records, each pinned as a dated
+witness. The last of those readings is from 01:38 UTC on 13 November.
+Whether blocks are still being produced at this hour was not measured.
+
+### 10.1 What happened
+
+| When, UTC | What | Evidence |
+| --- | --- | --- |
+| 11-12, about 08:33 | Farcaster's chain passes the first schedule's shard-0 height, 50,433,538, about fifty minutes earlier than projected | **pinned**: the height sampled at 08:52:44 was 50,434,679 |
+| 11-12 08:56 | The schedule is moved twelve hours: shard 0 at 50,477,529, shard 2 at 50,996,940, shard 1 at 51,161,786, projected 20:52:39 | **pinned** |
+| 11-12 09:36 | Version 0.17.5 is published as an image | one operator's notes, **pinned** as a witness |
+| 11-12 evening | **The fork activates.** Two reference nodes are about 1,070 blocks past the cutover by 21:22 | **pinned** witness: an operator of a read node |
+| 11-12 evening | A read node on the stock configuration stops one block short on every shard, and crosses once Hypersnap's validators are added as peers | the same witness |
+| 11-12 23:36 | Every monitored Hypersnap node stops at one height for 85 seconds, then continues | **pinned** witness: a monitor of both networks |
+| 11-13 01:30 | Quilcast ships free signup through Hypersnap's own registration | **pinned** witness |
+| 11-13 01:35 | Hypersnap ships peer discovery and "stalled-vote recovery" | **pinned** |
+| 11-13 08:36 | Hypersnap is at version 0.17.7 | **pinned** |
+
+So: it was postponed a second time, by twelve hours, on the morning it was
+due. It then activated at the new heights, and blocks were still being
+produced four and a half hours later, with one short pause and one fix
+shipped in between. What happened on shard 0 in the minutes after the first
+height passed is recorded nowhere that could be read.
+
+Nobody announced it. Issue 51 has no comment after 10 November, the
+releases page still lists a version from May, and a web search finds no
+statement from Hypersnap's lead developer, Network School or Neynar.
+
+### 10.2 What this page predicted, and what happened
+
+- §4.10 said a stock Hypersnap install lists only Farcaster's nine peers.
+  A real read node stopped one block short for exactly that reason. The
+  shipped `validators.toml` now carries six Hypersnap discovery seeds.
+- §2 said prerequisites do not cross the relay. They do not, and the gap
+  is wider than this page assumed. See the third point below.
+
+### 10.3 What changes for the design
+
+1. **There are two networks now.** The network tag on every item and every
+   write is live, not a precaution.
+2. **Hypersnap-only accounts exist, and they have no username.** Usernames
+   come from a server that knows only Optimism accounts. Home shows a
+   display name and the id for them. They stay out of discovery until the
+   reader turns them on, as §4.7 decided.
+3. **Accounts stop crossing in both directions.** On-chain events are not
+   relayed, and a Hypersnap validator follows Optimism only where its
+   operator set an endpoint (**pinned**). Quilcast's code says an account
+   registered on Optimism after the fork "never reaches Hypersnap"
+   (**pinned** witness, not measured here). If so, a new Farcaster account
+   is refused by Hypersnap, the same way a Hypersnap account is refused by
+   Farcaster. Keys added on-chain do not cross either. Gasless keys do.
+4. **The relay carries less by default.** Types 1 to 8 and 11 to 17.
+   Channel messages cross only where an operator lists them.
+5. **Hypersnap needs six of its eight validators online.** One pause was
+   seen in the first three hours.
+6. **Farcaster tightened its side the day before.** Snapchain now checks
+   the signer of every gossiped message and turns rate limits on by
+   default. Its code still does not mention Hypersnap, so the relay still
+   runs on tolerance.
+
+### 10.4 What does not change
+
+The build order in §6.1. No node until there are readers. The provider
+registry. Write once, submit to both, show both results: the third point
+above is exactly what that status line is for.
+
+The checks in §6.2 are still unrun, and are now the first thing to do from
+a machine that can reach the nodes.

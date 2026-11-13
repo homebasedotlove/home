@@ -118,6 +118,13 @@ function source(name) {
       }
     },
     exists: (rel) => existsSync(join(dir, rel)),
+    body() {
+      try {
+        return execFileSync('git', ['-C', dir, 'log', '-1', '--format=%B'], { encoding: 'utf8' });
+      } catch {
+        return '';
+      }
+    },
     head() {
       try {
         return execFileSync('git', ['-C', dir, 'log', '-1', '--format=%H %cs'], {
@@ -305,9 +312,9 @@ if (missing.length) {
     'RATE_LIMIT_PER_STORAGE_UNIT: u32 = 5000',
   );
   expectText(
-    'rate limits are an operator switch, off by default',
+    'rate limits are an operator switch, on by default since 2026-11-11',
     mempool,
-    /enable_rate_limits:\s*false/,
+    /rx_poll_interval: Duration::from_millis\(1\),\s*enable_rate_limits: true,/,
   );
   expectText(
     'blocks carry at most 1000 messages',
@@ -1203,12 +1210,11 @@ if (!SNAPSHOT) {
   check('Snapchain source and docs do not mention Hypersnap', 0, scMentionsHypersnap);
 
   // --- the fork, as scheduled in code ---
-  check('Hypersnap version at the fork commit', '0.17.4', hf.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]);
+  check('Hypersnap version at the pinned commit', '0.17.7', hf.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]);
   const fv = hf.read('validators.toml');
   const forkLines = [
     '# Initial Hypersnap fork: eight validators collected in issue #51.',
-    '# Height snapshot: 2026-11-06 09:25:20 UTC; projected activation: 2026-11-12 09:25:20 UTC.',
-    '# Postponed by three days so peers can prepare after consensus was lost.',
+    '# Reference time: 2026-11-12 08:52:39 UTC; projected activation: 2026-11-12 20:52:39 UTC (12 hours later).',
     '# Activation time is an estimate; consensus activates at the exact heights below.',
   ];
   check('the fork schedule as written in validators.toml', forkLines, forkLines.filter((t) => fv.includes(t)));
@@ -1221,7 +1227,7 @@ if (!SNAPSHOT) {
   const farcasterKeys = new Set(sets.filter((s) => s.at < 50_000_000).flatMap((s) => s.keys));
   check(
     'fork heights, eight validators per shard, none of them a Farcaster validator',
-    { heights: { 0: 50433538, 1: 51119199, 2: 50954121 }, keysPerShard: [8, 8, 8], distinctKeys: 8, sharedWithFarcaster: 0 },
+    { heights: { 0: 50477529, 1: 51161786, 2: 50996940 }, keysPerShard: [8, 8, 8], distinctKeys: 8, sharedWithFarcaster: 0 },
     {
       heights: Object.fromEntries(forkSets.map((s) => [s.shard, s.at]).sort()),
       keysPerShard: forkSets.map((s) => s.keys.length),
@@ -1235,7 +1241,7 @@ if (!SNAPSHOT) {
   };
   check(
     'gossip topics and native registration switch at the same heights',
-    { gossip: { 0: 50433538, 1: 51119199, 2: 50954121 }, native: { 0: 50433538, 1: 51119199, 2: 50954121 } },
+    { gossip: { 0: 50477529, 1: 51161786, 2: 50996940 }, native: { 0: 50477529, 1: 51161786, 2: 50996940 } },
     { gossip: table('gossip.topic_cutovers'), native: table('consensus.native_registration.activation_heights') },
   );
   check('Hypersnap now carries the v18 sets it lacked on 2026-10-22', true, fv.includes('bd465c947fe1acfac219fec2fb2ae1e8a13e2acd0498c413f2e54c946ea95095'));
@@ -1263,10 +1269,11 @@ if (!SNAPSHOT) {
   check('relay documentation statements', shuttleLines, shuttleLines.filter((t) => shuttle.includes(t)));
   const relay = hf.read('src/shuttle/relay.rs');
   check(
-    'the relay carries message types 1-8 and 11-21 and never a native account',
-    { types: true, nativeSkipped: true, keyAdd: true, bytesVerbatim: true },
+    'the relay carries message types 1-8 and 11-17 by default, channel types only when listed, and never a native account',
+    { types: true, channelsOptIn: true, nativeSkipped: true, keyAdd: true, bytesVerbatim: true },
     {
-      types: hf.read('src/shuttle/config.rs').includes('(1..=8).chain(11..=21).collect()'),
+      types: hf.read('src/shuttle/config.rs').includes('(1..=8).chain(11..=17).collect()'),
+      channelsOptIn: shuttle.replace(/\s+/g, ' ').includes('Channel types 18–21 require an explicit allowlist and remain subject to destination protocol validation.'),
       nativeSkipped: /if crate::native_registration::is_native_fid\(data\.fid\)\s*\|\| data\.r#type == proto::MessageType::NativeOnboard as i32\s*\{\s*return None;/.test(relay),
       keyAdd: relay.includes('| (16, Some(Body::KeyAddBody(_)))') && relay.includes('| (17, Some(Body::KeyRemoveBody(_)))'),
       bytesVerbatim: relay.includes('// Preserve signed bytes verbatim.'),
@@ -1416,7 +1423,7 @@ if (!SNAPSHOT) {
   );
 
   // --- one node: what a Hypersnap node follows, and what decides it ---
-  const forkHeights = ['50_433_538', '50433538', '51_119_199', '51119199', '50_954_121', '50954121'];
+  const forkHeights = ['50_477_529', '50477529', '51_161_786', '51161786', '50_996_940', '50996940', '50_433_538', '50433538', '51_119_199', '51119199', '50_954_121', '50954121'];
   let rustFilesNamingForkHeights = 0;
   for (const f of walk(join(hf.dir, 'src'), ['.rs'])) {
     const text = readFileSync(f, 'utf8');
@@ -1436,8 +1443,8 @@ if (!SNAPSHOT) {
   const forkPeers = peerSet(forkCompose);
   const upstreamPeers = peerSet(sc.read('docker-compose.mainnet.yml'));
   check(
-    "the stock install takes the fork from a mounted validators.toml and lists only Farcaster's bootstrap peers",
-    { mounted: true, fetched: true, peers: 9, sameAsUpstream: 9, peersInValidatorsToml: false },
+    "the stock install takes the fork from a mounted validators.toml; its compose file still lists only Farcaster's peers, and the file now ships Hypersnap's discovery seeds",
+    { mounted: true, fetched: true, peers: 9, sameAsUpstream: 9, peersInValidatorsToml: true },
     {
       mounted: forkCompose.includes('- ./validators.toml:/app/validators.toml:ro') && forkCompose.includes('cat /app/validators.toml >> config.toml'),
       fetched: hf.read('scripts/hypersnap.sh').includes('fetch_file_from_repo "$VALIDATORS_FILE_PATH" "validators.toml"'),
@@ -1451,7 +1458,7 @@ if (!SNAPSHOT) {
     { rootCheck: true, relayNeedsBoth: true },
     {
       rootCheck: hf.read('src/storage/store/engine.rs').includes('"Shard root mismatch"') && sc.read('src/storage/store/engine.rs').includes('"Shard root mismatch"'),
-      relayNeedsBoth: shuttle.includes("replace the two RPC endpoints and gossip peer lists with your\nnodes' addresses. RPC must be the gRPC endpoint. Both nodes must retain blocks"),
+      relayNeedsBoth: shuttle.includes("You can replace these with your own nodes. RPC must be the gRPC endpoint. Both\nnodes must retain blocks from the requested starting heights."),
     },
   );
   expectText("one operator's Hypersnap node outgrew its disk", fatlineReadme, 'Our Hypersnap node also keeps 1 day of blocks: every block since genesis outgrew its 685 GB disk.');
@@ -2103,6 +2110,110 @@ if (!SNAPSHOT) {
   expectText("Farcaster's contracts are MIT", S.contracts.read('LICENSE.md'), 'The MIT License (MIT)');
 }
 
+// --- the fork, after it: re-read 2026-11-13 --------------------------------------------
+
+{
+  const hf = S['hypersnap-fork'];
+  const first = S['hypersnap-ce9d003'];
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const height = (text, re) => Number((text.match(re)?.[1] ?? '').replaceAll('_', ''));
+
+  // --- the first schedule was replaced on the morning it was due ---
+  const firstToml = first.read('validators.toml');
+  const nowToml = hf.read('validators.toml');
+  const firstShard0 = height(firstToml, /# Shard 0: snapshot [\d_]+;[^\n]*\n\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)/);
+  const upstreamShard0AtReschedule = height(nowToml, /# Shard 0: snapshot ([\d_]+);/);
+  check(
+    'the first schedule: version 0.17.4, shard 0 at 50,433,538, projected 2026-11-12 09:25:20 UTC',
+    { version: '0.17.4', shard0: 50433538, projected: true, postponedOnce: true },
+    {
+      version: first.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1],
+      shard0: firstShard0,
+      projected: firstToml.includes('# Height snapshot: 2026-11-06 09:25:20 UTC; projected activation: 2026-11-12 09:25:20 UTC.'),
+      postponedOnce: firstToml.includes('# Postponed by three days so peers can prepare after consensus was lost.'),
+    },
+  );
+  check(
+    "the schedule was moved twelve hours, after Farcaster's chain had already passed the first shard-0 height",
+    { referenceTime: true, sampled: true, upstreamShard0: 50434679, firstHeightAlreadyPassed: true },
+    {
+      referenceTime: nowToml.includes('# Reference time: 2026-11-12 08:52:39 UTC; projected activation: 2026-11-12 20:52:39 UTC (12 hours later).'),
+      sampled: nowToml.includes('# Source: upstream gRPC http://107.20.169.236:3383, sampled 2026-11-12 08:52:44 UTC.'),
+      upstreamShard0: upstreamShard0AtReschedule,
+      firstHeightAlreadyPassed: upstreamShard0AtReschedule > firstShard0,
+    },
+  );
+
+  // --- what shipped after the new heights were reached ---
+  const discovery = hf.read('docs/peer-discovery.md');
+  const seeds = [...(nowToml.slice(nowToml.indexOf('[gossip.discovery]')).match(/bootstrap_peers = \[([\s\S]*?)\n\]/)?.[1] ?? '').matchAll(/"(\/(?:ip4|dns4)\/[^"]+)"/g)].length;
+  check(
+    'after activation Hypersnap shipped peer discovery and stalled-vote recovery; six of eight validators must be online',
+    { title: true, sixOfEight: true, seeds: 6, enabled: true },
+    {
+      title: discovery.startsWith('# Peer discovery and stalled-vote recovery'),
+      sixOfEight: flat(discovery).includes('With eight equal validators, six must remain online; discovery and vote recovery cannot create quorum when fewer than six participate.'),
+      seeds,
+      enabled: nowToml.includes('[gossip.discovery]\nenabled = true'),
+    },
+  );
+  const shuttleNow = hf.read('docs/shuttle.md');
+  check(
+    'on-chain events do not cross the relay, and a validator follows Optimism only where its operator set an endpoint',
+    { notRelayed: true, signerEventsOutside: true, noListeners: true, operatorSwitch: true },
+    {
+      notRelayed: flat(shuttleNow).includes('It does not relay consensus, block certificates, on-chain events, Fname system transfers, or Hyper envelopes.'),
+      signerEventsOutside: shuttleNow.includes('On-chain signer events remain outside the shuttle.'),
+      noListeners: flat(shuttleNow).includes('Running the receiver does not start contract-event listeners, activate channel features, or restore storage-quota enforcement after the fork.'),
+      operatorSwitch: hf.read('src/main.rs').includes('if !app_config.onchain_events.rpc_url.is_empty() {'),
+    },
+  );
+
+  // --- what others observed ---
+  const zaoos = S['zaoos-fork-result'].read('research/infrastructure/643-hypersnap-run-a-node/README.md');
+  const zaoosLines = [
+    'The fork activated; reference nodes on 0.17.5 (haatz.quilibrium.com, hypersnap.rainonmeproductions.com) were about 1,070 blocks past the cutover by 21:22Z.',
+    'Our read node did not cross: every shard stopped exactly one block below its cutover height',
+    'Lesson for any read node: after this fork, the legacy bootstrap list alone does not reach the Hypersnap side; include the validator peers.',
+    'pushed 2026-11-12T09:36:59Z per Docker Hub',
+  ];
+  check('an operator of a read node: the fork activated, and a stock node stopped one block short', zaoosLines, zaoosLines.filter((t) => zaoos.includes(t)));
+  const sd = S.snapdiff;
+  check(
+    'a monitor of both networks: different block rates since the fork, and one 85-second pause on every Hypersnap node',
+    { rates: true, pause: true, mit: true },
+    {
+      rates: sd.read('docs/MULTI-NODE.md').includes('because since the 2026-11-12 fork the networks run at different block rates.'),
+      pause: flat(sd.body()).includes('Observed 2026-11-12 23:36 UTC: all seven hypersnap nodes stopped at one height for 85 s'),
+      mit: sd.read('LICENSE').startsWith('MIT License'),
+    },
+  );
+  const qp = S['quilcast-post-fork'];
+  const join = qp.read('src/join.tsx');
+  check(
+    'a live client shipped free signup on Hypersnap the night of the fork, and what it says about names and new Optimism accounts',
+    { version: '0.79.0', since: true, noUsername: true, optimismAfterFork: true, registers: true },
+    {
+      version: qp.json('package.json').version,
+      since: join.includes('// Hypersnap registers accounts natively and for free since its fork from Snapchain (2026-11-12). Usernames come from'),
+      noUsername: join.includes('// the fname server, which only knows Optimism FIDs, so a new account has a display name and no @username.'),
+      optimismAfterFork: join.includes("// an FID registered on Optimism after Hypersnap's fork never reaches Hypersnap: that custody registers here too"),
+      registers: qp.read('src/write.ts').includes("if (!info.active) throw new Error('Hypersnap is not taking new accounts right now. Try again later.')"),
+    },
+  );
+
+  // --- Farcaster's side in the same two days ---
+  const scMempool = S.snapchain.read('src/mempool/mempool.rs');
+  check(
+    'Snapchain tightened what it accepts from gossip the day before the fork',
+    { signerCheck: true, keyAddAlwaysOn: true },
+    {
+      signerCheck: scMempool.includes('fn verify_gossiped_signer(&self, message: &proto::Message) -> Result<(), HubError> {'),
+      keyAddAlwaysOn: scMempool.includes('// Always-on (not gated by `Config::enable_rate_limits`) because this is a safety guardrail,'),
+    },
+  );
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
@@ -2177,7 +2288,7 @@ Not checkable offline; re-read when the page is revised:
   FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
   The production API refuses casts without opt-in (400)     https://github.com/farcasterxyz/client/issues/6  https://github.com/SmashThunderStone/client/pull/3
   Cassie Heart to app developers on the fork, 2026-11-04    https://github.com/farcasterorg/hypersnap/issues/51
-  Whether the fork activated at its heights                 docs/research/optimal-design.md section 6.2 (needs a reachable node)
+  Whether the fork is still producing blocks today          docs/research/optimal-design.md section 6.2 (needs a reachable node; last third-party reading 2026-11-13 01:38 UTC)
   Whether Farcaster's app approves third-party keys, channel follows or the inbox without opt-in   docs/design/experience-walkthrough.md section 12 (needs an account)
   Farcaster direct-cast drafts (FIP 226 draft, FIP 99 idea, issue 5 closed)   https://github.com/farcasterxyz/protocol/discussions/226 /99 and issues/5
   No messaging proposal in the Hypersnap organisation        https://github.com/farcasterorg/hypersnap/issues and https://github.com/orgs/farcasterorg/discussions

@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 287/287 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 295/295 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -354,6 +354,21 @@ Snapchain page was written.
   - *Not verified.* Nothing was deployed or run. Base's fees and hosted
     chains were read only through search summaries. Whether Hypersnap
     would honour a Base registry has not been asked.
+- **After the fork, 2026-11-13.** The scheduled re-read.
+  - *What moved upstream.* Hypersnap `ce9d003` to `a85fd22` and Snapchain
+    `1405794` to `43ca24d`; Opencaster and Quilcast also moved. The
+    reference client, hypersnapweb, fatline and Neynar's specification did
+    not.
+  - *Eight claims failed at the new commits and were restated:* the
+    version, the schedule, the heights twice, the relay's default types,
+    the relay's setup sentence, the peers now shipped in `validators.toml`,
+    and Snapchain's rate limits, now on by default.
+  - *Eight new claims on four dated witnesses:* the first schedule, kept at
+    `ce9d003`; a read-node operator's record that the fork activated; a
+    monitor's record of an 85-second pause; and a client that shipped free
+    signup that night. 295 of 295 across 32 sources.
+  - *Not verified.* No node could be reached, so no height was read here.
+    The last third-party reading is from 01:38 UTC on 13 November.
   - *Not verified.* Coinbase's and XMTP's documentation sites and all news
     sites are blocked here, so their repositories were read instead. No
     message was sent and no wallet was connected. Whether Quilibrium permits

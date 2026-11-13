@@ -474,10 +474,10 @@ Its one advantage is reach: everyone on Farcaster is there.
 
 | Claim | Where it was read |
 | --- | --- |
-| Message types on both nodes; no mention of direct messages | `snapchain@1405794`, `hypersnap@ce9d003`, `proto/definitions/message.proto`, `src`, `proto` |
+| Message types on both nodes; no mention of direct messages | `snapchain@43ca24d`, `hypersnap@a85fd22`, `proto/definitions/message.proto`, `src`, `proto` |
 | Posting-key approval recovers an ordinary key, identically on both nodes | both, `src/core/validations/key.rs` |
-| Hypersnap registration recovers an ordinary key | `hypersnap@ce9d003` `src/native_registration.rs` |
-| Contract signatures for address verification; chains | `snapchain@1405794` `contract_signature.rs`, `verification.rs`, `onchain_events/mod.rs` |
+| Hypersnap registration recovers an ordinary key | `hypersnap@a85fd22` `src/native_registration.rs` |
+| Contract signatures for address verification; chains | `snapchain@43ca24d` `contract_signature.rs`, `verification.rs`, `onchain_events/mod.rs` |
 | Farcaster's contracts accept contract signatures | `farcasterxyz/contracts@58d6b28` `IdRegistry.sol`, `abstract/Signatures.sol` |
 | Sign-in verification can ask the chain | `auth-monorepo@ae3dffd` `auth-client/README.md`, `jfs/src/index.ts` |
 | How two clients reach Farcaster's inbox | `quilcast@f2eedb9` `server/dm.mjs`, `server/upload.mjs`, `src/write.ts`; `quorum-mobile@37c0fe6` `services/farcaster/directCastAuth.ts` |

@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 287 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 295 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -38,7 +38,7 @@ and reasons as the default feed. The reasoning and the evidence are in
   to show Farcaster's ranking beside Home's for a reader who wants it, off
   until the origin test in §1.3 passes and the owner has an answer on terms.
 - **Both networks, visibly.** Hypersnap stops following Farcaster's
-  validators at block heights projected for 2026-11-12. Every item and every
+  validators at block heights it reached on 2026-11-12. Every item and every
   write says which network and node it came from or went to, and the reader
   chooses.
 - **Spend money when there are readers, on two read nodes.** Not before, and
@@ -213,7 +213,7 @@ a list of nodes with per-node status. The reasoning and three small additions
 | Gasless signers, their limits, and the deeplink flow | pinned: 9 audit rows across the Snapchain and docs sources |
 | The device half of the write path works with the published SDK | run 2026-11-10: `pnpm validate:write-path`, 13 checks against `@farcaster/core` 0.21.0 |
 | The production API refuses casts without opt-in | web: two independent reports of 2026-10-15 and 10-16 ([design page](../research/optimal-design.md) §1.1); **untested** here |
-| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `ce9d003` |
+| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `a85fd22`; the fork activated on 2026-11-12 ([design page §10](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13)) |
 | Read nodes need no RPC and can write | pinned: 2 rows read from `src/main.rs` and `src/mempool/mempool.rs` |
 | Public read nodes exist | pinned: "public node registry"; their policy **untested** |
 | Neynar is the ecosystem default | six client manifests read 2026-10-14 (five depend on Neynar); both node guides recommend it (pinned: "both node guides recommend Neynar") |
@@ -234,8 +234,10 @@ against upstream HEAD and names any claim that moves.
 | Public nodes rate-limit or refuse writes | §1.3b; fall back to Neynar's hosted node, then an own read node |
 | Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
 | Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as reported for a day on 2026-10-14 | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
-| The Hypersnap validator fork, projected for 2026-11-12, splits the network | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
-| The fork is postponed again or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
+| The Hypersnap validator fork split the network on 2026-11-12 | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
+| A Farcaster account registered after the fork does not exist on Hypersnap, or the reverse | sign-in asks each network for the account; the status line per network says where a post was refused ([design page §10.3](../research/optimal-design.md#103-what-changes-for-the-design)) |
+| Hypersnap loses quorum, which needs six of its eight validators | Home keeps a Farcaster-side provider; a stalled network is shown as stalled, not hidden |
+| The fork is reversed or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
 | The production API closes to third-party origins, or its ranked feed is gated by the social contract | nothing depends on it since the revision of 2026-11-10; Home's own ranking and reasons are the default |
 | Home is tempted to start a third network to get accounts owned by smart wallets | [`../research/base-fork-feasibility.md`](../research/base-fork-feasibility.md): propose an account and key registry on Base to Hypersnap first; a separate validator set only with partners |
 | Quilibrium does not permit other clients on Quorum's servers, or Quorum loses messages | the two checks in [messages and wallet](../research/messages-and-wallet.md) §3, before any build; XMTP is the fallback |
