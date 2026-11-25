@@ -6,6 +6,16 @@ says what exists, what is missing, and how the claim was checked. Items that can
 only be settled from a real network or a real device are marked **untested**
 and come with the exact test to run.
 
+> **Read this page with the 2026-11-25 corrections.** It was written on
+> 2026-10-09 and predates Network School's purchase of Farcaster (10-15), the
+> production API's refusal of casts without an opt-in (reported), the Hypersnap
+> fork (11-12) and the two networks. The Layer 1 path below is still the
+> shortest, but its web hosting item is wrong (the API refuses origins that are
+> not on its allowlist, so a same-origin proxy is required, not optional), the
+> question about permission goes to Network School (Neynar for its own API),
+> and the current state of both networks is in
+> [`optimal-design.md`](../research/optimal-design.md).
+
 Companion pages: [running the client](running-the-client.md) has every
 credential and environment variable; [plugging into Snapchain](plugging-into-snapchain.md)
 has the protocol facts; [validation](validation.md) has what has been executed.
@@ -20,7 +30,7 @@ runbook.
 | Finding | Status on 2026-10-09 | How it was checked |
 | --- | --- | --- |
 | The kernel, adapter and client-core build, typecheck and pass their tests | holds | `pnpm check:all` against the pinned client snapshot `b6922e2` |
-| The 34 claims about the reference client | hold at `b6922e2`; **33 of 34 at the upstream snapshots `0c289ed` (2026-09-30) and `73a39bd` (2026-10-30)**. The mobile seam moved from line 311 to 326 | `SNAPSHOT=… pnpm audit:claims` against both checkouts |
+| The 34 claims about the reference client | hold at `b6922e2`; **33 of 34 at the upstream snapshots `0c289ed` (2026-09-30) and `73a39bd` (2026-10-30)**. The mobile seam moved from line 311 to 326, and the audit now expects 326, so it reports 34 of 34 at `73a39bd` (2026-11-25) | `SNAPSHOT=… pnpm audit:claims` against both checkouts |
 | The 65 checkable claims in the Snapchain page | hold | `scripts/audit-protocol-claims.mjs` against the seven pinned source commits, fetched from scratch by `scripts/fetch-protocol-sources.sh` in 7 s and 49 MB |
 | The npm versions the Snapchain page quotes | unchanged | the audit's `--network` mode |
 | The six web-only facts (FIP statuses and dates) | re-read, unchanged | fetched again on 2026-10-09; the Neynar blog itself did not resolve from this sandbox, so the acquisition date rests on press coverage |
@@ -69,11 +79,11 @@ visible.
 
 | # | Gap | Evidence | What settles it |
 | --- | --- | --- | --- |
-| 1 | **Whether the backend answers a different origin at all.** The web client calls `https://farcaster.xyz/~api` with an `Authorization: Bearer` header and an `Idempotency-Key` header, no cookies. From any origin other than `farcaster.xyz` that is a cross-origin request with a preflight, and a WebSocket to `wss://ws.farcaster.xyz/stream`. No request has ever left this sandbox for either host. | `apps/farcaster-web/src/constants/api.ts`, `AbstractFarcasterApiClient.ts:558-563`, `WebSocketsProvider.tsx:141` | **untested.** From a real network: `curl -si -X OPTIONS https://farcaster.xyz/~api/v2/feed-items -H 'Origin: https://<home-domain>' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization,idempotency-key'`. A `200` with `Access-Control-Allow-Origin` covering Home's origin means L1 works as built. Anything else means a same-origin reverse proxy on Home's host (`/~api/*` forwarded to `farcaster.xyz/~api/*`) and a one-line change to the host constant |
-| 2 | **Whether a fork is allowed to.** The Client API docs state per-endpoint rate limits for channel calls and nothing about third-party clients of `~api`; the `~api` surface is undocumented. | `docs` repo, `reference/farcaster/api/page.mdx:610` | a conversation with Neynar, who operate the backend. This is the operator's question the validation page has flagged since the first pass |
+| 1 | **Whether the backend answers a different origin at all.** The web client calls `https://farcaster.xyz/~api` with an `Authorization: Bearer` header and an `Idempotency-Key` header, no cookies. From any origin other than `farcaster.xyz` that is a cross-origin request with a preflight, and a WebSocket to `wss://ws.farcaster.xyz/stream`. No request has ever left this sandbox for either host. | `apps/farcaster-web/src/constants/api.ts`, `AbstractFarcasterApiClient.ts:567-572`, `WebSocketsProvider.tsx:141` | **answered by two forks, not tested from Home.** Two forks that deployed the reference client's web build have answered this. SmashCast's `SETUP.md` (pinned) says the production API "answers arbitrary origins with HTTP 200 and the JSON body, but it only sends `Access-Control-Allow-Origin` for an allowlist" (`https://farcaster.xyz`, `https://warpcast.com`, `http://localhost:4173`, `https://localhost:5173`), so a browser blocks the response from any other hostname, and it puts a same-origin rewrite in front; fiddy's web README (pinned) says direct requests from its hosted domain "were rejected by the upstream CORS policy" and adds a function that forwards `/~api/...` to Farcaster, and that static-only hosts cannot run it. Both are third-party reports dated 2026-10-17 and 2026-11-22, not a test from Home's origin. So Home needs a same-origin proxy (`/~api/*` forwarded to `farcaster.xyz/~api/*`) on a host that can run a function, and a change to the host constant. The client sends `POST /v2/feed-items` with `Content-Type: application/json`, so the check that would confirm it from Home's origin is `curl -si -X OPTIONS https://farcaster.xyz/~api/v2/feed-items -H 'Origin: https://<home-domain>' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: authorization,content-type,idempotency-key'`; a refusal confirms the proxy. The WebSocket stays direct to `ws.farcaster.xyz` in both forks. The magic-link email is issued for the production host, so email sign-in will not return to Home's domain |
+| 2 | **Whether a fork is allowed to.** The Client API docs state per-endpoint rate limits for channel calls and nothing about third-party clients of `~api`; the `~api` surface is undocumented. | `docs` repo, `reference/farcaster/api/page.mdx:610` | a conversation with Network School, who have owned the backend since 2026-10-15 (Neynar for its own API). This is the operator's question the validation page has flagged since the first pass |
 | 3 | **Re-pin to the current upstream snapshot.** Home cites `b6922e2`; upstream is `73a39bd` (it was `0c289ed` when this was written; the old snapshot survives as `farcasterorg/client-snapshot`). The patch applies and the adapter compiles, so this is bookkeeping: 11 citations of the snapshot id across 8 files and 4 citations of `useMixedFeedItems.ts:311`, which is now `:326`. | §0 | one pass over the docs, then `pnpm check:all` and the fork gate against `73a39bd` |
-| 4 | **Hosting.** `vite build` produces a static `build/` folder; any static host with an SPA fallback serves it. The build also runs a sitemap step that insists every URL is on `https://farcaster.xyz`. | `apps/farcaster-web/package.json:101-103`, `scripts/validateSitemaps.mjs:6` | a domain, a static host, and either Home's own sitemap or removing the step |
-| 5 | **Universal links and app links are Farcaster's.** `.well-known/apple-app-site-association` and `assetlinks.json` carry `REPLACE_ME` team ids and Farcaster package names. | `apps/farcaster-web/public/.well-known/` | leave them out until there is a Home mobile app; they only matter for one |
+| 4 | **Hosting.** `vite build` produces a static `dist/` folder (Vite's default; the config sets no other); a static host with an SPA fallback serves the files, but the production API calls need a same-origin proxy (item 1), so the host must also run a function or a rewrite. The build also runs a sitemap step that insists every URL is on `https://farcaster.xyz`. | `apps/farcaster-web/package.json:101-103`, `scripts/validateSitemaps.mjs:6` | a domain, a static host, and either Home's own sitemap or removing the step |
+| 5 | **Universal links and app links are Farcaster's.** `.well-known/apple-app-site-association` carries `REPLACE_ME` team ids and `assetlinks.json` carries Farcaster's real package name and certificate fingerprints. | `apps/farcaster-web/public/.well-known/` | leave them out until there is a Home mobile app; they only matter for one |
 | 6 | **Web sign-up is not available to Home.** The web app's only sign-up route is an invite flow behind a Cloudflare Turnstile widget whose site key is Farcaster's; Turnstile keys are bound to the hostnames registered for them. The docs say sign-up is mobile-only. | `pages/signup/CloudflareChallengePage.tsx:12`, `docs` apps page | nothing to do at L1: Home's download page already sends new readers to the Farcaster app. Sign-up is an L3 item |
 | 7 | **Analytics and telemetry go to Farcaster's vendors.** PostHog reports to `ph.neynar.com` with placeholder keys; Datadog likewise. | `running-the-client.md` §6 | decide: Home's own keys, or strip the providers. Neither blocks launch |
 | 8 | **No preferences sync.** Preferences live in `localStorage` per browser. | `homePreferencesStore.ts` | fine for L1; export and import exist in the kernel and have no UI yet (see §5) |
@@ -82,14 +92,14 @@ Items 1 and 2 are the whole of L1's risk. Everything else is a day of work.
 
 ### 2.3 Order of work for L1
 
-1. Run the preflight test in item 1 from a laptop. Ten minutes; decides the
-   architecture of the next week.
-2. If it passes: register a domain, deploy `build/` to a static host, point
+1. Run the preflight test in item 1 from a laptop (expect a refusal). Ten
+   minutes; confirms the proxy.
+2. Register a domain, deploy `dist/` behind a same-origin proxy, point
    the host constant at Home's domain only if a proxy is needed, and sign in
    with a real account. The first real session also settles the question the
    validation page could not: whether the authenticated shell boots against
    production data with Home's patch in place.
-3. Re-pin to `0c289ed` (item 3) so the patch is maintained against what
+3. Re-pin to `73a39bd` (item 3) so the patch is maintained against what
    upstream ships.
 4. Ask Neynar (item 2) before inviting anyone else in.
 
@@ -105,7 +115,7 @@ dependency in §2 items 1 and 2 and replaces it with work Home controls.
 | Need | Why | Where to get it |
 | --- | --- | --- |
 | **An app FID with a custody key Home's service can sign with** | every signer request, gasless or on-chain, carries a `SignedKeyRequest` signed by the requesting app's custody address | create an account in the Farcaster app or via the Bundler; keep the key in the service's secret store, never in the browser |
-| **A Neynar developer account and API key** | hosted Snapchain (`snapchain-api.neynar.com`), feeds, search, notifications, mutes, blocks, storage usage: 104 v2 paths cover most of what the private backend's 592 endpoints give the client | neynar.com; plan tiers are reported as a free tier and a paid tier with the hub endpoint, unverifiable from here |
+| **A Neynar developer account and API key** | hosted Snapchain (`snapchain-api.neynar.com`), feeds, search, notifications, mutes, blocks, storage usage: 103 v2 paths cover most of what the private backend's 592 endpoints give the client | neynar.com; plan tiers are reported as a free tier and a paid tier with the hub endpoint, unverifiable from here |
 | **A Neynar wallet id** (only if Home sponsors registrations) | `POST /v2/farcaster/user/register/` requires `x-wallet-id` | Neynar dashboard |
 | **A domain Home controls** | Sign In With Farcaster binds the signed message to the relying party's domain; Quick Auth and the SIWF relay check it | the same domain as L1 |
 | **A place to run a thin service** | holds the Neynar key, proxies `submitMessage`, signs `SignedKeyRequest`s, rate-limits per FID | any serverless host; stateless apart from the signer index |
@@ -121,7 +131,7 @@ dependency in §2 items 1 and 2 and replaces it with work Home controls.
 | **Signer onboarding** | gasless `KEY_ADD` with explicit scopes (90-day sliding TTL, one request a minute) as the first path; the Farcaster-app deeplink with sponsorship as the fallback | a new flow in the web app plus two service endpoints |
 | **Sign In With Farcaster** | replaces the backend's magic link and phone flows | `@farcaster/auth-kit` on the landing page; the service verifies the message against the relay |
 | **Write path** | casts, reactions, follows, profile edits signed in the browser and submitted through the service to `/v1/submitMessage`, with read-back confirmation | replaces the `apiClient.createCast` family, one mutation at a time |
-| **Storage display** | `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit | a small settings panel |
+| **Storage display** | `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit on Farcaster (Hypersnap applies no storage limits, only a fixed hourly quota) | a small settings panel |
 | **Notifications and search** | Neynar `/v2/farcaster/notifications/`, `/cast/search/`, `/user/search/` | behind the same adapter |
 | **Channels** | the Client API (`api.farcaster.xyz`) until V25 ships channels on Snapchain; it needs an approved signer to call | the service, because the app-key token is a signature |
 
@@ -187,7 +197,7 @@ In priority order. Each is a yes or no.
 5. **Live contract values.** `usdUnitPrice()` on the StorageRegistry and
    `price()` on the IdGateway from any OP Mainnet RPC; the docs' $7 is stale
    and FIP #229's $0.20 has not been read off the chain from here.
-6. **Neynar plan limits and the hub endpoint's tier**, from the dashboard.
+6. **Neynar plan limits and the hub endpoint's tier**, from the dashboard (one source reports the free tier includes the hub endpoint, another reports a $249 tier does; unverified).
 7. **The iOS Simulator path** on a Mac, following the agent guide.
 
 ---
@@ -198,7 +208,7 @@ In priority order. Each is a yes or no.
 | --- | --- | --- |
 | Domain and static hosting for L1 | small; free tiers exist | n/a |
 | Neynar | reported free tier and a $249/month tier that includes the hub endpoint | search snippets; the pricing page is blocked from this sandbox |
-| Home's app FID | registration at the IdGateway's `price()` plus storage at $0.20 per unit per year under FIP #229; about $10 of ETH end to end per the writing guide | Snapchain `writing-messages.mdx`, FIP #229 |
+| Home's app FID | registration at the IdGateway's `price()`, which is the storage unit price (registering rents at least one unit, so there is no second fee), $0.20 per unit per year under FIP #229; about $10 of ETH end to end per the writing guide | Snapchain `writing-messages.mdx`, FIP #229 |
 | Own node (L3) | roughly $100/month on AWS; 16 GB RAM, 4 cores, 2 TB | Snapchain `running-a-node.mdx`, `getting-started.mdx` |
 | Apple Developer / Google Play (mobile) | $99/year / $25 once | running-the-client §7 |
 

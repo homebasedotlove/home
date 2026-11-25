@@ -21,7 +21,7 @@ stage Home is at.
 
 | Way in | What you get | Cost | Who runs it | Verified |
 | --- | --- | --- | --- | --- |
-| **Farcaster's public read nodes** | the full `/v1` HTTP API on `https://snap.farcaster.xyz:3381`, `https://pop.farcaster.xyz:3381` (a read node), `https://snap.uno.fun:3381` (the community validator); testnet on `https://iris.farcaster.xyz:3381`, `juno`, `vega` | free | Merkle, Uno | the hosts are in Snapchain's compiled-in node registry as public API URLs; whether they accept writes without auth, and their rate limits, are **untested**. `crackle` is documented as password-protected for writes |
+| **Farcaster's public read nodes** | the full `/v1` HTTP API on `https://snap.farcaster.xyz:3381`, `https://pop.farcaster.xyz:3381` (a read node), `https://snap.uno.fun:3381` (a community-run host that the node's registry lists; Uno's validator key was replaced in registry version 18, so it is not a validator now); testnet on `https://iris.farcaster.xyz:3381`, `juno`, `vega` | free | Merkle, Uno | the hosts are in Snapchain's compiled-in node registry as public API URLs; whether they accept writes without auth, and their rate limits, are **untested**. `crackle` is documented as password-protected for writes |
 | **Neynar's hosted node** | the identical `/v1` surface at `https://snapchain-api.neynar.com`, plus the v2 API (feeds, search, notifications, webhooks, signers) and `POST /v2/farcaster/message/`, which publishes a message you signed yourself | credits; a free tier of 10M credits a month is reported to include the hub endpoint, and `/v1/events` is reported to cost 2,000 credits a call | Neynar | plan numbers are search excerpts; the pricing page is blocked here |
 | **Your own read node** | everything above on hardware you control, with no API key in the path; writes work because a read node gossips them to the validators | about $100 a month on AWS; 16 GB RAM, 4 cores, 1.5 to 2 TB, public IP, ports 3381 to 3383; two hours to sync from a snapshot | you | the compose template and bootstrap script are read from the repo |
 | **A local devnet** | four nodes on your laptop with synthetic accounts, for development and tests only | nothing | you | the `make dev` compose and `fc devnet bootstrap` are read from the repo |
@@ -143,14 +143,14 @@ One deployable, Node 20, TypeScript, stateless apart from the stores in §2.
 | --- | --- | --- |
 | `POST /auth/siwf/nonce`, `POST /auth/siwf/verify` | issues a nonce; verifies the SIWF message with `@farcaster/auth-client` (`verifySignInMessage`, which checks `idOf` and auth addresses over the OP RPC); returns a session JWT carrying the fid | relay, OP RPC |
 | `POST /signers/request` | for a browser-generated public key: signs the `SignedKeyRequest` with Home's app custody key. Gasless mode returns the typed data the user's custody wallet must sign; deeplink mode calls `api.farcaster.xyz/v2/signed-key-requests` and returns the deeplink and token (with Home's sponsor signature if Home pays) | Client API |
-| `POST /signers/complete` | gasless: assembles `KEY_ADD` from the custody signature and submits it; deeplink: polls `/v2/signed-key-request?token=` until `completed`; records the signer | node, Client API |
+| `POST /signers/complete` | gasless: receives the custody signature and the `KEY_ADD` envelope that the browser has signed with the new key (the node requires the new key to sign the envelope, and the key never leaves the browser), checks it and submits it; deeplink: polls `/v2/signed-key-request?token=` until `completed`; records the signer | node, Client API |
 | `POST /messages` | accepts an encoded, already-signed `Message`; pre-flight checks (session fid equals message fid, signer is one Home recorded, scope admits the type, size); submits to the node; returns the hash | node |
 | `GET /messages/:hash/status` | reads the cast back or consults the event cursor; `merged`, `failed`, or `pending` | node |
 | `GET /feed/following`, `GET /notifications`, `GET /search` | thin proxies to Neynar v2 with the API key, response shaped to the client's types by the adapter | Neynar |
 | `POST /webhooks/neynar` | receives `cast.created`, `reaction.created`, `follow.created`, `user.created`, `user.updated`; updates notification cursors | Neynar |
 | `POST /media/upload-url` | returns a signed direct-upload URL to Home's bucket | object storage |
 | `GET /storage/:fid` | `storageLimitsByFid` plus a plain-language headroom summary | node |
-| `GET /client-api/*` (allow-list) | channel follows, blocks: signs the app-key bearer with a Home-recorded signer the user approved for that purpose | Client API |
+| `GET /client-api/*` (allow-list) | channel follows, blocks: forwards an app-key bearer that the browser signs with the signer the user approved for that purpose (the service holds no user key) | Client API |
 
 ### 5.2 Environment
 
@@ -158,7 +158,7 @@ One deployable, Node 20, TypeScript, stateless apart from the stores in §2.
 | --- | --- |
 | `SNAPCHAIN_HTTP_URL` | `http://127.0.0.1:3381` on devnet, `https://iris.farcaster.xyz:3381` on testnet, `https://snapchain-api.neynar.com` or Home's node on mainnet |
 | `SNAPCHAIN_GRPC_URL` | the `3383` endpoint, for `Subscribe` |
-| `SNAPCHAIN_RPC_AUTH` | `user:pass` when the node runs with `--rpc-auth` |
+| `SNAPCHAIN_RPC_AUTH` | `user:pass` when the node's `rpc_auth` is set (the node reads the same setting from its config file or from this environment variable; it has no `--rpc-auth` flag) |
 | `FARCASTER_NETWORK` | `devnet`, `testnet`, `mainnet`; stamped into every message |
 | `NEYNAR_API_KEY` | sent as `x-api-key` |
 | `HOME_APP_FID`, `HOME_APP_CUSTODY_KEY` (or a KMS reference) | signs `SignedKeyRequest`s |
@@ -172,10 +172,13 @@ One deployable, Node 20, TypeScript, stateless apart from the stores in §2.
 
 - Never accept a message whose fid is not the session's fid.
 - Never submit with a signer Home did not record for that fid and device.
-- Mirror the node's limits before submitting: 2,048 bytes of data, timestamp
-  within 600 seconds, cast text and embed caps, the per-fid hourly budget.
-- Treat a `200` from `submitMessage` as "accepted", and report "posted" only
-  after the merge event or a successful read-back.
+- Mirror the node's limits before submitting: 2,048 bytes of data (16,384 for a
+  10K cast), timestamp no more than 600 seconds in the future, cast text and
+  embed caps, the per-fid hourly budget.
+- Treat a `200` from `submitMessage` as "handed to the network", never as
+  "accepted": a read node applies no hourly budget, and a validator drops an
+  over-budget message without a reply. Report "posted" only after the merge
+  event or a successful read-back.
 - Rate-limit per fid and per IP in front of the node.
 
 ---
@@ -228,7 +231,7 @@ service for a signer request. Two paths, chosen by what the reader has:
 
 | Reader has | Path | What they see |
 | --- | --- | --- |
-| a custody key in a wallet they can sign with | **gasless `KEY_ADD`**: the wallet signs an EIP-712 `KeyAdd` over the key, Home's scopes (`CAST_ADD`, `CAST_REMOVE`, `REACTION_ADD`, `REACTION_REMOVE`, `LINK_ADD`, `LINK_REMOVE`, `USER_DATA_ADD` to start), a TTL of up to 90 days and the next nonce from `signersByFid`; the service submits it; usable in a block | one wallet signature; nothing on-chain; expires if unused for the TTL, which Home treats as a quiet re-consent |
+| a custody key in a wallet they can sign with | **gasless `KEY_ADD`**: the wallet signs an EIP-712 `KeyAdd` over the fid, the key and its type, Home's scopes (`CAST_ADD`, `CAST_REMOVE`, `REACTION_ADD`, `REACTION_REMOVE`, `LINK_ADD`, `LINK_REMOVE`, `USER_DATA_ADD` to start), a TTL of up to 90 days, the next nonce from `signersByFid` and a non-zero `deadline` in Farcaster-epoch seconds; the browser signs the envelope with the new key and the service submits it; usable in a block | one wallet signature; nothing on-chain; expires if unused for the TTL, which Home treats as a quiet re-consent |
 | only the Farcaster app | **signed key request**: the service posts the request to `api.farcaster.xyz/v2/signed-key-requests`, optionally with Home's sponsor signature so the reader pays no gas; the reader approves in the app, which adds the key on-chain; the service polls to `completed` | a QR or deeplink and one approval; the key is on-chain, scope-free and permanent |
 
 Whether the Farcaster app will sign a gasless `KeyAdd` for a connected app is
@@ -285,10 +288,11 @@ is deliberately after everything else.
    on the host from §2. The script installs Docker, writes a `config.toml`
    with `read_node = true`, `fc_network = "Mainnet"`, the gossip bootstrap
    peers and the snapshot bucket, appends `validators.toml`, and adds a weekly
-   auto-upgrade cron. A read node needs **no OP, Base or L1 RPC**: it learns
+   auto-upgrade cron. A read node needs **no OP or Base RPC** to follow the chain: it learns
    on-chain state from blocks; the connectors start only when an RPC URL is
-   configured.
-3. Put the node's `3381` behind Home's service for writes (set `--rpc-auth`),
+   configured. Without an L1 RPC URL the node fails closed on ENS and Basename
+   username proofs, `.eth` usernames and ERC-1271 verifications (the stock compose sets none).
+3. Put the node's `3381` behind Home's service for writes (set `rpc_auth`),
    leave reads open to the browser if you want to skip the service for them
    (the node sends `Access-Control-Allow-Origin: *`), and keep `3382/udp` open
    to the world for gossip.
@@ -297,7 +301,7 @@ is deliberately after everything else.
    and Node 21, and backfills by fid.
 5. Keep the node current: `/v1/info` shows `blockDelay` and
    `nextEngineVersionTimestamp`; the auto-upgrade cron tracks releases; a node
-   that falls behind an engine version halts by design.
+   that misses an engine change that alters state stops on a state-root mismatch (the header-version halt does not fire for V18 to V25, which share one protocol version).
 
 ---
 
@@ -340,7 +344,7 @@ Each line is a yes or no. Stop at the first no.
 
 | Source | State read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `README.md`, `docker-compose*.yml`, `Dockerfile`, `cli/README.md`, `cli/src/main.rs`, `src/main.rs`, `src/network/mesh/nodes.rs`, `src/bin/setup_local_testnet.rs`, `site/docs` | `1405794`, 2026-11-04, v0.16.0 (re-pinned 2026-11-10) | node runbook, read-node template, devnet, `fc`, public node registry, connector start conditions |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `README.md`, `docker-compose*.yml`, `Dockerfile`, `cli/README.md`, `cli/src/main.rs`, `src/main.rs`, `src/network/mesh/nodes.rs`, `src/bin/setup_local_testnet.rs`, `site/docs` | `3839f06`, 2026-11-23, v0.17.0 (re-pinned 2026-11-25) | node runbook, read-node template, devnet, `fc`, public node registry, connector start conditions |
 | [neynarxyz/OAS](https://github.com/neynarxyz/OAS) | `0c4d078`, 2026-11-02 (re-pinned 2026-11-10) | hosted node, publish-message, webhooks, signers, storage |
 | [farcasterxyz/auth-monorepo](https://github.com/farcasterxyz/auth-monorepo) | `ae3dffd`, 2026-03-30 | SIWF verification path and relay |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | signer requests, feed guide, account guides |

@@ -115,7 +115,7 @@ the canonical deployments the specification names.
 | OP Mainnet | StorageRegistry `0x00000000fcCe7f938e7aE6D3c335bD6a1a7c593D` | storage units, priced in USD and paid in ETH via a Chainlink oracle |
 | OP Mainnet | Bundler; RecoveryProxy `0x00000000FcB080a4D6c39a9354dA9EB9bC104cd7` | the Bundler registers, rents and adds a key in one transaction; the proxy is a changeable recovery executor behind a fixed address |
 | Base (chain id 8453) | TierRegistry `0x00000000fc84484d585C3cF48d213424DFDE43FD` | Farcaster Pro subscriptions (FIP-236, finalized). The FIP does not say why Base |
-| Base, by default | channel registrar (stock Basenames `RegistrarController` and `BaseRegistrar`) | on-protocol channels, FIP-276 draft; the FIP calls the target chain "an open question" |
+| Base in the draft; Ethereum L1 in the code | channel registrar (stock Basenames `RegistrarController` and `BaseRegistrar`) | on-protocol channels, FIP-276 draft; the FIP calls the target chain "an open question", and the node's channel-URI code says the mainnet registrar will be on Ethereum L1 under `farcasterchannels.eth`, not yet deployed |
 | Ethereum L1 (chain id 1) | FnameResolver, SnapchainConfigRegistry `0x00000000fc51aD6eb74EAE89ba4b01b1776fBA85` | CCIP resolution of `*.fcast.id`; validator sets and peer lists (FIP-277, review) |
 | off-chain | fname registry at `fnames.farcaster.xyz` | free usernames, authorised by a custody-address signature |
 
@@ -125,7 +125,7 @@ keys and storage are, and that is the part a client cannot route around.
 ### 1.4 How Snapchain depends on OP Mainnet
 
 A node does not trust clients about accounts; it reads the chain. The
-on-chain connector subscribes to the four OP contracts and the Base Tier
+on-chain connector subscribes to three OP contracts (the storage, key and id registries) and the Base Tier
 Registry, and turns their logs into on-chain events that are themselves
 sequenced into shard 0 and fanned out:
 
@@ -184,7 +184,7 @@ wraps it with the proof that the user meant it.
 
 | `Message` field | Meaning |
 | --- | --- |
-| `data` or `data_bytes` | the `MessageData`, as an object or as the exact bytes that were hashed. Snapchain requires `data_bytes` because protobuf serialisation differs between implementations and the hash is over bytes |
+| `data` or `data_bytes` | the `MessageData`, as an object or as the exact bytes that were hashed. The migration guide requires `data_bytes` because protobuf serialisation differs between implementations and the hash is over bytes; the node code also accepts `data` alone and re-encodes it, so set `data_bytes` anyway |
 | `hash` | 20 bytes: BLAKE3 of `data_bytes`, truncated to 160 bits (`HASH_SCHEME_BLAKE3` = 1) |
 | `signature`, `signature_scheme` | 64-byte Ed25519 signature **over the hash** (`SIGNATURE_SCHEME_ED25519` = 1). `EIP712` (= 2) exists in the enum but the node's envelope check accepts only Ed25519; Ethereum signatures live inside bodies |
 | `signer` | the 32-byte Ed25519 public key that signed |
@@ -250,10 +250,10 @@ only; since V14 (FIP-238) its past messages stay.
 
 | Body | Rules (spec §2 and `validations/cast.rs`) |
 | --- | --- |
-| `CastAddBody` | text ≤ 320 bytes as `CAST`, 321–1024 as `LONG_CAST`, up to 10,000 as `TEN_K_CAST` (every fid since V21); up to 4 embeds (URL or cast id) since V20; up to 10 mentions, each a fid with a byte position in `mentions_positions`, ascending and unique; an optional parent that is a cast id or a URL of 1–256 bytes (that URL is how FIP-2 channels work today) |
+| `CastAddBody` | text ≤ 320 bytes as `CAST`, 321–1024 as `LONG_CAST`, up to 10,000 as `TEN_K_CAST` (every fid since V21); up to 4 embeds (URL or cast id) since V20; up to 10 mentions, each a fid with a byte position in `mentions_positions` (the specification says ascending and unique; the node code rejects only a position that is lower than the one before it, or past the end of the text); an optional parent that is a cast id or a URL of 1–256 bytes (that URL is how FIP-2 channels work today) |
 | `CastRemoveBody` | the 20-byte hash of the cast; it tombstones the add and is itself kept |
 | `ReactionBody` | type (like, recast) plus a target cast id or target URL |
-| `LinkBody` | a type string of ≤ 8 bytes (`follow`) and a target fid; an optional `displayTimestamp` ≤ the message timestamp |
+| `LinkBody` | a type string of ≤ 8 bytes (`follow`) and a target fid; an optional `displayTimestamp` (the specification says it must not exceed the message timestamp; the node's link validation does not check it) |
 | `UserDataBody` | one typed field per message: pfp, display name, bio, URL, username, location, X and GitHub handles, banner, profile token, `LIVE_AT` (14) |
 | `VerificationAddAddressBody` | an EIP-712 claim over `(fid, address, network, blockHash)` signed by the wallet being verified; contract wallets include a chain id of 1 or 10 |
 | `UserNameProof` | an fname proof signed by the custody address or the fname server, or an ENS proof signed by the name's owner; names match `^[a-z0-9][a-z0-9-]{0,15}$` |
@@ -264,7 +264,7 @@ What happens between `POST /v1/submitMessage` and a reader seeing the cast,
 with the code that does each step.
 
 1. **Transport.** HTTP: the encoded `Message` as `application/octet-stream`,
-   optional HTTP basic auth if the node runs with `--rpc-auth`. gRPC:
+   optional HTTP basic auth if the node's `rpc_auth` setting (config key, or the environment variable `SNAPCHAIN_RPC_AUTH`; there is no command-line flag) is set. gRPC:
    `SubmitMessage` on port 3383. The HTTP handler forwards to the same gRPC
    service and returns the message as JSON on success.
 2. **Which node took it.** A **read node** has no mempool of its own: it
@@ -273,7 +273,9 @@ with the code that does each step.
    mempool of the shard the fid routes to.
 3. **Sharding.** `shard = (sha256(fid as 8 bytes)[0..4] mod num_shards) + 1`.
    Mainnet has two data shards; shard 0 carries blocks, on-chain events and
-   the state that must be globally ordered (channels, verifications from V25).
+   the state that must be globally ordered: `KEY_ADD`, `KEY_REMOVE` and
+   `LEND_STORAGE` today, channel messages and verifications from V25 (`routing.rs`). A
+   client that confirms a key by following a shard must follow shard 0 for it, not the shard its fid hashes to.
 4. **Admission.** The mempool rejects duplicates, applies the feature gates for
    the current engine version, and charges the rate limiters: one `KEY_ADD`
    per minute per fid always; otherwise, where the operator enabled it,
@@ -306,10 +308,8 @@ block. The migration guide is explicit: `submitMessage` is best-effort, and "it
 is possible, but rare, that `submitMessage` succeeds but the submitted message
 fails to get included." Confirm by reading the cast back (`castById`) or by
 watching for its `MERGE_MESSAGE` event. Failures come back as `HubError` codes:
-`bad_request.validation_failure`, `bad_request.duplicate`,
-`bad_request.unknown_signer`, `bad_request.unknown_fid`,
-`bad_request.no_storage`, `bad_request.prunable`, `bad_request.conflict`,
-`unavailable.*`.
+`bad_request.validation_failure` (every validation, signer, fid and storage refusal, with the reason in the message text), `bad_request.duplicate`,
+`bad_request.invalid_param`, `bad_request.decode_error`, `bad_request.rate_limited` and `unavailable.*`. The node code has no `unknown_signer`, `unknown_fid`, `no_storage`, `prunable` or `conflict` code, so branch on the message text, not on a code.
 
 ### 2.6 Casting in six lines
 
@@ -342,10 +342,10 @@ works; `@farcaster/hub-nodejs` adds the gRPC clients for servers.
 
 | Element | Fact | Source |
 | --- | --- | --- |
-| Validators | a permissioned set; seven keys in the latest `validators.toml` set, five attributed to Neynar and one to Uno; moving to the L1 config registry | `validators.toml`, `validators.mdx`, FIP-277 |
+| Validators | a permissioned set; seven keys in the latest `validators.toml` set, five attributed to Neynar and two named `moria` and `isengard` (the documentation table still lists Uno and Degen); validators pull their set from the L1 config registry at every boot, on by default, and read nodes use the static file | `validators.toml`, `node-types.mdx`, `validators.mdx`, FIP-277 |
 | Read nodes | anyone; follow blocks, serve the full API, forward writes to validators | `read_node` config, `ReadNodeMempool` |
 | Shards | shard 0 for blocks, on-chain events and globally ordered state; data shards 1 and 2; fid → shard by SHA-256 | `routing.rs`, `/v1/info` |
-| Blocks | one-second target; header carries height, timestamp, protocol version, parent hash, state root, events hash; each transaction is one fid's user messages and system messages plus the account root afterwards | `consensus.rs`, `blocks.proto` |
+| Blocks | one-second target; header carries height, timestamp, protocol version, chain id, parent hash, state root, events hash, shard witnesses hash and (from V23) a transactions root; each transaction is one fid's user messages and system messages plus the account root afterwards | `consensus.rs`, `blocks.proto` |
 | Bootstrap | download the latest snapshot (several hundred gigabytes) from the public R2 bucket `pub-d352dd8819104a778e20d08888c5a661.r2.dev`, then stream blocks from peers | `snapshot.rs`, getting started |
 | Hardware | 16 GB RAM, 4 cores, 2 TB disk, public IP with 3381–3383 open | getting started |
 
@@ -355,8 +355,8 @@ works; `@farcaster/hub-nodejs` adds the gRPC clients for servers.
   signatures and other binary fields as base64; enums as their names. Paging
   with `pageSize`, `pageToken` (opaque, from `nextPageToken`) and `reverse`.
   `Access-Control-Allow-Origin: *` by default, so a browser can read a node
-  directly. `--rpc-auth user:pass` protects the write endpoints with basic
-  auth.
+  directly. `rpc_auth = "user:pass"` in the config file (or `SNAPCHAIN_RPC_AUTH`) protects the write endpoints with basic
+  auth; the node has no `--rpc-auth` command-line flag.
 - **gRPC, port 3383.** The same surface as typed methods, plus streaming:
   `Subscribe`, `GetBlocks`, `GetShardChunks`. `@farcaster/hub-nodejs` gives
   `getSSLHubRpcClient(address)`, `getInsecureHubRpcClient(address)` and
@@ -390,10 +390,9 @@ Postgres, Redis and Node 21.
 ### 3.4 Writing
 
 `submitMessage` (one), `submitBulkMessages` (several, sequentially, with
-per-message errors) and `validateMessage` (dry run; it also validates frame
-actions, which are never stored). Requirements in one list: `dataBytes` set,
-`data` unset; hash and signature as in section 2.2; a signer the fid has
-authorised, with the right scope; a timestamp within 600 seconds of now; a
+per-message errors) and `validateMessage` (a stateless check that returns true or false; it does not look at the signer, scope, fid, storage or nonce, and it also validates frame
+actions, which are never stored). Requirements in one list: `dataBytes` set; hash and signature as in section 2.2; a signer the fid has
+authorised, with the right scope; a timestamp no more than 600 seconds in the future (a past timestamp is not refused on that rule); a
 body within its limits; and, if the node enforces it, the per-fid hourly
 budget. Then confirm, because inclusion is best-effort.
 
@@ -414,7 +413,7 @@ budget. Then confirm, because inclusion is best-effort.
 
 | Input | Where from | Used for |
 | --- | --- | --- |
-| OP Mainnet logs from the four registries | the node's OP RPC, from block 108,864,739 | fids, custody, keys, storage |
+| OP Mainnet logs from the three registries (storage, key, id) | the node's OP RPC, from block 108,864,739 | fids, custody, keys, storage |
 | Base logs from the Tier Registry (and, later, the channel registrar) | the node's Base RPC, from block 31,180,908 | Pro, channels |
 | Ethereum L1 | `l1_rpc_url` | resolving `.eth` names for username proofs |
 | Fname transfers | `https://fnames.farcaster.xyz/transfers`, polled by the fname connector | free usernames |
@@ -427,9 +426,9 @@ the same order through shard 0.
 
 Behaviour changes are gated by **engine version**, activated at a timestamp
 agreed in code (`version.rs`); the block header carries the protocol version,
-and a node that sees a block with an unexpected version halts rather than
-diverge. `GET /v1/info` returns `nextEngineVersionTimestamp` so an app can see
-a change coming. Five versions activated between May and August 2026; the
+and a node that sees a block whose header version differs from the one it expects halts rather than
+diverge. That header number is the **protocol version**, not the engine version: V18 to V25 all use protocol version 13, so this check does not stop a node that missed the V24 change; if that change alters state, the node stops later, on a state-root mismatch. `GET /v1/info` returns `nextEngineVersionTimestamp` so an app can see
+a change coming. Nine versions (V16 to V24) activated between May and November 2026; the
 cadence is weeks, not quarters. The protocol specification repository
 describes the Hubble-era release train and still omits `KEY_ADD` and channels;
 the code is the reference.

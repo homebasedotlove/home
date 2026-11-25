@@ -300,8 +300,8 @@ for the six call sites. In order:
    writing any UI. It fails loudly if the snapshot has drifted from what the
    adapter reads.
 3. Add `"home-client-core": "workspace:*"` to the app manifests.
-4. Replace the `flatItems` memo at `useMixedFeedItems.ts:311` with
-   `personalizeMixedFeed`.
+4. Replace the `flatItems` memo at `useMixedFeedItems.ts:326` (line 311 at the
+   older snapshot `b6922e2`) with `personalizeMixedFeed`.
 5. Ship the why-chip. One render change, no new state, no credentials.
 
 **Recommended order overall:** Path A to a running web client, Home wired in and

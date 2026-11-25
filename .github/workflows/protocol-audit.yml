@@ -26,6 +26,7 @@ on:
       - docs/design/experience-walkthrough.md
       - docs/research/messages-and-wallet.md
       - docs/research/base-fork-feasibility.md
+      - docs/research/validation-2026-11-25.md
       - scripts/validate-write-path.mjs
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh

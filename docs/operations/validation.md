@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 311/311 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 343/343 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -390,6 +390,21 @@ Snapchain page was written.
     on documentation last changed in April; its main repository already
     carried the self-hosted version 8 on 11-06. See
     [`../research/messages-and-wallet.md`](../research/messages-and-wallet.md) §13.
+- **Validation pass, 2026-11-25.** The request: validate all findings, with
+  no errors or gaps in the understanding of both networks and how they
+  interoperate. Nothing could be checked live: no node, chain or production
+  API was reachable, and a wider probe was declined. What was done is in
+  [`../research/validation-2026-11-25.md`](../research/validation-2026-11-25.md).
+  - *Five independent reviewers* re-derived about 950 statements from the code
+    and returned about 100 findings. Twenty-four corrections to the pages
+    resulted, among them the node's missing `--rpc-auth` flag, the omitted
+    `deadline` and envelope signer of a gasless key, the production API's
+    origin allowlist, the Hypersnap routes that answer 501, and identity that
+    does not reach Hypersnap unless an operator follows Optimism.
+  - *Twenty-five new claims.* 343 of 343 across 35 sources. The client audit
+    is 34 of 34 at `73a39bd`; 259 tests and the write-path check (13) pass.
+  - *Not verified.* Fourteen items that need a live reading, each with a
+    read-only command, are in section 4 of that page.
   - *Not verified.* No node or production endpoint could be reached.
     Halt fixes are read from commit subjects, which the audit does not pin.
   - *Not verified.* Coinbase's and XMTP's documentation sites and all news

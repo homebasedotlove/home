@@ -1,11 +1,11 @@
 # Adding messages and a wallet: what is possible, and what fits Home
 
-Written 2026-11-10, two days before the Hypersnap fork is projected. The
-[experience walkthrough](../design/experience-walkthrough.md) decided that
 **Revised 2026-11-25.** XMTP is no longer a shared network, which changes
 the second provider: see [§13](#13-re-read-2026-11-25). The Quorum and
-Coinbase conclusions stand.
+Coinbase conclusions stand, with the corrections in §14.
 
+Written 2026-11-10, two days before the Hypersnap fork is projected. The
+[experience walkthrough](../design/experience-walkthrough.md) decided that
 Home ships with no inbox and no wallet. This page takes the next question:
 if Home adds both, how, and with what. The starting preference was Hypersnap
 for messages and Coinbase Smart Wallet for the wallet. Both were tested
@@ -79,13 +79,14 @@ still a draft. It describes a server Farcaster operates and says
 initial version" (**web**).
 
 Two clients read that inbox today, Quilcast and Quorum's mobile app, and
-they do it the same way (**pinned**):
+they do it the same way, by presenting as Farcaster's own site (**pinned**); Quilcast goes through a relay on its server, Quorum's mobile app calls the service directly with the same header:
 
 - The custody key signs a message for
   `client.farcaster.xyz/v2/get-dc-auth-token` and receives a token.
-- A relay sets `origin: https://farcaster.xyz` on every request, because
+- The request carries `origin: https://farcaster.xyz`, because
   the service "answers its own site only".
-- The signature must be 65 bytes, so only an ordinary key can do it.
+- Quilcast's relay requires a 65-byte signature, which only an ordinary key
+  produces; whether Farcaster's own server requires the same was not read.
 
 That is a private interface reached by presenting as Farcaster's own site.
 It can be closed any day, it sits under Network School's terms, and it is
@@ -172,7 +173,7 @@ inbox.
 - Its libraries are MIT, so Home's licence is unaffected.
 
 **Why not Quorum alone.** It is beta, one company runs its servers, and it
-cannot serve an account owned by a smart wallet. XMTP covers each of those.
+cannot serve an account owned by a smart wallet. (XMTP covered each of those until it became self-hosted; §13 withdraws that.)
 
 **What the reader sees.**
 
@@ -270,8 +271,7 @@ two named things. Remove the embedded-wallet vendor from Home's build.
   without a wallet.
 - The integration is one connector in a library the client already ships.
 - Home never holds a key that moves money.
-- The same wallet can hold an XMTP inbox, so the second message provider
-  comes almost free.
+- Before XMTP became self-hosted the same wallet could hold an XMTP inbox, which made the second provider nearly free; §13 withdraws that.
 
 **What the reader sees.**
 
@@ -310,8 +310,7 @@ is Coinbase's page and could not be read from here.
 420 by 700 pixels opens on `keys.coinbase.com`, carrying Home's name and
 address. The reader reviews the request there and confirms with the device
 passkey: a face, a fingerprint, a PIN or a security key. The window closes
-and Home continues. The contract requires a passkey assertion for every
-signature, so every approval includes that confirmation.
+and Home continues. A Coinbase Smart Wallet account made in the popup has a passkey owner, so each approval there is a passkey confirmation. The contract also accepts owners that are Ethereum addresses, which sign without a passkey; an account that has added one (for example a browser-held key for small payments) can approve without it.
 
 **What needs no approval.** Anything Home can read or decide in the page:
 returning to Home after connecting, reading balances, switching between
@@ -354,7 +353,7 @@ be exported, but it is the first key in Home's storage that moves money.
 If offered, it is off by default and the reader sets the limit.
 
 **Gas.** Each payment costs gas in ETH from the wallet. The SDK accepts a
-sponsorship address per chain, so Home could pay instead; what that
+paymaster URL per chain, so Home could pay instead; what that
 requires from Coinbase is **unverified**.
 
 **Unverified.** The wording and layout inside Coinbase's window. Whether a
@@ -393,7 +392,7 @@ pinned in code. Everything else is marked.
 | Limitation | Standing |
 | --- | --- |
 | It cannot be the account key. It cannot approve a posting key without a transaction on either network, register a Hypersnap-only account, open Farcaster's inbox, or sign the Quorum link | confirmed, §4 |
-| Every approval opens a window on Coinbase's site. Home's pages must not send `Cross-Origin-Opener-Policy: same-origin`, and browsers that block pop-ups block the wallet | confirmed for the window and the header; pop-up blocking is inferred |
+| Approvals open a window on Coinbase's site (inside Coinbase's own browser the SDK uses the injected provider instead). Home's pages must not send `Cross-Origin-Opener-Policy: same-origin`, and browsers that block pop-ups block the wallet | confirmed for the window and the header; pop-up blocking is inferred |
 | The SDK reports usage to Coinbase unless Home turns that off; it is on by default | confirmed |
 | The reader's passkey works through Coinbase's site. If that site refuses Home, the wallet is unusable in Home; the money stays reachable only through Coinbase or through a second owner the reader added | the contract allows a second owner, confirmed; the rest is inferred from the design |
 | Ethereum-family chains only | no other chain family appears in the SDK source, read 2026-11-10; not pinned |
@@ -435,7 +434,7 @@ pinned in code. Everything else is marked.
 | A private interface, reached by presenting as Farcaster's own site. It can be closed without notice | confirmed in two clients |
 | Not encrypted end to end; Farcaster's servers hold readable messages | **web**, Farcaster's own draft |
 | Home would need a relay that every reader's inbox token passes through, which breaks the rule that no server of Home's can act for a reader | confirmed for the relay |
-| Only an ordinary key that owns the account can open it. Accounts held inside Farcaster's app, or by a smart wallet, cannot | confirmed for the 65-byte check |
+| Only an ordinary key that owns the account can open it. Accounts held inside Farcaster's app, or by a smart wallet, cannot | confirmed for Quilcast's 65-byte check; Farcaster's own rule was not read |
 | The inbox token covers text. Images and reactions need a full Farcaster session | confirmed |
 | It sits under Network School's terms; whether accounts that declined them can use it is **unknown** | unknown |
 
@@ -540,8 +539,7 @@ launch in early 2026", and the node operator's latest release shown is from
 | Reach to Coinbase wallet users | yes | no, unless that app and Home share a backend |
 | Support | the shipping SDK | a release candidate; XMTP's own migration page calls Browser 7 and Node 6 the "last legacy SDK majors" |
 
-So XMTP stops being the fallback with reach. It remains an audited,
-MIT-licensed way to give Home's own readers encrypted chat that works with
+So XMTP stops being the fallback with reach. It remains an MIT-licensed way (its security audit predates the self-hosted version 8) to give Home's own readers encrypted chat that works with
 smart wallets, but only among themselves, and at the price of a server.
 
 **Revised decision.** Quorum stays first, behind the same two gates.
@@ -579,3 +577,20 @@ that its shared network continues and that apps can still use it.
 
 Any proposal for private messages on Hypersnap, any Farcaster statement on
 direct casts since the 2025 drafts, or any Quorum statement about Farcaster.
+
+## 14. Corrections from the 2026-11-25 review
+
+- **The wallet contract does not require a passkey for every signature.** Owners
+  may be passkeys or Ethereum addresses (the contract's README); the text in
+  §6 is corrected.
+- **Rows in the §4 table that say "yes" for a smart wallet need a node
+  qualifier.** Contract signatures are checked when a node accepts a message,
+  and the check fails closed on a node with no chain connection; the stock
+  installs of both nodes configure none. And an on-chain registration or key
+  reaches Hypersnap only if a validator there follows Optimism (design §10.3).
+- **"Pinned" for the 65-byte rule is Quilcast's relay, not Farcaster's
+  server**, and Quorum's mobile app reaches the service directly rather than
+  through a relay.
+- **The npm figures in §13 are the ones read on 2026-11-25** (XMTP's npm
+  latest 7.1.0, the main repository's 8.0.0-rc5); the licence line for the
+  Coinbase SDK rests on its repository, not on npm.

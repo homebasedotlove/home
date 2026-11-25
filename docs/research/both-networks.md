@@ -12,12 +12,28 @@ from this sandbox, so no cast was re-read here and every quotation from one is
 attributed to the note that read it.
 
 > **Since this page was written.** The fork arrived sooner and smaller than
-> §3 describes: a validator swap at fixed heights projected for 2026-11-12,
-> with a relay and free accounts, and without the token, fees or Falcon keys
-> of the specification. Farcaster's production API has also started refusing
-> casts from accounts that have not accepted the social contract. The design
-> that follows from both is in [`optimal-design.md`](optimal-design.md); §4
-> here is superseded by its §4 to §6.
+> §3 describes: a validator swap at fixed heights, activated on the evening of
+> 2026-11-12 after two postponements, with a relay and free accounts, and
+> without the token, fees or Falcon keys of the specification. A user report
+> (client issue #6) and a fork's plan say Farcaster's production API refuses
+> casts from accounts that have not accepted the social contract; nobody read
+> here has tested it, so treat it as reported, not established. The design that
+> follows from both is in [`optimal-design.md`](optimal-design.md); §4 here is
+> superseded by its §4 to §6.
+>
+> **Sections that are no longer true after 2026-11-12, though kept as read:**
+> §0 ("there is still one network"), all of §2 ("same data? yes", identity,
+> storage, "cost does not change": native fids start at 2^32, storage limits
+> are off, the relay carries no on-chain events), §5's recommendation and
+> watch list, and the Haatz version line in §1 (0.13.5 was read by third
+> parties on 10-17 to 10-22). Section 4 has one outright error: it reads
+> `balanceOf(fid)` on the VOTE contract, but the token id is the fid, so the
+> call is `ownerOf(fid)` (`balanceOf` takes an address). Its list of the fifteen
+> endpoints "that both node kinds serve" is also wrong: a Snapchain node serves
+> no `/v2` route at all, so the `/v2` shapes come from Hypersnap or Neynar only.
+> Quilcast now registers free native Hypersnap fids, and Opencaster's 11-09
+> version has a backup attempt. The first validator schedule was replaced on
+> 11-12 with later heights, and the set later rotated to eleven keys.
 
 ---
 
@@ -69,7 +85,7 @@ attributed to the note that read it.
 | 2026-10-15 20:10 | Asked whether third-party clients could lose Neynar's APIs: "I doubt it though given they are pro open source clients and developers building their own clients." | cast `0xc433d9db` (ZAOOS); an opinion, not a policy |
 | 2026-10-15 22:15 | Neynar's account: "the neynar apis/backend also seem likely to stay, but neither is explicitly confirmed in the public post rn ... that last part is still inference". | cast `0x61aa81d23e` (ZAOOS doc 2666) |
 | 2026-10-15 22:38 | Balaji (fid 37): four steps, "institute law-and-order, create a decentralized democracy, publish a written social smart contract, and then hold an ongoing series of meetups"; repeat offenders "moderated out" by "both humans and AI" with appeals; a vote at `farcaster.xyz/~/vote` with an on-chain ballot on Base; a naming rule: you "can't use Farcaster, Warpcast, Neynar, Network State, or Network School-related names to launch any coin, token, or commercial project"; "the Farcaster protocol is already open", pointing at `github.com/farcasterxyz/client`. | cast `0x83c734e198` (ZAOOS docs 2666 and 2680; fatline cites the same hash) |
-| 2026-10-17 14:47 | Balaji's prize: $2,048 (plus $512 and $128) for a three-command tutorial, "provision compute, set up a Snapchain read node, and create a client that reads from that node, with no API keys from anyone", MIT code, one other human must complete it, entries within seven days. | cast `0x50184b62b4` (fatline, fiddy issue #1, ZAOOS) |
+| 2026-10-17 14:47 | Balaji's prize: $2,048 (plus $512 and $128) for a three-command tutorial, "(0) Provision necessary compute via script (1) Set up a Snapchain read node (2) Create a client that reads from that node", and, in a separate sentence, "with no API keys from anyone", MIT code, one other human must complete it, entries within seven days. | cast `0x50184b62b4` (fatline, fiddy issue #1, ZAOOS) |
 | 2026-10-17 18:14 | Balaji's clarification: read nodes do accept message submissions and relay them to validators; gasless app keys exist; seed-phrase import is a developer exercise. | cast `0x0a05d5c832` (fatline research note); matches the code pinned in `plugging-into-snapchain.md` |
 | 2026-10-21 17:03 | Balaji: "26,000+ onchain votes... representing ~95% of all accounts that voted"; "prior to the election on October 17, we moderated out only 271 abusive accounts... we received 85 appeals and have accepted ~67% of them"; "another ~4% who chose to opt out." | cast `0xcd34bb74` (ZAOOS doc 2680); his figures |
 | 2026-10-20 04:28 | Independent count: the ballot is an ERC-721 on Base at `0x4ecfed276c566aeb49da1f3a888e8dbb7263028d`, `tokenId` = fid, 24,578 holders at Base block 52,840,567; at least 481 accounts opted out and 263 were `moderated_out` (read from the client API's `optInStatus`, which stopped returning opt-outs on 2026-10-19); turnout about 1.7% of the fids above 300,000 that hold a farcaster.xyz key. | [guy-do-or-die/farcaster-census] `data/final-numbers.json`, pinned; ZAOOS read `name()` "Network School Farcaster client", symbol `VOTE`, `totalSupply` 26,720 on 10-21, transfers revert with `TransferDisabled()` |
@@ -94,15 +110,15 @@ node re-read them.
 | 2026-10-14 03:23 | Cassie reports "the SIWF endpoint is down". | cast (ZAOOS doc 2666 A6); her report |
 | 2026-10-14 09:15 | She publishes `@farcasterorg/quick-auth` 0.2.0 and `@farcasterorg/miniapp-sdk` 0.4.0 (npm maintainer `cassie_q`, MIT, copyright Merkle Manufactory retained): "Quick Auth without an auth server: wallet-signed tokens verified against Farcaster protocol state." In her words: "a drop-in replacement. verifyJwt also accepts the new protocol tokens, checked against a hypersnap node, of your choosing, with no auth server ... sdk.quickAuth JWTs still work." | npm registry (checked here, `--network`); `farcasterorg/miniapps` `1cef64e`, pinned; quotation via ZAOOS |
 | 2026-10-16 11:27 | Cassie: "Anyone applauding the Balaji takeover is a coward." On 10-17 she calls the post-deal DAU spike "literally all airdrop farmers". | casts `0xaf627f1f41`, `0x55c9ebb3c5` (ZAOOS A3); her claims |
-| 2026-10-17 03:43 | Hypersnap `main` moves to `2e8733d`: "v20 support", feed, stats and reply-count fixes. No `PIVOT_HEIGHT`, `falcon`, relay or custody-migration code on `main` or the `pow` branch; the `pow`, `hyper-v1` and `retro-proposal` branches have not moved since July. | pinned `hypersnap`; branch list read here |
+| 2026-10-17 03:43 | Hypersnap `main` moves to `2e8733d` ("fix: feedgen, performance, search client-facing issues"; ZAOOS labels the surrounding work "v20 support"). No `PIVOT_HEIGHT`, `falcon`, relay or custody-migration code on `main` or the `pow` branch; the `pow`, `hyper-v1` and `retro-proposal` branches have not moved since July. | pinned `hypersnap`; branch list read here |
 | 2026-10-22 04:00 | **The stall predicted in `hypersnap.md` §2.3 happens.** Issue #41: Hypersnap read nodes halt with "Block contained signatures from unexpected signers" at 48,632,005 (shard 0), 49,147,015 (shard 2) and 49,311,004 (shard 1). A second operator: adding upstream's three `validators.toml` entries "resumed their node within a minute." No maintainer reply as of 10-23; `main` is still `2e8733d` without the entries. | [farcasterorg/hypersnap#41]; fatline README, pinned: "stood still 13:00–18:37 UTC because the validator list in Hypersnap's repository misses Farcaster's 2026-10-22 validator change" |
-| 2026-10-22 | The public node `haatz` still runs 0.13.5 and still follows Snapchain. | ZAOOS `/v1/info` read 10-17; fatline reads 10-22 |
+| 2026-10-22 | The public node `haatz` still runs 0.13.5 and still follows Snapchain. | ZAOOS `/v1/info` read 10-17; fatline records only the Docker tag it deploys (`hypersnap:0.13.5`, as `latest`), not the node's own report, so 10-22 rests on that tag |
 
 Cassie Heart's recent guidance, then, is in three places, none of them a
 document addressed to client developers: the FIP text (what the fork will be),
 the thread (why now), and the two npm packages (how to log in without
-Farcaster). The clearest sentence for a builder is the package description:
-verify against "a hypersnap node, of your choosing, with no auth server". The
+Farcaster). The clearest sentence for a builder is Cassie's own, in her cast:
+verify against "a hypersnap node, of your choosing, with no auth server" (the package description reads "Quick Auth without an auth server: wallet-signed tokens verified against Farcaster protocol state"). The
 packages work against any Snapchain node too: the README lists the four `/v1`
 hub endpoints they call, and both node types serve them.
 
@@ -129,7 +145,7 @@ and the reader can see which one is open.
 
 | Door | Farcaster side | Hypersnap side | Same data? |
 | --- | --- | --- | --- |
-| Raw protocol reads | any Snapchain node, `/v1/*` (public: `snap`, `crackle`, `pop`) | any Hypersnap node, the same `/v1/*` (public: `haatz`) | yes, byte for byte |
+| Raw protocol reads | any Snapchain node, `/v1/*` (public: `snap` and `pop`; `crackle` is password protected per the node's guide) | any Hypersnap node, the same `/v1/*` (public: `haatz`) | yes, byte for byte |
 | Shaped reads | Neynar `/v2/farcaster/*` (key, credits; fatline reports the hosted node API now charges 0.01 USDC a request over x402) | Hypersnap `/v2/farcaster/*` (no key; 103 of Neynar's 104 paths by name) | yes, minus ranking |
 | Ranked reads with reasons | Farcaster's production API only (Network School's now) | none | no |
 | Writes | `POST /v1/submitMessage` on any node; read nodes accept and relay (code, Balaji's clarification, fiddy's test) | the same route on any Hypersnap node | the same message |
@@ -140,13 +156,13 @@ and the reader can see which one is open.
 | Storage | rent on OP Mainnet `StorageRegistry` | the same contract; Hypersnap keeps using it after a pivot | yes |
 | Social-contract status | the `VOTE` ERC-721 on Base (public) and `optInStatus` on the client API (private, no login, opt-outs no longer returned) | nothing; Hypersnap has no notion of it | n/a |
 | Moderation | Network School's rules in its app; "moderated_out" on the client API; the protocol unchanged | none | n/a |
-| Who can stop it | Network School's API terms for the production API; validators decide block inclusion (seven keys, five of them run by Neynar, whose team has moved to Network School) | the `haatz` operator's goodwill; Hypersnap's own validators once it has any | |
+| Who can stop it | Network School's API terms for the production API; validators decide block inclusion (seven keys; five are listed as Neynar's, whose team has moved to Network School, and the other two, `moria` and `isengard`, replaced Uno and Degen in registry version 18, operators not shown) | the `haatz` operator's goodwill; Hypersnap's own validators once it has any | |
 
 What follows for Home:
 
 1. **Reads and writes are already "both" if the adapter is node-agnostic.**
    The fifteen private endpoints in `setup-end-to-end.md` §5 map onto `/v1`
-   and `/v2` routes that both node kinds serve. The only Farcaster-exclusive
+   routes that both node kinds serve and `/v2` routes that only Hypersnap and Neynar serve. The only Farcaster-exclusive
    data is the ranked feed and its reasons, which `plan.md` keeps as Source A
    while permitted and synthesises otherwise.
 2. **Login is the one place a "Farcaster client" still depends on Farcaster.**
@@ -216,7 +232,7 @@ replace it; 6 to 8 are new.
 | 3 | **Writes to a list of nodes.** `submit(message, nodes[])` posts the same bytes to each node and records per-node status: accepted, seen on the event stream, missing. "Posted" is shown only when the selected node returns it | the write path (`plan.md` §2.5) | 1 |
 | 4 | **Login without Farcaster's server.** Verify SIWF with `@farcaster/auth-client` (already planned) and accept protocol tokens via `@farcasterorg/quick-auth` against Home's selected node; keep `auth.farcaster.xyz` as an option, never as the only path | the Home service (`plan.md` §2.3) | an MIT notice for Merkle's copyright |
 | 5 | **Node selector and status line.** Settings lists nodes by network with health from `/v1/info` (height, delay); the chosen node is named on screen; "Automatic" says which node it picked and when it changes | settings, `HomePreferencesProvider` | 1 |
-| 6 | **Social-contract chip.** Read `balanceOf(fid)` on the `VOTE` contract (Base, `0x4ecfed276c566aeb49da1f3a888e8dbb7263028d`) through the service with a cache; show "signed Network School's contract" as an optional chip and filter, default off; never infer "declined" | service route, kernel preference | a Base RPC |
+| 6 | **Social-contract chip.** Read `ownerOf(fid)` on the `VOTE` contract (Base, `0x4ecfed276c566aeb49da1f3a888e8dbb7263028d`) through the service with a cache; show "signed Network School's contract" as an optional chip and filter, default off; never infer "declined" | service route, kernel preference | a Base RPC |
 | 7 | **"via @app" attribution.** Trace each cast's signer to the app fid in its key's on-chain metadata (fatline reads the key's on-chain record; both node kinds serve it at `/v1/onChainSignersByFid`); show it in the why-chip; let the reader hide or isolate apps | adapter, kernel reason groups | the signer event has a `requestFid` |
 | 8 | **Parity probe and validator check.** A scheduled test that posts on the devnet or testnet and reads back through each configured node; for Home's own Hypersnap node, a check that its `validators.toml` contains upstream's current sets (the v18 heights are pinned) | CI, the weekly audit | nodes |
 

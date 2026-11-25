@@ -14,12 +14,29 @@ are blocked from this sandbox, so what they say is taken from the repositories
 that generate them and from search excerpts.
 
 > **Since this page was written.** The validator-list stall it predicted
-> happened on 2026-10-22, and on 2026-11-09 Hypersnap scheduled its own
-> validator set at fixed block heights, projected for 2026-11-12, with a relay,
-> free accounts and no storage rent. After that it is no longer a read node of
-> Farcaster's network. This page is kept as it was read on 2026-10-23 and its
-> claims are pinned at those commits. The current state and what it means for
-> Home are in [`optimal-design.md`](optimal-design.md).
+> happened on 2026-10-22. Hypersnap scheduled its own validator set at fixed
+> block heights, first for 2026-11-09 and then, after two postponements, for
+> the evening of 2026-11-12, with a relay, free accounts and no storage rent. It
+> then rotated to eleven keys. After the first activation it is no longer a read
+> node of Farcaster's network. This page is kept as it was read on 2026-10-23
+> and its claims are pinned at those commits. The current state and what it
+> means for Home are in [`optimal-design.md`](optimal-design.md).
+>
+> **Corrections from the 2026-11-25 review, which apply to the text below.**
+> (1) "Every mutating route returns 501" is wrong for the EIP-712 webhook and
+> mini-app routes, which are live handlers; and the text "requires managed
+> infrastructure" belongs to the GET arm only, while a POST to login nonce,
+> login authorize or developer-managed signers returns the "Write operations
+> require…" text (a GET of developer-managed signers answers 200 with an empty
+> list). (2) 140 is a count of route strings, not of working endpoints; of
+> Neynar's 103 paths 42 answer 501 for at least one method. (3) "Does not give
+> you account creation" stopped being true on 2026-11-12: a node now ships
+> native registration. (4) Hypersnap's current version is 0.17.21 against
+> Snapchain 0.17.0; its schedule has V21 to V23 and no V24, and it now has
+> its own rate quota. (5) Check (a) in §6 cannot pass any more: the two
+> networks have different heights by design. (6) The Opencaster comparison is
+> at its 10-22 version; the 11-09 version has a configurable primary with one
+> backup attempt, also on Haatz.
 
 ---
 
@@ -34,16 +51,17 @@ that generate them and from search excerpts.
   through V20. The fork's own contribution is a 30,845-line API layer bolted
   onto the node.
 - **The API layer is the whole difference for a reader.** A Hypersnap node
-  answers 140 distinct `/v2/farcaster/*` paths, and 103 of the 104 paths in
-  Neynar's OpenAPI spec exist by name. Reads need no key and have no built-in
+  has 140 `/v2/farcaster/*` route strings, and 103 of the 104 paths in
+  Neynar's OpenAPI spec existed by name when this was written (102 of 103
+  now); a large share of them answer 501, see the corrections above. Reads need no key and have no built-in
   per-IP rate limit. Webhooks and mini-app notification plumbing are included.
   An adapter written for Neynar's shapes points at a Hypersnap node with a base
-  URL change, subject to the shape checks in §6.
+  URL change for the reads, subject to the shape checks in §6; not for the writes.
 - **Writes, signers and login are not the API's business on either stack.**
-  Every mutating `/v2/farcaster/*` route on Hypersnap returns 501 with the
+  The mutating `/v2/farcaster/*` routes that Neynar also has return 501 with the
   text "Write operations require submitting signed Farcaster messages via the
-  gRPC SubmitMessage endpoint"; the managed Neynar routes (login nonce,
-  developer-managed signers, frames catalogue) return 501 with "requires
+  gRPC SubmitMessage endpoint"; the managed Neynar reads (frames catalogue,
+  fungibles, NFT routes) return 501 with "requires
   managed infrastructure not available on a self-hosted node". So a Hypersnap
   client does exactly what `plan.md` §2 already has Home doing for Source B:
   hold an Ed25519 key, get it approved by the custody wallet with EIP-712,
@@ -64,8 +82,8 @@ that generate them and from search excerpts.
   its own token. Farcaster, for its part, changed owners twice in 2026, the
   second time on 2026-10-15 to Network School, with a paid-access model
   announced for the main app. Both sides are moving.
-- **For Home**: nothing here changes the plan. Hypersnap is a third provider
-  for Source B's reads (after Neynar's free tier and Farcaster's public nodes),
+- **For Home**: nothing here changes the plan. Hypersnap is an additional provider
+  for Source B's reads (the design page ranks it second),
   worth adopting because it costs nothing per request and insures the adapter
   against Neynar's uncertain future; it is not a reason to build on a
   not-yet-existing second network, and Opencaster's AGPL code must not be
@@ -86,7 +104,7 @@ that generate them and from search excerpts.
 | Feeds | following (by timestamp) and trending (engagement score over a window, default 24 h, weights for like/recast/reply configurable, top 1,000 kept); "for you" is an alias of trending | `src/api/feeds.rs`, `src/api/http.rs`, `src/api/config.rs` |
 | Search | Tantivy embedded by default, or Meilisearch | `src/api/config.rs` |
 | Webhooks and mini apps | webhook registration signed with EIP-712 (domain `Hypersnap`/`1`/chain 10), default 1,000 events per 60 s per webhook, 25 webhooks and 25 mini apps per fid; mini-app notification sending and token webhooks per the Farcaster spec | `src/api/webhooks/handler.rs`, `src/api/notifications/*`, docs |
-| Writes | all mutating v2 routes answer 501 and point at `SubmitMessage`; login, developer-managed signers, frames catalogue, fungibles and NFT routes answer 501 "requires managed infrastructure" | `src/api/http.rs` |
+| Writes | the mutating v2 routes Neynar also has answer 501 and point at `SubmitMessage` (webhook and mini-app routes are live); GET login, developer-managed signer, frames catalogue, fungibles and NFT routes answer 501 "requires managed infrastructure" | `src/api/http.rs` |
 | "Hyper mode" | `[hyper] enabled = true` in the compose; `src/hyper/` (796 lines: backfill, reconcile) and a `CAPABILITY_HYPER` gossip capability exist; `src/bin/hyper.rs` is a stub; `docs/hyper.md` is the design (a second, non-pruning state context beside the canonical one) | the files named |
 | Public node | `https://haatz.quilibrium.com`, named by the docs, the site and the smoke test, and the only upstream of Opencaster | `scripts/test-v2-api.sh`, docs, site, Opencaster worker |
 | Requirements | 16 GB RAM, 4 cores, 1.5 TB, ports 3381–3383: Snapchain's | `README.md`, identical lines upstream |
@@ -211,7 +229,7 @@ one with extras.
 | Who runs it | Farcaster (Network School since 2026-10-15) | Neynar | you, or Quilibrium's `haatz` | you, or Farcaster's public nodes |
 | Access | private; a bearer token from Farcaster's own login; forks "point at the current production API" by the template's README | API key; free tier 10M credits a month, Scale $249 for 60M (web, unverified here) | none for reads; EIP-712 signature by the fid's custody key for webhooks and mini-app management | none; optional `admin_rpc_auth` for admin routes |
 | Rate limits | undocumented | 600 per endpoint per minute and per-call credit costs (web) | none built in for reads ("your operator may run a reverse proxy"); 1,000 events per 60 s per webhook | per-fid write allowance `max(100, units/10)` an hour; reads unlimited by the node |
-| Ranked feed and reasons | yes: `includeReason` and `score` on every feed item, ten reason kinds | "for you" feed as a product; no reasons | trending by engagement score; "for you" is trending; no reasons | none; the client ranks |
+| Ranked feed and reasons | yes: optional `includeReason` and `score` on feed items, ten reason kinds | "for you" feed as a product; no reasons | trending by engagement score; "for you" is trending; no reasons | none; the client ranks |
 | Following feed, threads, profiles, channels | yes | yes | yes, computed from local indexes | raw messages; the client joins them |
 | Search | yes | yes | Tantivy or Meilisearch index on the node | none |
 | Notifications | yes, plus unseen counts over a websocket | yes, with webhooks | yes, from the node's events; webhooks | `/v1/events` stream, three-day retention |
@@ -246,8 +264,8 @@ snapshot Home is built from.
 
 | | Farcaster reference client | Opencaster |
 | --- | --- | --- |
-| Origin and licence | Farcaster's own web and mobile client, snapshot without the wallet; MIT, copyright Neynar | forked from Quorum Desktop, Quilibrium's messenger; AGPL-3.0; the Farcaster snapshot "informed familiar sharing, profile, and conversation UX" but no code was imported |
-| Data source | one `FarcasterApiClient` on `farcaster.xyz/~api`; fifteen private endpoints Home's runbook maps | one fixed gateway, `https://haatz.quilibrium.com`, behind a Cloudflare Worker with a route and query allowlist; "no failover or independent indexer" |
+| Origin and licence | Farcaster's own web and mobile client, snapshot without the wallet; MIT, copyright Neynar | forked from Quorum Desktop, Quilibrium's messenger; AGPL-3.0; the Farcaster snapshot "informed familiar sharing, profile, and conversation UX" but, in the README's words, "no Farcaster-hosted API client, account service, websocket, or source dependency was imported" |
+| Data source | one `FarcasterApiClient` on `farcaster.xyz/~api`; fifteen private endpoints Home's runbook maps | at the 10-22 version, one fixed gateway, `https://haatz.quilibrium.com`, behind a Cloudflare Worker with a route and query allowlist; "no failover or independent indexer" (the 11-09 version adds one backup attempt, also on Haatz) |
 | Login | Farcaster's onboarding and bearer token | none from Farcaster: "No Farcaster-operated login service is involved"; the user connects the custody wallet (EIP-1193/6963 extension or WalletConnect) |
 | Signer | created server-side through `/v2/signed-key-request` and the backend's gas | a random Ed25519 key generated in the browser, approved by the custody wallet with `eth_signTypedData_v4`, then a gasless `KEY_ADD`; scopes `[1, 3, 4]` by default (casts, reactions), `[1, 3, 4, 5, 6, 11]` for follows and profile edits, `2` added for deletes; a seven-day sliding inactivity `ttl`; optional passkey-PRF or password-encrypted IndexedDB vault |
 | Write path | `apiClient.createCast(...)` and friends; the backend signs and submits | the browser builds and signs the protobuf; the Worker forwards binary `POST /v1/submitMessage` up to 64 KiB to the node |
@@ -333,9 +351,9 @@ three: Source B synthesises them locally, as planned.
 
 | # | Check | Command or method | Pass means |
 | --- | --- | --- | --- |
-| a | the node is in sync with Farcaster's chain | `curl -s https://haatz.quilibrium.com/v1/info` and the same on a Farcaster public node; compare `maxHeight` per shard and `blockDelay` | heights within seconds of each other; a Hypersnap node stuck at 48,632,005 on shard 0, 49,147,015 on shard 2 or 49,311,004 on shard 1 has hit §2.3, as the public reports of 2026-10-22 did |
+| a | the node is in sync with Farcaster's chain | `curl -s https://haatz.quilibrium.com/v1/info` and the same on a Farcaster public node; compare `maxHeight` per shard and `blockDelay` | (written for the single network; since 2026-11-12 the two networks differ by design, so compare a node with another node of its own network) heights within seconds of each other; a Hypersnap node stuck at 48,632,005 on shard 0, 49,147,015 on shard 2 or 49,311,004 on shard 1 has hit §2.3, as the public reports of 2026-10-22 did |
 | b | the validator list is current | `validators.toml` in the Hypersnap commit the node runs contains the v18 sets (key `bd465c94…`) | present; otherwise run your own node with upstream's file |
-| c | the twelve read shapes the adapter uses match Neynar's | for each of `feed/following`, `feed/trending`, `notifications`, `cast/conversation`, `user/bulk`, `user/search`, `cast/search`, `channel/search`, `reactions/cast`, `followers`, `following`, `channel` compare a response to the pinned OpenAPI schema with the adapter's existing contract tests | the adapter's type guards accept the responses unchanged, or the differences are enumerated |
+| c | the twelve read shapes the adapter uses match Neynar's | for each of `feed/following`, `feed/` with the trending parameters (`feed/trending` is not a path in Neynar's spec), `notifications`, `cast/conversation`, `user/bulk`, `user/search`, `cast/search`, `channel/search`, `reactions/cast`, `followers`, `following`, `channel` compare a response to the pinned OpenAPI schema with the adapter's existing contract tests | the adapter's type guards accept the responses unchanged, or the differences are enumerated |
 | d | writes go round the API | `POST /v2/farcaster/message` returns 501; `POST /v1/submitMessage` with a devnet-signed message is accepted | both as described |
 | e | webhooks replace polling for notifications | register one with an EIP-712 signature from Home's app custody key (domain `Hypersnap`, `1`, chain 10); trigger a reaction on the devnet account | delivery within seconds, HMAC verified |
 | f | the gateway's terms | ask the `haatz` operator (Quilibrium) in the farcasterorg discussions whether a client may read from it and at what rate | a written answer; otherwise treat `haatz` as development-only |

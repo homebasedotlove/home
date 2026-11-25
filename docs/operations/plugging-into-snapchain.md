@@ -49,12 +49,20 @@ implementation and the only one on mainnet. Hubble is retired. Facts a client
 author needs, with where each comes from:
 
 **Consensus and trust.** Snapchain is a Malachite BFT chain. The validator set
-is hard-coded in `validators.toml` and, as of August 2026, is being moved to an
-on-chain `SnapchainConfigRegistry` on Ethereum L1 at
-`0x00000000fc51aD6eb74EAE89ba4b01b1776fBA85` (FIP #277, "Review" stage, writes
-owner-only from a single EOA for now). The latest set in `validators.toml` has
-seven keys. The docs table attributes five to Neynar and one to Uno; the
-seventh is not attributed. There is no permissionless validation. A node you
+is kept in an on-chain `SnapchainConfigRegistry` on Ethereum L1 at
+`0x00000000fc51aD6eb74EAE89ba4b01b1776fBA85` (FIP #277; writes owner-only from a
+single EOA when this was first read). The node's own documentation says
+validators **pull** their validator sets, bootstrap peers and direct peers from
+that registry every time they boot, on by default (`ONCHAIN_CONFIG_ENABLED`),
+with the last known-good copy and then the static file as fallbacks, and that
+read nodes use the static `validators.toml`, refreshed with each release
+(`site/docs/pages/node-types.mdx`, `validators.mdx`). The node code itself
+contains no registry reader; the pull is done by the `fc config pull` command
+that the compose entrypoint runs. The latest set in `validators.toml` has
+seven keys: five Neynar's and two named `moria` and `isengard`, which replaced
+Uno's and Degen's in registry version 18 (the comment in `validators.toml`).
+The documentation table in `validators.mdx` still lists Uno and Degen and is
+stale. There is no permissionless validation. A node you
 run is a **read node**: it follows blocks and serves queries, it does not vote.
 
 **Who maintains it.** Neynar acquired Farcaster from Merkle on 2026-01-21 and
@@ -70,8 +78,8 @@ holds the mainnet schedule. Features that matter to a client:
 | V5 | 2025-06-16 | Farcaster Pro tier, Basenames, primary addresses |
 | V11 | 2025-10-08 | Storage lending (`LEND_STORAGE`, type 15) |
 | V14 | 2025-10-29 | Revoking a signer no longer deletes its past messages (FIP #238) |
-| V16 | 2026-05-07 | **Gasless signers** (`KEY_ADD` 16 / `KEY_REMOVE` 17, FIP #266) |
-| V17 | 2026-06-04 | `USER_DATA_TYPE_LIVE_AT` (14), live activity (FIP #269) |
+| V16 | 2026-05-07 | **Gasless signers** (`KEY_ADD` 16 / `KEY_REMOVE` 17, FIP #266; the node's CLI README says FIP-272) |
+| V17 | 2026-06-04 | `USER_DATA_TYPE_LIVE_AT` (14), live activity (FIP #269; the code comments say FIP-268) |
 | V18 | 2026-06-22 | One more free year on every already-rented storage unit |
 | V19 | 2026-07-27 | Block links (FIP #263) |
 | V20 | 2026-08-13 | Four embeds per cast for everyone (was two, four for Pro) |
@@ -100,23 +108,30 @@ generous (`src/storage/store/stores.rs`):
 
 | Unit cohort | Casts | Reactions | Links | Profile fields | Verifications | Name proofs | Valid for (after V18) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Legacy (rented before 2024-08-24) | 5000 | 2500 | 2500 | 50 | 25 | 5 | 4 years |
+| Legacy (rented before 2024-08-29) | 5000 | 2500 | 2500 | 50 | 25 | 5 | 4 years |
 | 2024 (before 2025-07-16) | 2000 | 1000 | 1000 | 50 | 25 | 5 | 3 years |
 | 2025 (rented since) | **100** | **200** | **200** | 25 | 5 | 2 | 1 year (2 for the pre-cutoff cohort) |
 
 When a store is full the oldest message is pruned, not the newest rejected.
-When all units expire there is a 30-day grace period before everything is
-pruned. FIP #229 (finalized 2025-04-18) set the 2025 unit price at **$0.20 per
+The specification repository describes a 30-day grace period after the
+last unit expires; the node has no grace logic, and drops a fid's messages from
+a block once it has no active storage slot (`engine.rs`), so do not plan on a grace period. FIP #229 (finalized 2025-04-18) set the 2025 unit price at **$0.20 per
 year**; the docs repository still says "$7 today" on its messages page, which
 is stale text from the old denomination. The live `usdUnitPrice()` could not be
 read from here.
 
 **Rate limits** (`src/mempool/mempool.rs`): on by default since 2026-11-11, and
 an operator can turn them off. With them on, a FID may
-submit `max(100, total storage allowance ÷ 10)` messages per hour. `KEY_ADD` is
-always capped at one per minute per FID; `KEY_REMOVE` is never limited.
-`LIVE_AT` heartbeats get 5000 per unit per hour on their own budget. Blocks
-carry at most 1000 messages (`max_messages_per_block`).
+submit `max(100, total storage allowance ÷ 10)` messages per hour, where the
+allowance adds up the limits of all seven stores, so one 2025 unit gives 533 and
+the 100 an hour floor applies. `KEY_ADD` is always capped at one per minute per FID.
+`KEY_REMOVE` is kept off that hourly budget so a signer's revocation is never
+blocked, but it has its own limiter of 5 per minute. `LIVE_AT` heartbeats get 5000
+per unit per hour on their own budget. A shard chunk carries at most 1000 messages
+(`max_messages_per_block`). **Where the budget is charged:** a read node passes no
+limiter (`main.rs`), and a validator that finds a gossiped message over budget drops it
+without a reply, after the read node already answered 200. A 200 from `submitMessage`
+therefore never proves the message was admitted.
 
 ---
 
@@ -156,10 +171,13 @@ Build the message with `@farcaster/core` 0.21.0 / `@farcaster/hub-nodejs`
 Ed25519 signer, and POST it to `/v1/submitMessage` on a node you can reach.
 Then confirm it by reading it back or by following `/v1/events`, because
 inclusion is best-effort. The gRPC-web package `@farcaster/hub-web` is
-"not fully supported" per the migration guide; use HTTP from browsers.
+"not fully supported" per the migration guide; use HTTP from browsers. A browser can read from a Snapchain node (it sends `Access-Control-Allow-Origin: *`) but cannot post to one: the node has no handler for the preflight a cross-origin POST needs, so it answers 404 unless a proxy in front answers it. Hypersnap's nodes answer the preflight themselves.
 
-A node without `--rpc-auth` accepts submissions from anyone who can reach port
-3381. If Home runs a node, the write port sits behind Home's own service.
+A node with an empty `rpc_auth` accepts submissions from anyone who can reach port
+3381. The credential is the config key `rpc_auth` (or the environment variable
+`SNAPCHAIN_RPC_AUTH`); the node's command line has no `--rpc-auth` flag (it takes
+only `--log-format`, `--config-path`, `--clear-db` and `--check-config`). If Home runs a node, the write port
+sits behind Home's own service.
 
 ### 2.3 Getting a signer for the user
 
@@ -167,7 +185,7 @@ This is the step that decides Home's onboarding. Four paths exist today:
 
 | Path | Who signs what | Gas | User experience | Status |
 | --- | --- | --- | --- | --- |
-| **Gasless `KEY_ADD`** | Home's app FID signs a `SignedKeyRequest` on the off-chain domain; the user's **custody address** signs an EIP-712 `KeyAdd` over key, scopes, TTL and nonce; the new key signs the envelope | none | "Sign with your wallet". Instant. | Mainnet since V16 (2026-05-07); FIP #266 finalized 2026-05-12 |
+| **Gasless `KEY_ADD`** | Home's app FID signs a `SignedKeyRequest` on the off-chain domain; the user's **custody address** signs an EIP-712 `KeyAdd` over fid, key, key type, scopes, TTL, nonce and a non-zero `deadline` (domain `Farcaster KeyAdd` version 1, chain id 1, no verifying contract); the new key signs the envelope; the `SignedKeyRequest` metadata carries its own deadline, checked against the current time, both in Farcaster-epoch seconds | none | "Sign with your wallet". Instant. | Mainnet since V16 (2026-05-07); FIP #266 finalized 2026-05-12 |
 | **Signed key request via the Farcaster app** | Home's app FID signs the on-chain-domain `SignedKeyRequest`; `POST https://api.farcaster.xyz/v2/signed-key-requests` returns a deeplink and token; the user approves in the Farcaster app, which submits `KeyGateway.add` | paid by the user, or by Home as sponsor (`sponsor` signature) | QR on web, deeplink on mobile; poll `GET /v2/signed-key-request?token=` until `completed` | Documented, long-standing |
 | **Neynar managed or sponsored signer** | Neynar holds or registers the key; `POST /v2/farcaster/signer/signed_key` takes `app_fid`, `deadline`, `signature`, optional `sponsor`; approval still happens in the Farcaster app via the returned URL | Neynar can sponsor | Same as above, with Neynar operating the key | Current; Neynar's "Sign In With Neynar" is deprecated in favour of it |
 | **Reference-client path** | The fork's backend mints a signer for a signed-in user and **pays the gas** for `KeyGateway.add` (`useCreateExternalUserSigner.ts`); approval of third-party requests goes through `/v2/approve-signed-key-requests` | backend | Invisible to the user | Private backend only; a fork cannot run it |
@@ -230,7 +248,7 @@ with `GET /v2/farcaster/user/fid/` to reserve a fresh FID.
 | Surface | Today | On the horizon |
 | --- | --- | --- |
 | Ranked home feed with reasons and scores | private `~api`; nothing public | nothing proposed |
-| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V25; registrations through a stock Basenames registrar, Base by default with Ethereum L1 still under consideration |
+| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V25; registrations through a stock Basenames registrar, Base by default in the draft; the node's code says the mainnet registrar will be on Ethereum L1 under `farcasterchannels.eth`, not yet deployed (Sepolia today), and denies channel messages as gasless key scopes |
 | Direct casts | off-protocol, API keys on request | FIP #226 draft since 2025-03 |
 | Blocks, verifications of connected accounts, primary addresses, starter packs | Client API | partly on protocol already (primary addresses since V5) |
 | Notifications, search, spam labels, quality scores, Pro | backend | nothing public |
@@ -318,9 +336,9 @@ Concretely:
    fields, 5 verifications and 2 name proofs, then prunes the oldest.
 4. **Throughput caps.** Per FID, `max(100, allowance ÷ 10)` messages per hour
    where a node enforces limits; one `KEY_ADD` per minute; 320-byte casts
-   (1024 as long casts, 10 KB for Pro); 4 embeds; 1000 messages per block.
+   (1024 as long casts, 10 KB for Pro); 4 embeds; 1000 messages per shard chunk.
 5. **Delivery is best-effort.** A successful `submitMessage` can still miss a
-   block; `dataBytes` is mandatory; confirmation means reading back.
+   block; set `dataBytes` (the migration guide requires it, though the node also accepts `data` alone and re-encodes it); confirmation means reading back.
 6. **Half the product is off-protocol** (section 2.6): channels until V25
    ships on mainnet, moderation, direct casts, notifications, search, labels,
    Pro. The documented way in is `api.farcaster.xyz`, which needs an approved
@@ -332,8 +350,8 @@ Concretely:
 8. **Running a node is real ops.** 16 GB RAM, 4 cores, 2 TB, public IP,
    a snapshot of several hundred gigabytes, hours to sync, ~$100/month on AWS; Postgres, Redis and
    Node 21 for shuttle.
-9. **The target moves every few weeks.** Five engine versions between May and
-   August 2026; the spec repository lags the code; libraries must track
+9. **The target moves every few weeks.** Nine engine versions (V16 to V24) between May and
+   November 2026; the spec repository lags the code; libraries must track
    `GetInfo`'s next-version timestamp.
 10. **This sandbox could not confirm live prices or vendor terms.** Storage
     price, registration price, Neynar plan limits (reported: a free tier with

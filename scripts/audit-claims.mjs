@@ -275,7 +275,8 @@ const linesOf = (text, needle) =>
     .map((l, i) => (l.includes(needle) ? i + 1 : 0))
     .filter(Boolean);
 
-check('mobile seam: flatItems memo line', 311, lineOf(read(mobileSeam), 'const flatItems = useMemo'), mobileSeam);
+// 311 at b6922e2; 326 at 0c289ed and at 73a39bd (2026-10-30), which is what CI clones
+check('mobile seam: flatItems memo line', 326, lineOf(read(mobileSeam), 'const flatItems = useMemo'), mobileSeam);
 check(
   'web seam: flatten sites',
   [332, 643],

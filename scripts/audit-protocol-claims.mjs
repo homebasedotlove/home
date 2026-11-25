@@ -287,7 +287,7 @@ if (missing.length) {
     { casts: 100, links: 200, reactions: 200, user_data: 25, user_name_proofs: 2, verifications: 5 },
     limits('UnitType2025'),
   );
-  expectText('legacy cohort cut-off', stores, 'Aug 24, 2024');
+  expectText('legacy cohort cut-off: the comment in stores.rs (stale; the constant says 2024-08-29, pinned in the validation pass)', stores, 'Aug 24, 2024');
   expectText('2025 cohort cut-off', stores, 'Jul 16, 2025');
 
   const expiry = sc.read('src/storage/store/account/onchain_event_store.rs');
@@ -447,7 +447,7 @@ if (missing.length) {
   const spec = S.protocol.read('docs/SPECIFICATION.md');
   check('spec repo still omits KEY_ADD', false, spec.includes('KEY_ADD'));
   check('spec repo still omits channel messages', false, spec.includes('ChannelUpdate'));
-  expectText('30-day grace period after storage expires', spec, '30 day grace period');
+  expectText('30-day grace period after storage expires: only the specification repository says so; the node has no grace logic (pinned in the validation pass)', spec, '30 day grace period');
 }
 
 // --- farcaster docs -------------------------------------------------------------
@@ -1580,7 +1580,7 @@ if (!SNAPSHOT) {
     'Network block/mute writes are stubs.',
     'Unsupported hosted features are not presented as working controls: Farcaster DMs, managed account registration, push delivery, miniapp execution/catalogs, trading, video processing, paid storage, protocol pins, channel subscription management or a personalized recommendation model.',
   ];
-  check("another client's feature matrix on a Hypersnap node", opencasterSays, opencasterSays.filter((t) => fs.includes(t)));
+  check("another client's feature matrix, written against Hypersnap 0.13.5: what it says (some of it is out of date at 0.17.21, see the validation pass)", opencasterSays, opencasterSays.filter((t) => fs.includes(t)));
 
   // --- posting and follows ---
   const castRs = sc.read('src/core/validations/cast.rs');
@@ -2072,12 +2072,31 @@ if (!SNAPSHOT) {
   const validatorsPage = sc.read('site/docs/pages/validators.mdx');
   const operators = [...validatorsPage.matchAll(/^\| `[0-9a-f]+\.\.\.[0-9a-f]+`\s*\| (\w+) \|$/gm)].map((m) => m[1]);
   check(
-    "Farcaster's documented validators: seven keys, three operators, five of seven to commit",
+    "Farcaster's documentation table still lists the pre-v18 operators: Neynar five, Uno, Degen",
     { count: 7, byOperator: { Neynar: 5, Uno: 1, Degen: 1 }, quorum: true },
     {
       count: operators.length,
       byOperator: Object.fromEntries([...new Set(operators)].map((o) => [o, operators.filter((x) => x === o).length])),
       quorum: validatorsPage.includes('A block commits once more than two thirds of them have signed it, which is five of seven'),
+    },
+  );
+  // the authoritative list is validators.toml: its header names each key's operator and its v18 comment names the swap
+  const scToml = sc.read('validators.toml');
+  const header = Object.fromEntries([...scToml.matchAll(/^#\s+([0-9a-f]{64})\s+- (\w+) \(validator \d+\)$/gm)].map((m) => [m[1], m[2]]));
+  const scSets = [...scToml.matchAll(/\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)\nshard_ids = \[ (\d) \]\nvalidator_public_keys = \[\n([\s\S]*?)\n\]/g)].map((m) => ({ at: Number(m[1].replaceAll('_', '')), shard: Number(m[2]), keys: [...m[3].matchAll(/"([0-9a-f]{64})"/g)].map((k) => k[1]) }));
+  const latestSets = scSets.slice(-3);
+  const latestKeys = latestSets[0]?.keys ?? [];
+  const named = latestKeys.map((k) => header[k] ?? (k.startsWith('bd465c') ? 'moria' : k.startsWith('be846f') ? 'isengard' : '?'));
+  check(
+    "Farcaster's current validators, from validators.toml: seven keys on every shard, five of them Neynar's, the other two moria and isengard since v18",
+    { heights: [48632000, 49147000, 49311000], keysPerShard: [7, 7, 7], sameKeys: true, byOperator: { Neynar: 5, moria: 1, isengard: 1 }, swapComment: true, threshold: '5 of 7' },
+    {
+      heights: latestSets.map((s) => s.at).sort((a, b) => a - b),
+      keysPerShard: latestSets.map((s) => s.keys.length),
+      sameKeys: latestSets.every((s) => JSON.stringify([...s.keys].sort()) === JSON.stringify([...latestKeys].sort())),
+      byOperator: Object.fromEntries([...new Set(named)].map((o) => [o, named.filter((x) => x === o).length])),
+      swapComment: scToml.includes('# v18 (registry configVersion 18): moria (bd465c...) and isengard (be846f...)\n# replace uno (80d780...) and degen (3376e3...) on block shard 0'),
+      threshold: `${Math.floor((latestKeys.length * 2) / 3) + 1} of ${latestKeys.length}`,
     },
   );
   expectText(
@@ -2386,6 +2405,356 @@ if (!SNAPSHOT) {
   ];
   check('Quilcast creates free native accounts, which have no username', qnLines, qnLines.filter((t) => qnReadme.includes(t)));
   check('Quilcast version', '0.112.0', qn.json('package.json').version);
+  const scMerge = sc.read('src/storage/store/account/gasless_key_merge.rs');
+  const hfMerge = hf.read('src/storage/store/account/gasless_key_merge.rs');
+  check(
+    "a key request is valid only for an app account the node knows: Farcaster needs a registration event, Hypersnap also accepts a native account",
+    { snapchainNeedsEvent: true, snapchainChecksCustody: true, hypersnapUsesLookup: true, lookupSplits: true, nativeNotL1: true },
+    {
+      snapchainNeedsEvent: flat(scMerge).includes('.get_id_register_event_by_fid(verified.request_fid, Some(txn_batch))'),
+      snapchainChecksCustody: flat(scMerge).includes('if request_fid_custody.to.as_slice() != verified.request_signer.as_slice() {'),
+      hypersnapUsesLookup: flat(hfMerge).includes('.get_custody_address(verified.request_fid, Some(txn_batch))'),
+      lookupSplits: flat(hf.read('src/storage/store/account/onchain_event_store.rs')).includes('/// Custody comes from the native registry for high FIDs, or IdRegistry for legacy FIDs.'),
+      nativeNotL1: flat(hf.read('src/storage/store/account/onchain_event_store.rs')).includes('/// Native records are not synthesized into L1 events.'),
+    },
+  );
+  const regDoc = hf.read('docs/native-registration.md');
+  check(
+    "neither stock install configures an on-chain event subscriber, and Hypersnap's text intends legacy registrations to keep working",
+    { snapchainNoSubscriber: true, hypersnapNoSubscriber: true, intent: true, defaultEmpty: true },
+    {
+      snapchainNoSubscriber: !/onchain_events|l1_rpc_url/.test(sc.read('docker-compose.mainnet.yml').slice(sc.read('docker-compose.mainnet.yml').indexOf('cat > config.toml'), sc.read('docker-compose.mainnet.yml').indexOf('EOF\n'))),
+      hypersnapNoSubscriber: !/onchain_events|l1_rpc_url/.test(hf.read('docker-compose.mainnet.yml').slice(hf.read('docker-compose.mainnet.yml').indexOf('cat > config.toml'), hf.read('docker-compose.mainnet.yml').indexOf('EOF\n'))),
+      intent: flat(regDoc).includes('Legacy registrations and signers continue to work through the existing contract-backed path.'),
+      defaultEmpty: hf.read('src/cfg.rs').includes('l1_rpc_url: "".to_string(),'),
+    },
+  );
+}
+
+// --- validation pass, 2026-11-25: facts that older third-party documents had wrong ----------
+
+{
+  const hf = S['hypersnap-fork'];
+  const sc = S.snapchain;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const http = hf.read('src/api/http.rs');
+  const types = hf.read('src/api/types.rs');
+  check(
+    "a Hypersnap node fills the reader's liked, recasted, following and blocking state when the request names the reader",
+    { fn: true, liked: true, recasted: true, follow: true, block: true, needsViewer: true, fields: ['liked', 'recasted'] },
+    {
+      fn: http.includes('async fn add_viewer_context(&self, casts: &mut [Cast], viewer_fid: Option<u64>) {'),
+      liked: http.includes('liked: reacted(crate::proto::ReactionType::Like).await,'),
+      recasted: http.includes('recasted: reacted(crate::proto::ReactionType::Recast).await,'),
+      follow: http.includes('following: hub.has_link(viewer, "follow", user.fid).await,'),
+      block: http.includes('blocking: hub.has_link(viewer, "block", user.fid).await,'),
+      needsViewer: http.includes('/// seen by `viewer_fid`. Does nothing without a viewer.') || http.includes('as seen by `viewer_fid`. Does nothing without a viewer.'),
+      fields: [...(types.match(/pub struct CastViewerContext \{([\s\S]*?)\}/)?.[1] ?? '').matchAll(/pub (\w+): bool/g)].map((m) => m[1]),
+    },
+  );
+  const server = hf.read('src/network/server.rs');
+  check(
+    'notifications: full history from an index once it is complete, otherwise only the activity on the newest 100 casts; a recast reads as a like unless quotes and deep replies are requested',
+    { indexWhenComplete: true, scanFallback: true, recastNeedsFlag: true, defaultLike: true },
+    {
+      indexWhenComplete: server.includes('if let Some(index) = index.filter(|i| i.is_complete()) {'),
+      scanFallback: server.includes('// Until the index is complete: a scan of the user\'s newest casts, which\n        // only reaches the activity on their last 100 casts.'),
+      recastNeedsFlag: /Ok\(crate::proto::MessageType::ReactionAdd\)\s+if include_quotes_and_deep_replies && is_recast\(data\) =>\s+\{\s+"recasts"/.test(http),
+      defaultLike: /Ok\(crate::proto::MessageType::ReactionAdd\) => "likes",/.test(http),
+    },
+  );
+  check(
+    "Farcaster's own node has no notifications route",
+    0,
+    count(sc.read('src/network/http_server.rs'), /notification/gi),
+  );
+  const rest = readFileSync(join(HOME, 'docs/design/experience-walkthrough.md'), 'utf8');
+  check(
+    'the walkthrough no longer says a node leaves the reader\'s like state empty',
+    { stale: false, corrected: true },
+    { stale: /a node does not tell Home\s+whether the reader already liked a cast/.test(rest), corrected: flat(rest).includes('A Hypersnap node reports it only when the request names the reader') },
+  );
+  // A browser sends a preflight before a protobuf submit. Farcaster's node code has no handler for it, so a stock
+  // node answers 404 unless something in front of it answers instead; Hypersnap's code answers 204 itself.
+  const scAll = ['src/network/http_server.rs', 'src/network/server.rs', 'src/main.rs']
+    .map((p) => { try { return sc.read(p); } catch { return ''; } }).join('\n');
+  const hfHttp = hf.read('src/network/http_server.rs');
+  check(
+    "browser preflight: Farcaster's node code never answers OPTIONS (it falls to the 404 arm) while Hypersnap's code answers 204 with the allow headers",
+    { snapchainHandlesOptions: false, snapchainFallsTo404: true, snapchainOriginHeader: true, hypersnapShortCircuit: true, hypersnapStatus204: true },
+    {
+      snapchainHandlesOptions: /Method::OPTIONS|"OPTIONS"|CorsLayer/.test(scAll),
+      snapchainFallsTo404: /_ => Ok\(Response::builder\(\)\s+\.status\(StatusCode::NOT_FOUND\)/.test(sc.read('src/network/http_server.rs')),
+      snapchainOriginHeader: sc.read('src/network/http_server.rs').includes('"Access-Control-Allow-Origin",\n                HeaderValue::from_str(&config.cors_origin).unwrap(),'),
+      hypersnapShortCircuit: hfHttp.includes('if req.method() == Method::OPTIONS {'),
+      hypersnapStatus204: /if req\.method\(\) == Method::OPTIONS \{[\s\S]*?StatusCode::NO_CONTENT/.test(hfHttp),
+    },
+  );
+  // The read-only commands in the validation page's register name routes, fields, a gRPC method and two contract
+  // functions. Each is checked against the pinned code so the commands cannot drift from it unnoticed.
+  const scHttp = sc.read('src/network/http_server.rs');
+  const ct = S.contracts;
+  const valPage = readFileSync(join(HOME, 'docs/research/validation-2026-11-25.md'), 'utf8');
+  check(
+    "the register's read-only commands: routes, JSON fields, gRPC method and contract functions exist in the pinned sources, and the selectors in the page are the ones computed for them",
+    { routes: true, infoFields: true, grpc: true, idCounterIsLast: true, configVersion: true, selectorsInPage: true },
+    {
+      routes: ['/v1/info', '/v1/castsByFid', '/v1/castById', '/v1/onChainEventsByFid', '/v1/submitMessage'].every((r) => scHttp.includes(`"${r}"`)),
+      infoFields: ['"shardInfos"', '"maxHeight"', '"blockDelay"', '"shardId"'].every((f) => scHttp.includes(`rename = ${f}`)),
+      grpc: /rpc GetBlocks\(BlocksRequest\) returns \(stream Block\);/.test(sc.read('proto/definitions/rpc.proto')) && /optional uint64 stop_block_number = 3;/.test(sc.read('proto/definitions/request_response.proto')),
+      idCounterIsLast: ct.read('src/IdRegistry.sol').includes('fid = ++idCounter;') && ct.read('src/interfaces/IIdRegistry.sol').includes('function idCounter() external view returns (uint256);'),
+      configVersion: ct.read('src/interfaces/ISnapchainConfigRegistry.sol').includes('function configVersion() external view returns (uint256);'),
+      selectorsInPage: valPage.includes('`0xeb08ab28`') && valPage.includes('`0xdd64d24d`') && valPage.includes('0xdd64d24d'),
+    },
+  );
+}
+
+// --- validation pass, 2026-11-25: what the independent reviewers of the Snapchain pages corrected ------------
+
+{
+  const sc = S.snapchain;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const src = (p) => sc.read(p);
+  const oes = src('src/storage/store/account/onchain_event_store.rs');
+  check(
+    'the legacy storage cohort ends on 2024-08-29 in the code constant (the comment in stores.rs that says Aug 24 is stale)',
+    { constant: true, date: '2024-08-29', staleComment: true },
+    {
+      constant: oes.includes('pub const UNIT_TYPE_LEGACY_CUTOFF_TIMESTAMP: u32 = 1724889600;'),
+      date: new Date(1724889600 * 1000).toISOString().slice(0, 10),
+      staleComment: src('src/storage/store/stores.rs').includes('units rented before Aug 24, 2024'),
+    },
+  );
+  const mp = src('src/mempool/mempool.rs');
+  check(
+    'KEY_REMOVE has its own limiter of 5 a minute and is kept off the hourly storage budget; a read node passes no limiter at all',
+    { removeLimit: 5, offQuota: true, readNodeNone: true, allowanceSumsAllStores: true, lendsOne: true },
+    {
+      removeLimit: Number(/KEY_REMOVE_RATE_LIMIT_PER_MINUTE: u32 = (\d+);/.exec(mp)?.[1]),
+      offQuota: mp.includes('!is_live_at(message) && key_remove_body(message).is_none()'),
+      readNodeNone: /local_state_store\.clone\(\),\s*None,\s*\)\s*\.await;/.test(src('src/main.rs')),
+      allowanceSumsAllStores: /\.map\(\|limits\| limits\.limit as u32\)\s*\.sum\(\);/.test(mp) && mp.includes('100.max(storage_allowance / 10)'),
+      lendsOne: (src('src/storage/store/stores.rs').match(/storage_lends: 1,/g) ?? []).length === 3,
+    },
+  );
+  const cfg = src('src/cfg.rs');
+  const cli = /pub struct CliArgs \{([\s\S]*?)\n\}/.exec(cfg)?.[1] ?? '';
+  check(
+    'the node has no --rpc-auth flag: the credential is the config key rpc_auth or SNAPCHAIN_RPC_AUTH',
+    { flags: ['log_format', 'config_path', 'clear_db', 'check_config'], configKey: true, envPrefix: true },
+    {
+      flags: [...cli.matchAll(/^\s{4}(\w+): [A-Za-z<>]+,$/gm)].map((m) => m[1]),
+      configKey: cfg.includes('pub rpc_auth: String,'),
+      envPrefix: cfg.includes('Env::prefixed("SNAPCHAIN_").split("__")'),
+    },
+  );
+  const key = src('src/core/validations/key.rs');
+  check(
+    'a gasless KEY_ADD or KEY_REMOVE needs a non-zero deadline that the custody signature covers, in domain "Farcaster KeyAdd" v1 on chain 1; the envelope is signed by the new key',
+    { deadlineFields: 2, nonZero: 2, domain: true, chain1: true, envelopeSigner: true, requestDeadlineEpoch: true },
+    {
+      deadlineFields: (key.match(/pub deadline: u32,/g) ?? []).length,
+      nonZero: (key.match(/if body\.deadline == 0 \{/g) ?? []).length,
+      domain: key.includes('KEY_DOMAIN_NAME: &str = "Farcaster KeyAdd";') && key.includes('KEY_DOMAIN_VERSION: &str = "1";'),
+      chain1: key.includes('ETH_MAINNET_CHAIN_ID: u32 = 1;'),
+      envelopeSigner: src('src/storage/store/account/active_key.rs').includes('if message.signer != body.key {'),
+      requestDeadlineEpoch: key.includes('/// 3. `deadline >= current_timestamp` (farcaster epoch seconds)'),
+    },
+  );
+  const routing = src('src/mempool/routing.rs');
+  check(
+    'KEY_ADD, KEY_REMOVE and LEND_STORAGE route to shard 0, not by fid; channel messages join them at V25',
+    true,
+    /MessageType::LendStorage\s*\|\s*MessageType::KeyAdd\s*\|\s*MessageType::KeyRemove\s*\|\s*MessageType::ChannelUpdate\s*\|\s*MessageType::ChannelMember\s*\|\s*MessageType::ChannelPin\s*\|\s*MessageType::ChannelModerate => 0,/.test(routing),
+  );
+  const nt = src('site/docs/pages/node-types.mdx');
+  const vm = src('site/docs/pages/validators.mdx');
+  check(
+    'validators pull their set from the on-chain registry at every boot (on by default); read nodes use the static file; the node code has no registry reader',
+    { validatorsPull: true, onByDefault: true, readStatic: true, fcConfigPull: true, noReaderInCode: 0 },
+    {
+      validatorsPull: nt.includes('**Validators** pull three keys from the `SnapchainConfigRegistry` contract every time they boot'),
+      onByDefault: nt.includes('| `ONCHAIN_CONFIG_ENABLED` | On by default.'),
+      readStatic: nt.includes('**Read nodes** use static configuration.') && nt.includes('`validators.toml` supplies the validator set history.'),
+      fcConfigPull: vm.includes('Validators do not read `validators.toml` directly.') && nt.includes('runs `fc config pull`'),
+      noReaderInCode: count(src('src/main.rs') + src('src/cfg.rs') + src('src/consensus/consensus.rs'), /SnapchainConfigRegistry/g),
+    },
+  );
+  const ver = src('src/version/version.rs');
+  const rv = src('src/consensus/read_validator.rs');
+  check(
+    'a node halts on a protocol version that differs from the header, and V18 to V25 all share protocol version 13, so a V24 or V25 engine change alone does not halt a node that missed it',
+    { sharedVersion: true, latest13: true, halts: true },
+    {
+      sharedVersion: /EngineVersion::V18\s*\|\s*EngineVersion::V19\s*\|\s*EngineVersion::V20\s*\|\s*EngineVersion::V21\s*\|\s*EngineVersion::V22\s*\|\s*EngineVersion::V23\s*\|\s*EngineVersion::V24\s*\|\s*EngineVersion::V25 => LATEST_PROTOCOL_VERSION,/.test(ver),
+      latest13: ver.includes('const LATEST_PROTOCOL_VERSION: u32 = 13;'),
+      halts: rv.includes('if header.version != expected_version {') && rv.includes('SystemMessage::ExitWithError(error_message)'),
+    },
+  );
+  const server = src('src/network/server.rs');
+  const errs = src('src/core/error.rs');
+  check(
+    'validateMessage runs only the stateless check and returns a boolean; the node has five bad_request codes, none of them unknown_signer, unknown_fid, no_storage or prunable',
+    { stateless: true, codes: ['decode_error', 'duplicate', 'invalid_param', 'rate_limited', 'validation_failure'], missing: 0 },
+    {
+      stateless: /async fn validate_message\([\s\S]*?validations::message::validate_message\([\s\S]*?\.map_or_else\(\|_\| false, \|_\| true\);/.test(server),
+      codes: [...new Set([...errs.matchAll(/"bad_request\.(\w+)"/g)].map((m) => m[1]))].sort(),
+      missing: count(errs, /unknown_signer|unknown_fid|no_storage|prunable/g),
+    },
+  );
+  const msgv = src('src/core/validations/message.rs');
+  check(
+    'a message with data and no dataBytes is accepted and re-encoded (the migration guide still requires dataBytes)',
+    true,
+    msgv.includes('message_data = message.data.as_ref().unwrap().clone();') && msgv.includes('data_bytes = message_data.encode_to_vec();'),
+  );
+  check(
+    'channel messages are denied as gasless key scopes, and the mainnet channel registrar is planned for Ethereum L1 under farcasterchannels.eth, not deployed',
+    { denied: true, l1: true },
+    {
+      denied: /Ok\(MessageType::ChannelUpdate\)\s*\|\s*Ok\(MessageType::ChannelMember\)\s*\|\s*Ok\(MessageType::ChannelPin\)\s*\|\s*Ok\(MessageType::ChannelModerate\) => false,/.test(key),
+      l1: flat(src('src/core/channel_uri.rs').replace(/^\s*\/\/\/ ?/gm, '')).includes('Mainnet will be Ethereum L1 (chain 1), rooted under `farcasterchannels.eth`'),
+    },
+  );
+  check(
+    'the node has no storage grace period: a fid with no active slot has its messages dropped from the block',
+    { dropped: true, graceInEngine: 0 },
+    {
+      dropped: src('src/storage/store/engine.rs').includes('// Drop events if storage slot is inactive'),
+      graceInEngine: count(src('src/storage/store/engine.rs'), /grace/gi),
+    },
+  );
+}
+
+// --- validation pass, 2026-11-25: what the reviewers of the other pages corrected ---------------------------
+
+{
+  const hf = S['hypersnap-fork'];
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const sm = S.smashcast.read('SETUP.md');
+  const fd = S.fiddy.read('apps/farcaster-web/README.md');
+  const clientApi = readFileSync(join(SNAPSHOT, 'packages/farcaster-client-data/src/client/FarcasterApiClient.ts'), 'utf8');
+  const abstractApi = readFileSync(join(SNAPSHOT, 'packages/farcaster-client-data/src/client/AbstractFarcasterApiClient.ts'), 'utf8');
+  check(
+    "two forks report that the production API answers only an allowlist of origins, and the client's feed call is a JSON POST, so a hosted Home needs a same-origin proxy",
+    { smashcastAllowlist: true, origins: ['https://farcaster.xyz', 'https://warpcast.com', 'http://localhost:4173', 'https://localhost:5173'], smashcastLocalhost: true, fiddyRejected: true, fiddyFunction: true, feedItemsPost: true, json: true },
+    {
+      smashcastAllowlist: flat(sm).includes('only sends `Access-Control-Allow-Origin` for an allowlist'),
+      origins: ['https://farcaster.xyz', 'https://warpcast.com', 'http://localhost:4173', 'https://localhost:5173'].filter((o) => sm.includes('`' + o + '`')),
+      smashcastLocalhost: flat(sm).includes("`localhost` is on the API's CORS allowlist"),
+      fiddyRejected: flat(fd).includes('were rejected by the upstream CORS policy'),
+      fiddyFunction: flat(fd).includes('forwards those requests to the fixed Farcaster upstream host'),
+      feedItemsPost: clientApi.includes("this.post<ApiGetFeedItems200Response>('/v2/feed-items'"),
+      json: abstractApi.includes("'Content-Type': 'application/json; charset=utf-8'"),
+    },
+  );
+  const wk = (f) => readFileSync(join(SNAPSHOT, 'apps/farcaster-web/public/.well-known', f), 'utf8');
+  check(
+    'only the Apple association file carries REPLACE_ME; assetlinks.json is Farcaster\'s real Android identity; the web build has no outDir, so Vite writes dist',
+    { assetlinks: 0, apple: 5, outDir: 0 },
+    {
+      assetlinks: count(wk('assetlinks.json'), /REPLACE_ME/g),
+      apple: count(wk('apple-app-site-association'), /REPLACE_ME/g),
+      outDir: count(readFileSync(join(SNAPSHOT, 'apps/farcaster-web/vite.config.js'), 'utf8'), /outDir/g),
+    },
+  );
+  const http = hf.read('src/api/http.rs');
+  const oasText = S.OAS.read('src/api/spec.yaml');
+  const oasPaths = new Set([...oasText.matchAll(/^ {2}(\/v2\/farcaster\/[^:\n]+):/gm)].map((m) => m[1].replace(/\/$/, '')));
+  const lits = (t) => new Set([...t.matchAll(/"(\/v2\/farcaster\/[^"]+)"/g)].map((m) => m[1].replace(/\/$/, '')));
+  const writeArm = lits(http.slice(http.indexOf('// Write action stubs'), http.indexOf('Write operations require submitting signed Farcaster messages via the gRPC SubmitMessage')));
+  const mi = http.indexOf('This endpoint requires managed infrastructure not available on a self-hosted node');
+  const managedArm = lits(http.slice(mi - 2500, mi));
+  const inSpec = (s) => [...s].filter((p) => oasPaths.has(p)).length;
+  check(
+    "of Neynar's 103 paths, 30 sit in Hypersnap's 501 write arm and 23 in its 501 managed arm; 42 answer 501 for at least one method (login nonce and developer-managed signers appear in both arms, by method)",
+    { spec: 103, write: 30, managed: 23, union: 42, loginInBoth: true },
+    {
+      spec: oasPaths.size,
+      write: inSpec(writeArm),
+      managed: inSpec(managedArm),
+      union: inSpec(new Set([...writeArm, ...managedArm])),
+      loginInBoth: writeArm.has('/v2/farcaster/login/nonce') && managedArm.has('/v2/farcaster/login/nonce'),
+    },
+  );
+  check(
+    "Hypersnap's channel feed is newest first and takes channel_ids from one request; trending takes no channel",
+    { newestFirst: true, channelIds: true },
+    {
+      newestFirst: hf.read('src/api/feeds.rs').includes('reverse: Some(true), // Newest first'),
+      channelIds: http.includes('let channel_ids = require_param!(params, "channel_ids");'),
+    },
+  );
+  const hv = hf.read('src/version/version.rs');
+  check(
+    "Hypersnap's mainnet schedule ends at V23 (2026-10-29) and its V24 gates channels, so engine version numbers mean different things on the two networks",
+    { lastEntry: 1793257200, v23: true, v24Channels: true },
+    {
+      lastEntry: Number(/active_at: (\d+), \/\/ 2026-10-29 7AM UTC[^\n]*\n\s*version: EngineVersion::V23,/.exec(hv)?.[1]),
+      v23: /EngineVersion::V23,\s*\},\s*\]\s*\.as_slice\(\);/.test(hv),
+      v24Channels: /ProtocolFeature::ChannelRegistrations[\s\S]*?ProtocolFeature::ChannelMessages[\s\S]*?=> self >= &EngineVersion::V24,/.test(hv),
+    },
+  );
+  const hmain = hf.read('src/main.rs');
+  check(
+    "a Hypersnap node follows Optimism only if its operator sets onchain_events.rpc_url, and the relay leaves on-chain signer events out",
+    { subscriberGuard: true, shuttleNote: true },
+    {
+      subscriberGuard: hmain.includes('if !app_config.onchain_events.rpc_url.is_empty() {'),
+      shuttleNote: hf.read('docs/shuttle.md').includes('On-chain signer events remain outside the shuttle.'),
+    },
+  );
+  const hserver = hf.read('src/network/server.rs');
+  check(
+    "a notification list built without the index scans the newest min(3 x limit, 100) casts; a node validates contract signatures at submit and not in consensus",
+    { scan: true, atSubmit: true },
+    {
+      scan: hserver.includes('let casts_limit = (limit * 3).min(100);'),
+      atSubmit: hserver.includes('self.l1_validator.validate_message(&message).await?;'),
+    },
+  );
+  check(
+    "a Coinbase Smart Wallet account can have Ethereum-address owners as well as passkey owners",
+    true,
+    S['coinbase-smart-wallet'].read('README.md').includes('Passkey owners and Ethereum address owners'),
+  );
+  check(
+    "Hypersnap's native-registration module is 1,477 lines and is referred to from dozens of source files",
+    { lines: 1477, filesAtLeast: true },
+    {
+      lines: hf.read('src/native_registration.rs').split('\n').length - 1,
+      filesAtLeast: (() => {
+        let n = 0;
+        const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.rs') && /native_reg|NativeRegistration|native registration/i.test(readFileSync(p, 'utf8'))) n++; } };
+        walk(join(hf.dir ?? hf.root ?? '', 'src'));
+        return n >= 30;
+      })(),
+    },
+  );
+  check(
+    'the node guide says crackle is password protected; the registry lists snap and uno as validators and pop as the reader',
+    { crackle: true, snap: true, uno: true, pop: true },
+    {
+      crackle: flat(S.snapchain.read('site/docs/pages/guides/writing-messages.mdx')).includes('crackle is the Farcaster team\'s mainnet node, which is password protected to prevent abuse'),
+      snap: /name: "snap",\s*operator: Operator::Merkle,\s*role: NodeRole::MainnetValidator,/.test(S.snapchain.read('src/network/mesh/nodes.rs')),
+      uno: /name: "uno",\s*operator: Operator::Community,\s*role: NodeRole::MainnetValidator,/.test(S.snapchain.read('src/network/mesh/nodes.rs')),
+      pop: /name: "pop",\s*operator: Operator::Merkle,\s*role: NodeRole::MainnetReader,/.test(S.snapchain.read('src/network/mesh/nodes.rs')),
+    },
+  );
+  const idg = S.contracts.read('src/IdGateway.sol');
+  check(
+    "the gateway has no registration fee apart from storage: price() is the unit price and register(recovery) rents zero extra units on top of one",
+    { price: true, register: true },
+    {
+      price: /function price\(\) external view returns \(uint256\) \{\s*return storageRegistry\.unitPrice\(\);/.test(idg),
+      register: idg.includes('return register(recovery, 0);'),
+    },
+  );
+  check(
+    'the VOTE token id is the fid, so the check is ownerOf(fid) and not balanceOf',
+    true,
+    S['farcaster-census'].read('README.md').includes('tokenId = fid'),
+  );
 }
 
 // --- network (optional) ------------------------------------------------------------

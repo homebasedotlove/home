@@ -112,7 +112,17 @@
     "sparse": [
       "/LICENSE",
       "/packages/farcaster-protocol/README.md",
-      "/packages/farcaster-protocol/src/constants.ts"
+      "/packages/farcaster-protocol/src/constants.ts",
+      "/SETUP.md"
+    ]
+  },
+  "fiddy": {
+    "url": "https://github.com/ivcained/fiddy.git",
+    "sha": "02d8eb396960c80443441e839c267ddd4ca759ed",
+    "date": "2026-11-22",
+    "frozen": true,
+    "sparse": [
+      "/apps/farcaster-web/README.md"
     ]
   },
   "quilcast": {

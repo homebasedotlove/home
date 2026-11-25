@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 311 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 343 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -82,11 +82,29 @@ clones upstream HEAD, so **CI is red on exactly this line until the re-pin**.
 
 **Done when.** `pnpm audit:claims` reports 34 of 34 against upstream HEAD.
 
+**Status, 2026-11-25.** The audit now expects line 326 and reports 34 of 34 at
+`73a39bd`, so CI is green on this line. The remaining citations of `b6922e2`
+are left as they are on purpose: they record what was executed against that
+snapshot, and the re-runs at the newer ones are recorded beside them.
+
 ### 1.2 Create Home's own Farcaster account with a custody key you hold
 
 **Do.** Register the app fid Home needs for every signer request, with a
 custody key kept outside the Farcaster app, so Home can also exercise gasless
 signers against itself.
+
+**Which account matters, added 2026-11-25.** A key request is accepted only
+if the app account named in it is known to the node. Farcaster's node
+requires an on-chain registration event for it. Hypersnap accepts either a
+legacy registration or a native account. So an account registered **before
+the fork cutover on 2026-11-12** is known to both networks, and is the only
+kind that is certain to work on both. One registered on Optimism today works
+on Farcaster, and works on Hypersnap only if its validators read Optimism
+(open question, [design page §11](../research/optimal-design.md#11-re-read-2026-11-25)).
+A native account works on Hypersnap and never on Farcaster. If the owner has
+any account from before the fork, using it as the app account is the safest
+choice; otherwise register one now and test a key request against a
+Hypersnap node before relying on it.
 
 **How.** The Snapchain writing guide's flow: about $10 of ETH on OP Mainnet,
 `IdGateway.register` or the Bundler with one storage unit, then
@@ -109,8 +127,8 @@ None of these can run from this sandbox; all three take minutes.
 
 | # | Test | Command | Settles |
 | --- | --- | --- | --- |
-| a | Does the production API answer Home's origin? | `curl -si -X OPTIONS https://farcaster.xyz/~api/v2/feed-items -H 'Origin: https://home.example' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization,idempotency-key'` | whether Source A works as built. The template README says local builds point at this API from `localhost`, which only works cross-origin, so a permissive answer is plausible; the deployed-domain case is **untested** |
-| b | Are the public read nodes open? | `curl -s https://snap.farcaster.xyz:3381/v1/info`, then `pop.farcaster.xyz:3381`, `snap.uno.fun:3381`; then `fc cast-add --node https://snap.farcaster.xyz:3381 --network mainnet --fid <home fid> --text "hello"` with Home's new signer | free reads, and whether a public node accepts writes. The hosts are in Snapchain's compiled-in registry (audit: "public node registry"); their policy is **untested** |
+| a | Does the production API answer Home's origin? | `curl -si -X OPTIONS https://farcaster.xyz/~api/v2/feed-items -H 'Origin: https://home.example' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: authorization,content-type,idempotency-key'` | whether Source A works as built. Two forks that deployed it report that the API sends `Access-Control-Allow-Origin` only for an allowlist (`farcaster.xyz`, `warpcast.com`, two `localhost` ports), so expect a refusal and a same-origin proxy (client-landscape corrections; path-to-operational item 1); the client sends `POST` with `Content-Type: application/json`, so use `Access-Control-Request-Method: POST` and add `content-type` to the request headers to test it from Home's origin |
+| b | Are the public read nodes open? | `curl -s https://snap.farcaster.xyz:3381/v1/info`, then `pop.farcaster.xyz:3381`; then `fc cast-add --node https://snap.farcaster.xyz:3381 --network mainnet --fid <home fid> --signer-secret <the key> --text "hello"` (the command needs the signer secret) | free reads, and whether a public node accepts writes. The hosts are in Snapchain's compiled-in registry as API URLs for its mesh page (audit: "public node registry"); `snap` is listed as a validator and only `pop` as a reader, so their policy is **untested**. The CLI is labelled alpha |
 | c | Do mainnet accounts work on testnet? | `fc cast-add --node https://iris.farcaster.xyz:3381 --network testnet --fid <home fid> --text "test"`, then `castsByFid` on `iris` | whether the public testnet is a free rehearsal space. The connector is hard-wired to OP Mainnet (audit: "the OP connector is hard-wired to Optimism"); the inference is **untested** |
 
 **Done when.** Each row has a yes or a no written next to it in
@@ -118,7 +136,7 @@ None of these can run from this sandbox; all three take minutes.
 
 ### 1.4 Ask the owner one question, and open the free accounts
 
-**Do.** Ask Neynar, who publish the template and operate the API, whether a
+**Do.** Ask Network School, who have owned the production API since 2026-10-15, and Neynar, who published the template, whether a
 fork may serve users on its own domain against `farcaster.xyz/~api`, and under
 what limits. In the same hour, open a Neynar developer account on the free tier
 and run `make dev` in a Snapchain checkout.
@@ -134,7 +152,7 @@ Neynar's own docs read through search excerpts because the pages are blocked
 here. The devnet compose, its four nodes and its `dev:dev` admin auth are
 pinned (audit: "devnet compose", "devnet image bakes in admin auth").
 
-**Done when.** A written answer from Neynar, an API key in the secret store,
+**Done when.** A written answer from Network School or Neynar, an API key in the secret store,
 and `curl localhost:3381/v1/info` returning `numShards: 2`.
 
 ---
@@ -158,7 +176,7 @@ gateway, node settings and three preference facets added, is in
 | 4 | **Signer onboarding.** Browser-generated key; gasless `KEY_ADD` when the reader can sign with a wallet, the Farcaster-app deeplink with sponsorship otherwise | two service routes; the Client API for the deeplink | scopes, 90-day TTL, 1,000-key cap, one `KEY_ADD` a minute and the deeplink endpoints are pinned (audit: "KeyAddBody carries scopes", "KEY_ADD limited to one per minute", "signed key request flow") | `signersByFid` shows the device key; whether the Farcaster app signs a gasless request is **untested** |
 | 5 | **The write path.** `makeCastAdd` and friends, signed on the device, `POST /messages`, "posted" on the merge event | one module replacing `apiClient.createCast` and the other mutations | the builders, the hash-then-sign order and the best-effort semantics are pinned (audit: "the signature is verified over the hash", "submitMessage semantics") | a cast from Home appears on another node within seconds |
 | 6 | **Notifications.** Neynar webhooks for reactions, follows and mentions into a per-fid log the client polls | the free tier includes ten webhooks | the event types are pinned (audit: "Neynar webhook event types"); `/v1/events` costs a reported 2,000 credits a call, so polling it on the free tier is not viable | a like from another account reaches the client |
-| 7 | **Storage headroom.** `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit | a small settings panel | the 2025 unit limits are pinned (audit: "2025 storage unit limits") | the number matches the node |
+| 7 | **Storage headroom.** `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit (Farcaster only; Hypersnap has no storage limits and a fixed hourly quota) | a small settings panel | the 2025 unit limits are pinned (audit: "2025 storage unit limits") | the number matches the node |
 
 Channels stay on the Client API until on-protocol channels reach mainnet;
 their message types are gated to V25, which is not on the schedule (audit:
@@ -179,7 +197,7 @@ a list of nodes with per-node status. The reasoning and three small additions
 
 | Signal | Action | Evidence |
 | --- | --- | --- |
-| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month, and point the adapter at it: a Hypersnap node first, because it has the feed and search routes built in, and a Snapchain node second ([design page](../research/optimal-design.md) §4.10) | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP, Base or L1 RPC and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
+| Neynar credits approach 10M a month, or Home needs the event stream | run **a read node**, about $100 a month for Snapchain on AWS (a Hypersnap node's index overhead is unmeasured, and a mirror is not a drop-in for Neynar's Farcaster reads), and point the adapter at it: a Hypersnap node first, because it has the feed and search routes built in, and a Snapchain node second ([design page](../research/optimal-design.md) §4.10) | a session of raw node reads through Neynar costs about 4,100 credits, so the free tier is roughly 80 sessions a day; a read node needs no OP or Base RPC to follow the chain (without an L1 RPC it fails closed on ENS and Basename username proofs and ERC-1271 verifications) and gossips writes to validators (audit: "on-chain connector starts only when an RPC URL is configured", "a read node has no local mempool and gossips writes") |
 | Home wants Neynar's feeds and search at volume without running anything | Neynar Scale, $249 a month for 60M credits | Neynar's docs via search excerpts; **unverified** here |
 | Neynar's terms, prices or shapes change, or Home wants reads with no key and no credits | point the adapter at a **Hypersnap node**: `haatz.quilibrium.com` for development, Home's own later; same `/v2/farcaster/*` shapes | [`../research/hypersnap.md`](../research/hypersnap.md) §6: all but one of the paths in Neynar's spec exist by name on a Hypersnap node; run its checks a–f first, because its validator list is already stale |
 | Never | become a validator; depend on the production API for anything. Its ranking is an option a reader can turn on, and only while permitted | validators are a permissioned set of seven keys (audit: "latest validator set has seven keys") |
@@ -194,7 +212,7 @@ a list of nodes with per-node status. The reasoning and three small additions
 - **Account creation.** It makes Home a wallet app: on-chain registration,
   storage, custody handling. The download page already sends new readers to the
   Farcaster app, and the official client only signs people up on mobile
-  (audit: "only mobile signs up in the official client").
+  according to its docs (audit: "only mobile signs up in the official client"); its web app also has an invite sign-up route behind Farcaster's own bot challenge, which Home cannot use (path to operational item 6).
 - **Direct casts.** Off-protocol; FIP-226 is a draft from 2025. Messages by
   another route, and a connect-only wallet, are planned in
   [`../research/messages-and-wallet.md`](../research/messages-and-wallet.md).
@@ -214,9 +232,9 @@ a list of nodes with per-node status. The reasoning and three small additions
 | Gasless signers, their limits, and the deeplink flow | pinned: 9 audit rows across the Snapchain and docs sources |
 | The device half of the write path works with the published SDK | run 2026-11-10: `pnpm validate:write-path`, 13 checks against `@farcaster/core` 0.21.0 |
 | The production API refuses casts without opt-in | web: two independent reports of 2026-10-15 and 10-16 ([design page](../research/optimal-design.md) §1.1); **untested** here |
-| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `3fab17d`; the fork activated on 2026-11-12 ([design page §10](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13)) |
+| Hypersnap's fork is set in configuration, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `3fab17d`; the fork activated on 2026-11-12 ([design page §10](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13)) |
 | Read nodes need no RPC and can write | pinned: 2 rows read from `src/main.rs` and `src/mempool/mempool.rs` |
-| Public read nodes exist | pinned: "public node registry"; their policy **untested** |
+| Public read nodes exist | pinned: "public node registry" (one reader, `pop`, and validators); their policy **untested** |
 | Neynar is the ecosystem default | six client manifests read 2026-10-14 (five depend on Neynar); both node guides recommend it (pinned: "both node guides recommend Neynar") |
 | Costs: node ~$100 a month, 2025 unit 100 casts, hub list call 200 credits, free tier 10M credits | first two pinned; the credit figures are Neynar docs via search excerpts |
 | The engine moves every few weeks and the spec lags the code | pinned: "mainnet activation dates", "spec repo still omits KEY_ADD" |
@@ -234,7 +252,7 @@ against upstream HEAD and names any claim that moves.
 | The production API refuses Home's origin or Neynar declines | §1.3a and §1.4; Source B is already underway, so the answer changes the order, not the plan |
 | Public nodes rate-limit or refuse writes | §1.3b; fall back to Neynar's hosted node, then an own read node |
 | Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
-| Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as reported for a day on 2026-10-14 | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
+| Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as one person reported on 2026-10-14, before the sale was announced | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
 | The Hypersnap validator fork split the network on 2026-11-12 | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
 | XMTP's new SDKs have no shared network, so Home's inbox would reach only Home's own readers | Quorum stays the only planned provider; XMTP self-hosted is a later choice ([messages and wallet §13](../research/messages-and-wallet.md#13-re-read-2026-11-25)) |
 | Hypersnap admits only 1,008 messages an hour per account on each node, and a new account may be refused before a node has seen it | the status line per network names the refusal; Home retries only on the reader's press ([design page §11](../research/optimal-design.md#11-re-read-2026-11-25)) |

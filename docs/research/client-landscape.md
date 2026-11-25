@@ -9,10 +9,29 @@ clients' manifests are cited to the date they were read, because the vendor's
 pages are blocked from this sandbox and the manifests are not pinned sources.
 
 > **Since this page was written** (2026-10-14): Farcaster was sold again, its
-> production API now refuses casts without an opt-in, Neynar's hosted node
-> endpoints ask for a key or payment, and the network is about to fork. The
+> production API reportedly refuses casts without an opt-in, Neynar's hosted node
+> endpoints ask for a key or payment, and the network forked on 2026-11-12. The
 > answers below were true on their date. What they mean now is in
 > [`optimal-design.md`](optimal-design.md) §1 and §3.
+>
+> **Corrections from the 2026-11-25 review.** (1) The CORS question below is
+> answered by two forks, not open: the production API allows only an allowlist
+> of origins, so Home's web build needs a same-origin proxy. (2) `snap` and
+> `snap.uno.fun` are validators in Snapchain's registry, not read services, and
+> Uno's validator key was replaced in registry version 18; only `pop` is a reader,
+> the registry is a list of API URLs for the node's own mesh page, and `haatz`
+> is now a Hypersnap validator. (3) Snapchain's node answers no browser
+> preflight, so a browser can read from it but only Hypersnap's nodes accept
+> a browser write. (4) The Farcaster developer docs list two third-party
+> services (Neynar and dTech) and five sign-in providers, not one. (5) The
+> reference-client repository had one commit when this was written and four by
+> 2026-10-30. (6) Network School, not Neynar, has owned the protocol and the
+> production API since 2026-10-15, and the network forked on 2026-11-12. (7)
+> The sample of clients is of Neynar-based clients; protocol-direct clients
+> (Quilcast, SmashCast, fiddy, Opencaster) exist, so "its data path does not
+> transfer" is too strong. (8) Registering an account has no separate fee: the
+> gateway's price is the storage unit price and registration rents at least one
+> unit.
 
 ---
 
@@ -24,7 +43,7 @@ pages are blocked from this sandbox and the manifests are not pinned sources.
   for its own state.** Of six open-source or documented clients sampled, five
   depend on Neynar; the sixth runs its own indexer against a node.
 - **The repository Home is built from is Farcaster's own client, published by
-  Neynar as a one-commit snapshot under MIT, explicitly for forking, and its
+  Neynar as a snapshot (one commit when this was written, four by 2026-10-30) under MIT, explicitly for forking, and its
   README says both apps "run locally, pointing to the current production API
   by Farcaster."** It ships no backend. Pointing a fork at that API is what the
   README tells you to do; whether that extends to a deployed product on another
@@ -91,7 +110,7 @@ Farcaster's own app is the one client built the other way: a private backend
 that runs its own ranking, channels, moderation, direct casts, notifications
 and search over its own node infrastructure, serving a thin client. That is
 what makes the repository Home started from different from every project in
-the table above, and why its data path does not transfer.
+the table above. Its data path does transfer in part: protocol-direct clients (Quilcast, SmashCast, fiddy, Opencaster) later showed a client can read a node directly.
 
 ---
 
@@ -104,7 +123,7 @@ in its README and licence:
 | Fact | Where | What it means for Home |
 | --- | --- | --- |
 | "This is designed to be a reference for building a social client on top of the Farcaster protocol." | README | the intended use is exactly what Home is doing |
-| "Both mobile and web clients run locally, pointing to the current production API by Farcaster." | README | the production API is the expected data source for a local build; the web dev server runs on `localhost`, so this only works if that API answers cross-origin requests from at least `localhost`, which is the strongest hint yet that the CORS question in [path to operational](../operations/path-to-operational.md) may already be settled |
+| "Both mobile and web clients run locally, pointing to the current production API by Farcaster." | README | the production API is the expected data source for a local build; the web dev server runs on `localhost`, so this works because `localhost` is on the API's CORS allowlist; other origins are refused (see the correction at the top of this page) |
 | "Fork it and build on it — that's what it's here for." | README | forking is invited |
 | "This repository is a one-way, automatically generated snapshot… Each update replaces `main` with a single fresh commit, so pull requests and issues opened here can't be merged or tracked." | README | no upstream collaboration; Home's patch has to be re-applied on each snapshot, which the protocol audit already measures |
 | MIT, "Copyright (c) 2026 Neynar, Inc." | `LICENSE` | permissive; Neynar is the publisher |
@@ -114,8 +133,7 @@ in its README and licence:
 
 What the README does **not** say: whether a fork may ship to users on its own
 domain against that API, what rate limits apply, or whether the API's CORS
-policy covers domains other than `localhost`. Those remain the operator's
-questions, now narrowed to "deployed" rather than "any".
+policy covers domains other than `localhost`. Two forks that deployed the reference client's web build have answered this. SmashCast's `SETUP.md` (pinned) says the production API "answers arbitrary origins with HTTP 200 and the JSON body, but it only sends `Access-Control-Allow-Origin` for an allowlist" (`https://farcaster.xyz`, `https://warpcast.com`, `http://localhost:4173`, `https://localhost:5173`), so a browser blocks the response from any other hostname, and it puts a same-origin rewrite in front; fiddy's web README (pinned) says direct requests from its hosted domain "were rejected by the upstream CORS policy" and adds a function that forwards `/~api/...` to Farcaster, and that static-only hosts cannot run it. Both are third-party reports dated 2026-10-17 and 2026-11-22, not a test from Home's origin. Whether a fork may ship against the API at all and what rate limits apply remain the operator's questions.
 
 ---
 
@@ -123,12 +141,12 @@ questions, now narrowed to "deployed" rather than "any".
 
 Evidence, strongest first:
 
-1. **Ownership.** Neynar acquired Farcaster on 2026-01-21 and now maintains the
-   protocol, the Snapchain reference implementation, and the official client.
+1. **Ownership.** Neynar acquired Farcaster on 2026-01-21 and maintained the
+   protocol, the Snapchain reference implementation, and the official client until Network School bought Farcaster from it on 2026-10-15.
    Five of the seven validator keys in the current set are attributed to
    Neynar.
-2. **Documentation.** The Farcaster docs list exactly one third-party service,
-   Neynar. The Snapchain getting-started page and node guide both open with
+2. **Documentation.** The Farcaster developer docs list two third-party services,
+   Neynar and dTech, and five sign-in providers (Dynamic, Neynar, Privy, Web3Auth, ThirdWeb). The Snapchain getting-started page and node guide both open with
    "consider a managed service like Neynar."
 3. **The sample above.** Five of six clients; the sixth runs its own indexer.
 4. **Case studies and press.** Neynar's own Supercast spotlight; coverage of
@@ -154,18 +172,18 @@ else.
 
 | Component | Free option | Catch |
 | --- | --- | --- |
-| **Reading raw protocol data** | Farcaster's public read nodes (`snap`, `pop`, `snap.uno.fun`) from Snapchain's own node registry; community nodes such as `haatz.quilibrium.com` listed on hub directories | no published policy or rate limit; none of them is reachable from this sandbox, so they are **untested**. The browser can call them directly (the node allows any origin) |
+| **Reading raw protocol data** | the hosts in Snapchain's node registry (`pop` is a read node; `snap` and `snap.uno.fun` are listed as validators, and Uno's key was replaced in registry version 18) and community nodes such as `haatz.quilibrium.com` (now a Hypersnap validator) | no published policy or rate limit; none of them is reachable from this sandbox, so they are **untested**. A browser can read from a Snapchain node (it sends `Access-Control-Allow-Origin: *`) but cannot write to one, because the node has no handler for the preflight; Hypersnap's nodes answer it |
 | **Reading through Neynar** | the Free plan: 10M credits a month, 10 webhooks, 5 apps, a 600 per-endpoint rate limit, hub endpoint and read and write APIs included (Neynar docs, June 2026, via search) | an account, not a subscription; credits are the limit (§4.2) |
 | **Writing** | `submitMessage` on a public node, if it accepts writes; Neynar's `publish-message` on the free plan at a reported 150 credits a message | the first is untested; the second is metered |
 | **Signers** | gasless `KEY_ADD`: no gas, no vendor. The Farcaster-app deeplink: the Client API is free, but someone pays the on-chain add; 2023 accounts had Warpcast charging users about $1 or Warps, and the docs offer app sponsorship | whether the Farcaster app today charges the user for an unsponsored add is **unverified** |
 | **Identity** | Sign In With Farcaster through the public relay; `@farcaster/auth-client` falls back to a public OP RPC with a warning | use a free-tier RPC key in production |
 | **Hosting** | static hosting and a small serverless service on free tiers | free tiers are for non-commercial or low-volume use by their terms |
 | **Media** | object storage free tiers | egress is where it stops being free |
-| **Channels, blocks, verifications** | the Client API at `api.farcaster.xyz`, app-key authenticated, documented rate limits of 100 calls per caller per channel per hour | needs an approved signer to call |
+| **Channels, blocks, verifications** | the Client API at `api.farcaster.xyz`, app-key authenticated, a documented limit of 100 calls per caller per channel per hour, stated for the invite and remove-invite calls | needs an approved signer to call |
 | **The fork's current data path** | `farcaster.xyz/~api`, which the template README itself points local builds at | the deployed-domain policy question above |
 
 Two things are never free: a domain (about $10 a year) and Home's own app fid
-with one storage unit (registration price plus storage; the docs still say $7
+with one storage unit (the gateway's registration price is the storage unit price, and registering rents at least one unit, so there is no separate registration fee; the docs still say $7
 a year for storage while FIP-229 set the current unit at $0.20; the live price
 could not be read from here).
 
@@ -194,7 +212,7 @@ Polling `/v1/events` once a minute costs 86M credits a month, nine times the
 free tier, so notifications on the free plan have to come from webhooks (ten
 are included) or from Neynar's own feed endpoints whose costs are not visible
 here. If those endpoints are priced like the single lookups, the free tier
-stretches to a few hundred daily readers; if like the list calls, it does not.
+stretches to some hundreds of daily readers (the figure has no measured input, and the same method gives thousands at one credit a call); if like the list calls, it does not.
 The exact figure needs the compute-units page.
 
 ### 4.3 The honest answer

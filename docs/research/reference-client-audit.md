@@ -2,7 +2,10 @@
 
 An audit of [`farcasterxyz/client`](https://github.com/farcasterxyz/client), read
 at commit `b6922e2` (the snapshot current as of this writing). Every claim below
-cites a file in that repository. The point is not that the reference client is
+cites a file in that repository. **Re-checked 2026-11-25 against `73a39bd`:** all of
+the 34 mechanically checked claims hold, with one line number moved (the mobile
+seam, 311 to 326). The line numbers quoted in the prose below are those of
+`b6922e2`. The point is not that the reference client is
 badly built — it is a large, careful, fast codebase. The point is that its
 customization budget has been spent almost entirely in one place, and the most
 valuable levers it already has are wired to nothing.

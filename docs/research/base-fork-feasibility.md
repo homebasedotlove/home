@@ -26,9 +26,11 @@ named commit. **web** means read through a search on 2026-11-11.
 
 ## 0. The short answers
 
-**Feasible in code, heavy in people.** A fork is mostly configuration:
-Hypersnap is one, and it changes a validator list and one registration
-path (**pinned**). What a fork cannot configure is independent operators
+**Feasible in code, heavy in people.** A fork is more than configuration:
+Hypersnap's is a validator schedule, a native-registration module of about
+1,500 lines that dozens of source files refer to, storage limits turned off, a
+fixed rate quota, a relay and its own engine schedule, beside an API layer of
+tens of thousands of lines (**pinned**). What a fork cannot configure is independent operators
 willing to run validators, and a reason for readers to hold an account
 there.
 
@@ -36,7 +38,8 @@ there.
 profiles are not on any chain today and cannot sensibly be. What is
 on-chain is who owns an account, which keys may post for it, what was paid,
 and who the validators are (**pinned**). Those can move to Base. Base
-already carries two of Farcaster's registries (**pinned**).
+already carries one of Farcaster's registries, the tier registry (**pinned**);
+the channel registry has no mainnet address, and the node's code points at Base in one place and Ethereum L1 in another.
 
 **The recommendation is not to start a third network.** Put an account and
 key registry on Base, and ask Hypersnap to honour it. That buys what Base
@@ -58,7 +61,7 @@ Whether Hypersnap would accept a Base registry is unknown.
 | Posting keys of the older, on-chain kind | Optimism, `KeyRegistry` | **pinned** |
 | Storage rent | Optimism, `StorageRegistry` | **pinned** |
 | Pro purchases | Base, `TierRegistry` | **pinned** |
-| Channel ownership | Base in the code, with no mainnet address yet; the code says the chain "is not settled" | **pinned** |
+| Channel ownership | no mainnet address yet; the connector watches a controller on Base, while the channel-URI check expects Ethereum L1 under `farcasterchannels.eth`, and the code says the chain "is not settled" | **pinned** |
 | Names | ENS on Ethereum, Basenames on Base, and a server of Farcaster's | **pinned** |
 | Farcaster's validator list and peers | Ethereum, `SnapchainConfigRegistry` | **pinned** |
 | Hypersnap's validator list | a file in its repository | **pinned** |
@@ -66,7 +69,7 @@ Whether Hypersnap would accept a Base registry is unknown.
 **Not on any chain:** every cast, reaction, follow, profile field,
 verification and gasless key; the blocks; the state. Validators order those
 among themselves, one block a second on three shards. A node needs 16 GB of
-memory, 4 cores and 2 TB of disk (**pinned** in earlier pages).
+memory, 4 cores and 1.5 to 2 TB of disk (**pinned** in earlier pages).
 
 The six kinds of on-chain event a node stores say the same thing: signer,
 signer migrated, id register, storage rent, tier purchase, channel
@@ -111,7 +114,13 @@ For option A, three things, all on Base:
    and not in consensus, because validators "may see differently"
    (**pinned**). That is acceptable for an address on a profile. For a
    posting key it would let one faulty validator admit a forged key. An
-   event on Base is read identically by every validator.
+   event on Base replaces a contract-signature check with a log that each
+   validator's own chain reader submits; consensus does not re-read the chain
+   (**pinned**), so this removes the ambiguity about a contract's answer but
+   not the trust in each validator's RPC. It also has a cost: keys that arrive
+   as on-chain events are grandfathered, with no scope check and no expiry
+   (`active_key.rs`), which is exactly what Home's scoped, expiring keys avoid,
+   so a Base registry would need its own scope and expiry in the event.
 3. **Optionally a fee or rent.** It limits spam and can pay operators.
    Hypersnap chose proof of work and no rent instead (**pinned** in earlier
    pages).
@@ -202,9 +211,10 @@ nine operators.
    the design page lists a validator and an account registry under what
    Home will not build. A third network splits readers a third way.
 2. **Propose a Base registry to Hypersnap.** One document: accounts and
-   keys on Base, an id range, why keys must be events. It asks eight
-   operators for one code path, of the size they already added for their
-   own registration, about 1,400 lines (**pinned**).
+   keys on Base, an id range, why keys must be events. It asks nine
+   operators for a change of the size they already made for their own
+   registration: a module of about 1,500 lines that dozens of source files
+   refer to (**pinned**), which is more than one code path.
 3. **If that is declined, deploy the registry anyway.** It is cheap, MIT,
    and any network can adopt it later. Run the node change as a tracked
    fork only with operators who are not Home.
@@ -228,7 +238,7 @@ make a second one pointless.
 | Which contracts are followed on which chain | `snapchain@3839f06` `src/connectors/onchain_events/mod.rs` |
 | The six on-chain event kinds | `snapchain@3839f06` `proto/definitions/onchain_event.proto` |
 | Validators read their list from a contract on Ethereum; read nodes from a file | `snapchain@3839f06` `site/docs/pages/node-types.mdx` |
-| Seven validators, three operators, five of seven | `snapchain@3839f06` `site/docs/pages/validators.mdx` |
+| Seven validators, three named operators (Neynar on five keys, `moria`, `isengard`), five of seven to commit | `snapchain@3839f06` `validators.toml`; its documentation table is stale |
 | Contract signatures are checked outside consensus | `snapchain@3839f06` `src/mempool/l1_validator.rs` |
 | Design target above 9,000 a second | `snapchain@3839f06` `site/docs/pages/whitepaper.mdx` |
 | Hypersnap's registration path and its size; its conformance suite | `hypersnap@3fab17d` `src/native_registration.rs`, `tests/conformance` |

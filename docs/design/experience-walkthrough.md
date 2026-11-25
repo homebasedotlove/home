@@ -7,7 +7,7 @@ machines make it work. It sits on top of
 [signature interactions](signature-interactions.md); it adds no new
 architecture, and it records five decisions those pages had not made.
 
-Every upstream fact below is pinned by `scripts/audit-protocol-claims.mjs`.
+Every upstream fact below that has a **pinned** or **run** label is checked by `scripts/audit-protocol-claims.mjs` or was run; the block rates, the rotation date and the 11-15 repair are read from commits and third-party notes, and stated as such where they appear.
 
 ---
 
@@ -46,7 +46,7 @@ Home reading from nodes on both networks and signing on the reader's device.
 
 | Surface | What the reader gets | Whose machines | Status |
 | --- | --- | --- | --- |
-| Feed | A feed Home ranks, with a reason on every cast and a control on every reason | nodes on either network; Home ranks in the browser | chip and receipts **Built**; Home's own ranking **Designed** |
+| Feed | A feed Home ranks, with a reason on every cast and a control on every reason | lists from a node on either network; shaped feeds, search and notifications only from a Hypersnap node or Neynar (a Farcaster node serves `/v1` only); Home ranks in the browser | chip and receipts **Built**; Home's own ranking **Designed** |
 | Posting | One composer, one signature on the device, one status per network | Home's gateway forwards to a node on each network | **Designed**; signing validated |
 | Follows | Public, portable follows; private lists; mutes that are Home's own | protocol for follows and blocks; the device for lists and mutes | lists and mutes **Kernel**; follow writes **Designed** |
 | Channels | Browse, read, post into any channel; add a channel to a feed | protocol for casts; Farcaster's servers for membership | **Designed**; a real channel follow is not available |
@@ -79,12 +79,16 @@ What happens at sign-in depends on where the account's custody key lives.
 2. **First post or like: "Let Home post for you".** The browser generates a
    key. The wallet shows one typed-data signature that approves it for casts
    and reactions only, with a lifetime that slides forward with use and
-   cannot exceed ninety days. Home's service countersigns the request as
+   idles out after at most ninety days without use. Home's service countersigns the request as
    Home's app, which is why other clients can show "via Home". No gas, no
    transaction.
 3. **First follow or profile edit: a second approval,** for a key that may
    also write follows and profile fields. This is deliberate: a leaked
-   posting key cannot rewrite who the reader follows.
+   posting key cannot rewrite who the reader follows. Each node accepts one
+   key addition per minute per account, so Home spaces the two approvals, and
+   the countersigning app account must be one that each network's node knows:
+   an app account registered on Optimism after the fork may be unknown to
+   Hypersnap (design §4.3).
 
 The reader can list the keys this browser holds and revoke any of them from
 Settings. **Designed**; the signing half is validated by
@@ -176,9 +180,16 @@ Each line is one rule and the button that reverses it.
   line saying which source did not answer. If all fail, the feed says so
   and lists them. That behaviour is **Built** in `home-client-core`.
 
-One visible difference from Farcaster's app: a node does not tell Home
-whether the reader already liked a cast. Home reads that separately, so a
-heart may fill in a moment after the cast appears.
+**The reader's own state.** A Hypersnap node reports it only when the
+request names the reader: whether they liked or recasted each cast, and
+whether they follow or block its author (**pinned**). Home always names the
+reader on the routes that fill it (the main feeds, a channel, a user's casts,
+a single cast and a conversation); search, popular, replies and notification
+responses carry no reader state, so a heart there fills in a moment later. A third-party client's feature matrix says
+a Hypersnap node leaves this empty; that was written against Hypersnap
+0.13.5 and is out of date. A Snapchain node has no such field, so for
+Farcaster-side casts Home asks per cast, and a heart may fill in a moment
+after the cast appears.
 
 ---
 
@@ -221,8 +232,7 @@ and a moderation duty Home takes on knowingly.
 writes a public follow that every Farcaster client reads. Existing follows
 need no import; they are already on the network.
 
-Storage is where the two networks part. On Farcaster one current storage
-unit holds 200 follows and the oldest is dropped past that. After the fork
+Storage is where the two networks part. On Farcaster one storage unit rented since July 2025 holds 200 follows and the oldest is dropped past that (older units hold 1,000 or 2,500, and are still valid), and a per-account hourly limit applies on both networks. After the fork
 Hypersnap applies no storage limits. A reader who follows more than their
 storage allows will have a longer list on Hypersnap than on Farcaster, and
 Home shows both counts when they differ.
@@ -252,7 +262,7 @@ runs.
 | The reader wants to | In Home | Status |
 | --- | --- | --- |
 | Browse or search channels | A directory with search and trending | **Designed**: a node derives it from casts; Farcaster's public list needs no login |
-| Read a channel | Its casts, newest first or by engagement | **Designed** |
+| Read a channel | Its casts, newest first, one channel per request; a node has no engagement order for a channel, so Home sorts the returned counts itself | **Designed** |
 | Post into a channel | Pick the channel in the composer | **Designed**: a cast with that parent URL, on both networks |
 | Follow a channel | **Add to feed.** The channel becomes a source in a tab | **Kernel**; local to Home |
 | Have that follow show in Farcaster's app | Not available | **Farcaster's servers**, with a token Home's keys may not be able to produce |
@@ -290,8 +300,7 @@ person in a new tab, which works for readers who also use Farcaster's app.
 **Revised the same day.** This section first said that Farcaster's inbox
 would be the route to take if readers asked for more.
 [Messages and wallet](../research/messages-and-wallet.md) looked closer and
-reversed that. The two clients that read Farcaster's inbox do it through a
-relay that presents as Farcaster's own site, and the inbox is not encrypted
+reversed that. The two clients that read Farcaster's inbox do it by presenting as Farcaster's own site (one through a relay, one directly), and the inbox is not encrypted
 end to end. The plan now is:
 
 1. **Quorum first.** It is the encrypted messenger built by the team behind
@@ -322,7 +331,7 @@ The reader's own wallet is asked for a signature in exactly these places:
 | Signing in | A message naming the fid | none |
 | Allowing Home to post | Typed data approving a key for casts and reactions | none |
 | Allowing follows and profile edits | Typed data approving a second key | none |
-| Showing an address on the profile | A message proving the address belongs to the fid | none |
+| Showing an address on the profile | Typed data proving the address belongs to the fid | none |
 | Buying storage | A transaction on Optimism | storage rent plus gas; Home links out at first |
 
 So there are no tips, no token pages, no trading and no send in Home. A
@@ -343,17 +352,21 @@ account and the wallet that holds money are two named things.
 recasts and follows, read from a node, in three modes: Everything,
 Important, Off. Read state is Home's own. There is **no push at first**:
 notifications appear while Home is open. Push needs the gateway and a
-webhook, which is later work. A node does not keep a complete historical
-inbox, so Home does not claim one.
+webhook, which is later work. A Hypersnap node serves a reader's whole
+history from an index once it has finished building it, and until then only
+the activity on the reader's newest casts, at most 100 and 75 at the default page size (**pinned**), so Home labels a
+notification list from a node that is still indexing as partial. A recast
+reads as a like unless the request asks for quotes and deep replies.
+Farcaster's own nodes have no notifications route at all.
 
-**Search — Designed.** People, casts and channels from a node. Any search
+**Search — Designed.** People, casts and channels from a Hypersnap node; a Farcaster node has no search route. Any search
 can be saved as a feed source; that part is **Kernel**.
 
 **Profile — Designed.** Casts, replies, likes, followers, following,
-verified addresses, and which app signed each cast. Editing covers display
+verified addresses, and, where Home can read the signer's key request, which app signed each cast (a node's cast object does not carry it). Editing covers display
 name, bio and picture, with the second key. The username is read-only in
 the first build, because usernames are issued by a registry Farcaster runs.
-An account that exists only on Hypersnap has no username at all.
+An account that exists only on Hypersnap has no registered username (it can still hold an ENS or Basename proof).
 
 **Mini apps — New here.** A mini app in a cast renders as a card that opens
 the app's own site in a new tab. Home does not host mini apps in its first
@@ -392,9 +405,9 @@ No node could be reached from here, so this rests on Hypersnap's commits
 and three other projects' records.
 
 **It held, on the second schedule.** The heights were moved twelve hours
-on the morning of 12 November. The fork activated that evening, and blocks
-were still being produced four and a half hours later, after one
-85-second pause and one fix.
+on the morning of 12 November. The fork activated that evening. Two nodes
+were past the cutover by 21:22, and the only stop a monitor recorded that
+night was 85 seconds, at 23:36.
 
 | Row above | What happened |
 | --- | --- |
@@ -409,11 +422,14 @@ were still being produced four and a half hours later, after one
 - **Hypersnap-only accounts have no username.** Usernames come from a
   server that knows only Optimism accounts. Home shows the display name
   and the id.
-- **New Farcaster accounts may not appear on Hypersnap.** On-chain events
-  do not cross the relay. Quilcast's code says an account registered on
-  Optimism after the fork never reaches Hypersnap. That was not measured
-  here. If it holds, a reader who joins Farcaster today posts to one
-  network only, and Home's status line says so.
+- **New Farcaster accounts may or may not appear on Hypersnap.** The relay
+  carries no on-chain events, and whether Hypersnap's validators read
+  Optimism themselves is private configuration that could not be read.
+  Hypersnap's own text intends it ("legacy registrations and signers
+  continue to work through the existing contract-backed path"); Quilcast's
+  code assumes it does not happen. Neither was measured here. If the
+  assumption holds, a reader who joins Farcaster today posts to one network
+  only, and Home's status line says so.
 - **Sign-in must look on both networks.** An account can now exist on
   either one alone, so Home asks each network for the account before it
   offers to post there.
@@ -481,7 +497,7 @@ needs Home's app custody key in a secret store, as the
 | Mute durations; receipts copy | `packages/home-personalization/src/prefs/actions.ts`, `src/pipeline/receipts.ts` |
 | `for_you` is trending; writes answer 501 | `hypersnap@3fab17d` `src/api/http.rs` |
 | Channels on a node are derived from casts; members are posters | `hypersnap@3fab17d` `src/api/channels.rs`; `Opencaster@a3a3685` `FEATURE_SUPPORT.md` |
-| A node leaves the viewer's like state empty; no complete inbox | `Opencaster@a3a3685` `apps/web-client/FEATURE_SUPPORT.md` |
+| A Hypersnap node fills liked, recasted, following and blocking when the request names a viewer; notifications come from an index only once it is complete | `hypersnap@3fab17d` `src/api/http.rs`, `src/network/server.rs` |
 | 10,000-byte casts for every account; four embeds | `snapchain@3839f06` `src/core/validations/cast.rs`, `src/version/version.rs` |
 | 200 follows per current storage unit | `snapchain@3839f06` `src/storage/store/stores.rs` |
 | Block links are durable from engine version 19 | `snapchain@3839f06` `src/version/version.rs`, `link_store.rs` |
