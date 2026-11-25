@@ -2757,6 +2757,159 @@ if (!SNAPSHOT) {
   );
 }
 
+// --- docs/research/base-protocol-bluesky-and-storage.md --------------------------------------------------
+
+{
+  const aw = S['atproto-website'];
+  const at = S.atproto;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const spec = (n) => aw.read(`src/app/[locale]/specs/${n}/en.mdx`);
+  const blog = (n) => aw.read(`src/app/[locale]/blog/${n}/en.mdx`);
+  const plc = S['did-method-plc'];
+  const plcSpec = flat(plc.read('website/spec/v0.1/did-plc.md'));
+  check(
+    'identity: two blessed DID methods kept as few as possible; did:plc has one to five rotation keys, a 72 hour recovery window, 7,500 byte operations and a 24 character identifier; the directory is trusted for availability and ordering only',
+    { methods: true, fewAsPossible: true, rotation: true, window: true, opSize: true, idLen: true, trust: true, attacks: true },
+    {
+      methods: flat(spec('did')).includes('Currently, atproto supports two DID methods:') && spec('did').includes('`did:plc`') && spec('did').includes('`did:web`'),
+      fewAsPossible: flat(spec('did')).includes('keep the "blessed" set as small as possible'),
+      rotation: plcSpec.includes('must include least 1 key and at most 5 keys, with no duplication'),
+      window: plcSpec.includes('The PLC server provides a 72hr window'),
+      opSize: plcSpec.includes('The current limit is 7500 bytes.'),
+      idLen: plcSpec.includes('truncated to 24 chars'),
+      trust: plcSpec.includes('Some trust is required in the PLC server.'),
+      attacks: plcSpec.includes('Denial of service: rejecting valid operations') && plcSpec.includes('Misordering: In the event of a fork'),
+    },
+  );
+  check(
+    'governance: the PLC organisation was announced as a Swiss association in 2025 and its README says it was founded in 2026; the directory has read replicas; both are MIT and Apache dual-licensed',
+    { swiss: true, notFinal: true, founded2026: true, replicas: true, dual: true },
+    {
+      swiss: flat(blog('plc-directory-org')).includes('the new entity will form as a Swiss Association'),
+      notFinal: flat(blog('plc-directory-org')).includes('we do not expect a single global directory to be the final technical architecture'),
+      founded2026: flat(plc.read('README.md')).includes('In 2026 the [PLC Organization](https://plcred.org) was founded'),
+      replicas: blog('plc-replicas').includes("date: 'February 18, 2026'"),
+      dual: plc.read('README.md').includes('dual-licensed under MIT and Apache 2.0 terms') && flat(at.read('packages/bsky/README.md')).includes('dual-licensed under MIT and Apache 2.0 terms'),
+    },
+  );
+  const repo = flat(spec('repository'));
+  check(
+    'the repository: a signed Merkle Search Tree of records with fanout 4, commit version 3, exported as CAR v1, intended for single-digit millions of records, deletions leave no tombstone, blobs outside it',
+    { fanout: true, v3: true, car: true, size: true, deletion: true, blobs: true, keyPath: true },
+    {
+      fanout: repo.includes('giving a fanout of 4'),
+      v3: repo.includes('fixed value of `3` for this repo format version'),
+      car: repo.includes('is [CAR v1]'),
+      size: repo.includes('Repositories are intended to store up to single-digit millions records.'),
+      deletion: repo.includes('without leaving a trace or "tombstone" of previous contents'),
+      blobs: repo.includes('are not stored directly in the repository'),
+      keyPath: repo.includes('`<collection>/<record-key>`'),
+    },
+  );
+  check(
+    'the protocol leaves follows and avatars to Lexicon schemas, lists non-public data as missing, and stores blobs authoritatively on the account\'s PDS with CDN copies from AppViews',
+    { lexicons: true, missingPrivate: true, blobsOnPds: true, cdn: true },
+    {
+      lexicons: flat(spec('atp')).includes('AT Protocol itself does not specify how common social web conventions like follows or avatars should work'),
+      missingPrivate: spec('atp').includes('**Non-Public Data:** mechanisms for personal and group data sharing are planned'),
+      blobsOnPds: flat(spec('blob')).includes("Blobs are authoritatively stored by the account's PDS instance"),
+      cdn: flat(spec('blob')).includes('views are commonly served by CDNs associated with individual applications'),
+    },
+  );
+  const syncSpec = spec('sync');
+  const relayBlog = flat(blog('relay-updates-sync-v1-1'));
+  const relayReadme = flat(S.indigo.read('cmd/relay/README.md'));
+  check(
+    'sync: a firehose of four event kinds; relays are non-archival since sync 1.1 and need about 2 vCPU, 12 GB and 30 Mbps with disk set by the backfill window (a couple of hundred GB a day); the reference relay is one server with PostgreSQL or SQLite',
+    { events: ['#commit', '#identity', '#account', '#sync'], nonArchival: true, hardware: true, backfill: true, single: true, sql: true, scale: true },
+    {
+      events: ['#commit', '#identity', '#account', '#sync'].filter((e) => syncSpec.includes('### `' + e + '` Events')),
+      nonArchival: relayBlog.includes('sync v1.1 relays are now "non-archival"'),
+      hardware: relayBlog.includes('on the order of 2 vCPU cores, 12 GByte of RAM, and 30 Mbps of inbound and outbound bandwidth'),
+      backfill: relayBlog.includes('A 24-hour backfill currently requires a couple hundred GByte of disk.'),
+      single: relayReadme.includes('runs on a single server (not a distributed system)'),
+      sql: relayReadme.includes('supporting PostgreSQL in production and sqlite for testing'),
+      scale: relayReadme.includes('informally expected to scale to around 100 million accounts'),
+    },
+  );
+  const hub = flat(blog('introducing-hubble-a-public-mirror-for-the-whole-atmosphere'));
+  check(
+    'Hubble mirrors the current state of every repository and no blobs; 43 million repositories; blobs are petabytes; a $20,000 grant; all relays are non-archival',
+    { repos: true, noBlobs: true, petabytes: true, grant: true, allRelays: true, currentState: true },
+    {
+      repos: hub.includes('keep 43+ million repositories'),
+      noBlobs: hub.includes('**No blobs:**'),
+      petabytes: hub.includes('(think: *petabytes*)'),
+      grant: hub.includes('$20,000 grant from Bluesky'),
+      allRelays: hub.includes('All relays in the network now run this way'),
+      currentState: hub.includes('Hubble mirrors the current state of the network, not its history.'),
+    },
+  );
+  const road = flat(blog('2026-spring-roadmap'));
+  check(
+    'the March 2026 roadmap: public data is broadly complete; permissioned data is the next focus; an IETF working group for the protocol was approved',
+    { complete: true, permissioned: true, ietf: true },
+    {
+      complete: road.includes('The protocol components for public data are now broadly complete'),
+      permissioned: road.includes('We are referring to this as "permissioned data", meaning non-public data with explicit access control.'),
+      ietf: road.includes('creation of an ATP working group was formally approved'),
+    },
+  );
+  const actor = at.read('packages/pds/src/actor-store/actor-store.ts');
+  const acct = readdirSync(join(at.dir, 'packages/pds/src/account-manager/db/schema'));
+  check(
+    'the reference PDS keeps one SQLite file per account under a directory named for the DID, keeps the repository signing key as a file beside it, stores blobs on disk or in S3, and has separate account and sequencer databases',
+    { sqlite: true, grouping: true, keyFile: true, keyImport: true, disk: true, s3: true, kms: true, accountTables: true, sequencer: true },
+    {
+      sqlite: actor.includes('const dbLocation = path.join(directory, `store.sqlite`)'),
+      grouping: actor.includes('path.join(this.cfg.directory, didHash.slice(0, 2), did)'),
+      keyFile: actor.includes('const keyLocation = path.join(directory, `key`)'),
+      keyImport: actor.includes('crypto.Secp256k1Keypair.import(privKey)'),
+      disk: at.read('packages/pds/src/disk-blobstore.ts').includes('export class DiskBlobStore implements BlobStore'),
+      s3: at.read('packages/aws/src/s3.ts').includes('export class S3BlobStore implements BlobStore'),
+      kms: at.read('packages/aws/src/kms.ts').includes('export class KmsKeypair implements crypto.Keypair'),
+      accountTables: ['account.ts', 'invite-code.ts', 'refresh-token.ts', 'app-password.ts'].every((f) => acct.includes(f)),
+      sequencer: at.read('packages/pds/src/sequencer/db/schema.ts').includes("export type RepoSeqEventType = 'append' | 'sync' | 'identity' | 'account'"),
+    },
+  );
+  const tables = readdirSync(join(at.dir, 'packages/bsky/src/data-plane/server/db/tables'));
+  const bskyPkg = at.read('packages/bsky/package.json');
+  const pkgs = at.read('packages/README.md');
+  check(
+    'the open AppView keeps 45 tables in PostgreSQL behind a gRPC data plane, with Redis; the services in the repository are the PDS, the AppView, a sync service and a moderation service',
+    { tables: 45, named: true, pg: true, kysely: true, redis: true, grpc: true, services: true },
+    {
+      tables: tables.length,
+      named: ['post.ts', 'follow.ts', 'like.ts', 'repost.ts', 'profile.ts', 'notification.ts', 'feed-item.ts'].every((f) => tables.includes(f)),
+      pg: bskyPkg.includes('"pg":'),
+      kysely: bskyPkg.includes('"kysely":'),
+      redis: bskyPkg.includes('"ioredis":'),
+      grpc: bskyPkg.includes('"@connectrpc/connect"'),
+      services: ['`pds`', '`bsky`', '`bsync`', '`ozone`'].every((n) => pkgs.includes(`- [${n}]`)),
+    },
+  );
+  check(
+    'a popular Nostr relay stores everything in LMDB on the local filesystem; Farcaster and Hypersnap nodes use RocksDB',
+    { strfry: true, snapchain: true, hypersnap: true },
+    {
+      strfry: flat(S.strfry.read('README.md')).includes('All data is stored locally on the filesystem in LMDB'),
+      snapchain: S.snapchain.read('Cargo.toml').includes('rocksdb = {git = "https://github.com/rust-rocksdb/rust-rocksdb.git"'),
+      hypersnap: S['hypersnap-fork'].read('Cargo.toml').includes('rocksdb = {git = "https://github.com/rust-rocksdb/rust-rocksdb.git"'),
+    },
+  );
+  const oe = S.snapchain.read('src/connectors/onchain_events/mod.rs');
+  check(
+    "the node's on-chain connector fixes the addresses of the three Optimism registries and the Base tier registry in code and has two chains, so a registry on Base is a code change; on-chain keys are grandfathered with no scope check",
+    { optimism: true, base: true, ids: true, grandfathered: true },
+    {
+      optimism: /node_local_state::Chain::Optimism => vec!\[\s*Contract::storage_registry\(\),\s*Contract::key_registry\(\),\s*Contract::id_registry\(\),\s*\]/.test(oe),
+      base: /node_local_state::Chain::Base => \{\s*let mut contracts = vec!\[match self\.override_tier_registry_address/.test(oe),
+      ids: oe.includes('address!("00000000Fc6c5F01Fc30151999387Bb99A9f489b")') && oe.includes('address!("00000000Fc1237824fb747aBDE0FF18990E59b7e")') && oe.includes('address!("00000000fcce7f938e7ae6d3c335bd6a1a7c593d")'),
+      grandfathered: S.snapchain.read('src/storage/store/account/active_key.rs').includes('On-chain signers are grandfathered (no scope check)'),
+    },
+  );
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];

@@ -322,5 +322,69 @@
       "/README.md",
       "/package.json"
     ]
+  },
+  "atproto": {
+    "url": "https://github.com/bluesky-social/atproto.git",
+    "sha": "665c90c82545af323d9334a480074b31eb5d51d7",
+    "date": "2026-11-25",
+    "sparse": [
+      "/packages/README.md",
+      "/packages/pds/package.json",
+      "/packages/pds/src/actor-store/actor-store.ts",
+      "/packages/pds/src/disk-blobstore.ts",
+      "/packages/pds/src/sequencer/db/schema.ts",
+      "/packages/pds/src/account-manager/db/schema/",
+      "/packages/aws/src/kms.ts",
+      "/packages/aws/src/s3.ts",
+      "/packages/bsky/package.json",
+      "/packages/bsky/src/data-plane/server/db/tables/",
+      "/packages/bsky/README.md"
+    ]
+  },
+  "indigo": {
+    "url": "https://github.com/bluesky-social/indigo.git",
+    "sha": "6017e7ee0a79efc7d40266af42b1633c4831af8b",
+    "date": "2026-11-24",
+    "sparse": [
+      "/cmd/relay/README.md",
+      "/cmd/relay/HACKING.md"
+    ]
+  },
+  "did-method-plc": {
+    "url": "https://github.com/did-method-plc/did-method-plc.git",
+    "sha": "79b99aa9d8c5ac4d1a39b56026f0876876d551a0",
+    "date": "2026-11-24",
+    "sparse": [
+      "/README.md",
+      "/website/spec/v0.1/did-plc.md"
+    ]
+  },
+  "atproto-website": {
+    "url": "https://github.com/bluesky-social/atproto-website.git",
+    "sha": "605a806bd1efdc2299871d85af87e82d74d65bc2",
+    "date": "2026-11-23",
+    "sparse": [
+      "/src/app/*/specs/atp/en.mdx",
+      "/src/app/*/specs/repository/en.mdx",
+      "/src/app/*/specs/did/en.mdx",
+      "/src/app/*/specs/sync/en.mdx",
+      "/src/app/*/specs/blob/en.mdx",
+      "/src/app/*/specs/handle/en.mdx",
+      "/src/app/*/specs/account/en.mdx",
+      "/src/app/*/blog/relay-updates-sync-v1-1/en.mdx",
+      "/src/app/*/blog/introducing-hubble-a-public-mirror-for-the-whole-atmosphere/en.mdx",
+      "/src/app/*/blog/plc-directory-org/en.mdx",
+      "/src/app/*/blog/plc-replicas/en.mdx",
+      "/src/app/*/blog/2026-spring-roadmap/en.mdx"
+    ]
+  },
+  "strfry": {
+    "url": "https://github.com/hoytech/strfry.git",
+    "sha": "4cd3cf64850caf47dda46c2a2abbbf3525a64d10",
+    "date": "2026-09-04",
+    "frozen": true,
+    "sparse": [
+      "/README.md"
+    ]
   }
 }
