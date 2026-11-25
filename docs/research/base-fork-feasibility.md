@@ -7,7 +7,13 @@ a sustainable and compatible way, and how everything stays readable with a
 decentralized set of nodes.
 
 **Since this page was written:** the fork activated on the evening of
-2026-11-12 ([design page §10](optimal-design.md#10-after-the-fork-re-read-2026-11-13)).
+2026-11-12 ([design page §10](optimal-design.md#10-after-the-fork-re-read-2026-11-13)),
+and on about 2026-11-21 its validator set grew from eight keys to eleven,
+held by nine operators, one of them on three keys
+([§11](optimal-design.md#11-re-read-2026-11-25)). Ten days of consensus and
+sync fixes followed the fork, which is evidence for this page's claim that a
+fork is cheap in code and heavy in people. Channels moved from version 24 to
+version 25 in Snapchain.
 One finding there bears on §4: on-chain events do not cross the relay, and
 a Hypersnap validator follows Optimism only where its operator set an
 endpoint. A registry on Base would face the same condition.
@@ -83,7 +89,7 @@ register (**pinned**).
 operator replaceable. Base's hosted chains were reported as a waitlisted
 beta whose data sits in one cloud store (**web**, **unverified**), and Base
 itself runs one sequencer (**web**). That is less decentralized than seven
-or eight validators. It also needs the node's engine rebuilt as the
+or eleven validators. It also needs the node's engine rebuilt as the
 rollup's logic to keep messages byte-compatible.
 
 **Why D fails.** The network was designed for more than 9,000 messages a
@@ -164,7 +170,7 @@ weekly audit already names what moved.
 | Network | Validators | Operators | Who decides the list |
 | --- | --- | --- | --- |
 | Farcaster | 7 | 3, with 5 run by one | the owner of a contract on Ethereum |
-| Hypersnap, from the fork | 8 | 8 | a file its maintainers publish |
+| Hypersnap, from the fork | 8 keys, then 11 | 8, then 9; one operator on 3 keys | a file its maintainers publish |
 
 Both rows are **pinned**. Farcaster commits a block with five of seven
 signatures.
@@ -186,7 +192,7 @@ What keeps a network both readable and decentralized:
   are volunteers today.
 
 Under option A none of this is Home's to build. It inherits Hypersnap's
-eight operators.
+nine operators.
 
 ---
 
@@ -219,12 +225,12 @@ make a second one pointless.
 
 | Claim | Where it was read |
 | --- | --- |
-| Which contracts are followed on which chain | `snapchain@43ca24d` `src/connectors/onchain_events/mod.rs` |
-| The six on-chain event kinds | `snapchain@43ca24d` `proto/definitions/onchain_event.proto` |
-| Validators read their list from a contract on Ethereum; read nodes from a file | `snapchain@43ca24d` `site/docs/pages/node-types.mdx` |
-| Seven validators, three operators, five of seven | `snapchain@43ca24d` `site/docs/pages/validators.mdx` |
-| Contract signatures are checked outside consensus | `snapchain@43ca24d` `src/mempool/l1_validator.rs` |
-| Design target above 9,000 a second | `snapchain@43ca24d` `site/docs/pages/whitepaper.mdx` |
-| Hypersnap's registration path and its size; its conformance suite | `hypersnap@a85fd22` `src/native_registration.rs`, `tests/conformance` |
+| Which contracts are followed on which chain | `snapchain@3839f06` `src/connectors/onchain_events/mod.rs` |
+| The six on-chain event kinds | `snapchain@3839f06` `proto/definitions/onchain_event.proto` |
+| Validators read their list from a contract on Ethereum; read nodes from a file | `snapchain@3839f06` `site/docs/pages/node-types.mdx` |
+| Seven validators, three operators, five of seven | `snapchain@3839f06` `site/docs/pages/validators.mdx` |
+| Contract signatures are checked outside consensus | `snapchain@3839f06` `src/mempool/l1_validator.rs` |
+| Design target above 9,000 a second | `snapchain@3839f06` `site/docs/pages/whitepaper.mdx` |
+| Hypersnap's registration path and its size; its conformance suite | `hypersnap@3fab17d` `src/native_registration.rs`, `tests/conformance` |
 | Farcaster's contracts are MIT and accept contract owners | `farcasterxyz/contracts@58d6b28` |
 | 2024 message volumes; Base's hosted chains and sequencer | search summaries of news and documentation; sites blocked here |

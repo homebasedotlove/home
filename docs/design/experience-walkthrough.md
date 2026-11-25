@@ -267,7 +267,8 @@ On a Hypersnap node a channel's member count means accounts that have posted
 in it, not accounts that joined.
 
 Both networks intend to change this. Snapchain has channel messages and
-channel follows behind engine version 24, which has no date. Hypersnap's
+channel follows behind engine version 25, which has no date (version 24
+went live on 2026-11-24 without them). Hypersnap's
 lead developer has said free channels will come "rather soon". When either
 ships, *Add to feed* gains a real follow on that network, and Home will show
 which network a channel lives on.
@@ -296,8 +297,10 @@ end to end. The plan now is:
 1. **Quorum first.** It is the encrypted messenger built by the team behind
    Hypersnap, with MIT libraries and a signed link to a Farcaster account.
    Two checks come before building: permission, and a delivery test.
-2. **XMTP second,** and first if either check fails. It finds people by the
-   addresses they verified, and works with a smart wallet.
+2. **No second provider for now.** XMTP was named here, but its new SDKs
+   have no shared network ([messages and wallet §13](../research/messages-and-wallet.md#13-re-read-2026-11-25)).
+   If either check fails, the choice is a self-hosted XMTP backend for Home's
+   own readers, or no inbox.
 3. **Farcaster's inbox stays a link.**
 
 Any inbox is opt-in and labelled with whose servers carry the messages.
@@ -415,6 +418,30 @@ were still being produced four and a half hours later, after one
   either one alone, so Home asks each network for the account before it
   offers to post there.
 
+
+### Re-read 2026-11-25
+
+Twelve days later, from commits, GitHub pages and package registries. No node
+could be reached. The full record is
+[design page §11](../research/optimal-design.md#11-re-read-2026-11-25).
+
+| Surface | What changed since 11-13 |
+| --- | --- |
+| Feed | Nothing visible. Hypersnap produces about 0.64 blocks a second against Snapchain's one, so the two networks' newest casts arrive at different rhythms |
+| Posting | **A quota.** Hypersnap now admits 1,008 messages an hour per account per node, counting casts, likes, follows and profile edits. Home shows the refusal on that network's status line and retries only when the reader presses the button |
+| Posting, new accounts | A free Hypersnap account could register and receive a signer, and its first cast was refused as "unknown fid". The repair took effect around 11-15. A reader who signed up in the first days may have to wait or re-register |
+| Channels | Snapchain moved them from version 24 to **version 25**, with no date. "Add to feed" is unchanged |
+| Accounts | Hypersnap-only accounts have no username, which Quilcast says in its own README. Home shows the display name and the id |
+| Messages | XMTP stopped being a shared network ([messages and wallet §13](../research/messages-and-wallet.md#13-re-read-2026-11-25)). Quorum is the only planned provider |
+| Wallet | Unchanged. Coinbase's SDK, contract and wagmi connector did not move |
+| Sign-in | Unchanged. The production API's refusal to accept casts has had no reply in the reference client's tracker since 10-21 |
+
+Two reliability facts bear on every surface. Hypersnap's validator set was
+rotated to eleven keys on about 21 November, and its commit history shows
+repeated fixes for halts and stalls in the first ten days. Read nodes also
+failed to sync after the fork until a snapshot change. Neither was reported
+as a mainnet-wide outage in any page I could read, and none could be
+measured here.
 ---
 
 ## 11. Decisions recorded here for the first time
@@ -447,18 +474,18 @@ needs Home's app custody key in a secret store, as the
 
 | Claim | Where it was read |
 | --- | --- |
-| The fork schedule, first and second | `farcasterorg/hypersnap@ce9d003` and `@a85fd22`, `validators.toml` |
+| The fork schedule, first, second and the rotation | `farcasterorg/hypersnap@ce9d003` and `@3fab17d`, `validators.toml` |
 | That it activated, and what followed | `bettercallzaal/ZAOOS@9690fca`, `schmrdty/snapdiff@ad49a20`, `backmeupplz/quilcast@3d7e6ec` |
 | Ten reasons, four groups, their labels and sentences | `packages/home-personalization/src/reasons/index.ts` |
 | The why-chip, its three buttons and the hidden row | `docs/integration/reference-patch/seam-and-chip.patch` |
 | Mute durations; receipts copy | `packages/home-personalization/src/prefs/actions.ts`, `src/pipeline/receipts.ts` |
-| `for_you` is trending; writes answer 501 | `hypersnap@a85fd22` `src/api/http.rs` |
-| Channels on a node are derived from casts; members are posters | `hypersnap@a85fd22` `src/api/channels.rs`; `Opencaster@a3a3685` `FEATURE_SUPPORT.md` |
+| `for_you` is trending; writes answer 501 | `hypersnap@3fab17d` `src/api/http.rs` |
+| Channels on a node are derived from casts; members are posters | `hypersnap@3fab17d` `src/api/channels.rs`; `Opencaster@a3a3685` `FEATURE_SUPPORT.md` |
 | A node leaves the viewer's like state empty; no complete inbox | `Opencaster@a3a3685` `apps/web-client/FEATURE_SUPPORT.md` |
-| 10,000-byte casts for every account; four embeds | `snapchain@43ca24d` `src/core/validations/cast.rs`, `src/version/version.rs` |
-| 200 follows per current storage unit | `snapchain@43ca24d` `src/storage/store/stores.rs` |
-| Block links are durable from engine version 19 | `snapchain@43ca24d` `src/version/version.rs`, `link_store.rs` |
-| Channel messages and follows wait for engine version 24 | `snapchain@43ca24d` `src/version/version.rs` |
+| 10,000-byte casts for every account; four embeds | `snapchain@3839f06` `src/core/validations/cast.rs`, `src/version/version.rs` |
+| 200 follows per current storage unit | `snapchain@3839f06` `src/storage/store/stores.rs` |
+| Block links are durable from engine version 19 | `snapchain@3839f06` `src/version/version.rs`, `link_store.rs` |
+| Channel messages and follows wait for engine version 25; version 24 shipped without them | `snapchain@3839f06` `src/version/version.rs` |
 | Direct casts are not part of the protocol; the intent URL | `farcasterxyz/docs@3a02c82` `docs/reference/farcaster/direct-casts.md` |
 | Channel follow is a call to Farcaster's API with an app-key token; the channel list is public | `farcasterxyz/docs@3a02c82` `docs/reference/farcaster/api.md` |
 | The reference client's wallet page and endpoint counts | `farcasterxyz/client@73a39bd` `WalletPage.tsx`, `FarcasterApiClient.ts` |

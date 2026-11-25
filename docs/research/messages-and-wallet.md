@@ -2,6 +2,10 @@
 
 Written 2026-11-10, two days before the Hypersnap fork is projected. The
 [experience walkthrough](../design/experience-walkthrough.md) decided that
+**Revised 2026-11-25.** XMTP is no longer a shared network, which changes
+the second provider: see [§13](#13-re-read-2026-11-25). The Quorum and
+Coinbase conclusions stand.
+
 Home ships with no inbox and no wallet. This page takes the next question:
 if Home adds both, how, and with what. The starting preference was Hypersnap
 for messages and Coinbase Smart Wallet for the wallet. Both were tested
@@ -25,8 +29,9 @@ messages" means Quorum, and that is possible.
 
 The recommendation is Quorum as Home's first message provider, opt-in,
 behind an interface that can hold a second provider. Two checks come before
-any build: permission from Quilibrium, and a delivery test. XMTP is the
-second provider and the fallback. Farcaster's own direct casts should not be
+any build: permission from Quilibrium, and a delivery test. XMTP was named
+the second provider and the fallback; §13 withdraws that, because its new
+SDKs have no shared network. Farcaster's own direct casts should not be
 built on.
 
 **Wallet.** Coinbase Smart Wallet is possible and is the right default
@@ -153,7 +158,7 @@ to the account by the protocol.
 ## 3. Messages: the recommendation
 
 **Decision.** Add messages as a provider, the way networks are providers.
-Build Quorum first. Keep XMTP as the second provider and the fallback. Keep
+Build Quorum first. (Revised in §13: XMTP is no longer the second provider.) Keep
 the button that opens Farcaster's own composer, and do not relay Farcaster's
 inbox.
 
@@ -195,7 +200,8 @@ check from §1.3. No server.
 2. **Delivery.** Two browser profiles, the MIT libraries only, a few
    hundred messages each way, counted. Quorum's own team needed such a rig.
 
-**Overturned if** either gate fails, in which case XMTP goes first. Also if
+**Overturned if** either gate fails, in which case the choice is a
+self-hosted XMTP backend for Home's own readers or no inbox (§13). Also if
 either network ships messages in its protocol, or if Coinbase's wallet
 proves to be where Home's readers already talk.
 
@@ -474,10 +480,10 @@ Its one advantage is reach: everyone on Farcaster is there.
 
 | Claim | Where it was read |
 | --- | --- |
-| Message types on both nodes; no mention of direct messages | `snapchain@43ca24d`, `hypersnap@a85fd22`, `proto/definitions/message.proto`, `src`, `proto` |
+| Message types on both nodes; no mention of direct messages | `snapchain@3839f06`, `hypersnap@3fab17d`, `proto/definitions/message.proto`, `src`, `proto` |
 | Posting-key approval recovers an ordinary key, identically on both nodes | both, `src/core/validations/key.rs` |
 | Hypersnap registration recovers an ordinary key | `hypersnap@a85fd22` `src/native_registration.rs` |
-| Contract signatures for address verification; chains | `snapchain@43ca24d` `contract_signature.rs`, `verification.rs`, `onchain_events/mod.rs` |
+| Contract signatures for address verification; chains | `snapchain@3839f06` `contract_signature.rs`, `verification.rs`, `onchain_events/mod.rs` |
 | Farcaster's contracts accept contract signatures | `farcasterxyz/contracts@58d6b28` `IdRegistry.sol`, `abstract/Signatures.sol` |
 | Sign-in verification can ask the chain | `auth-monorepo@ae3dffd` `auth-client/README.md`, `jfs/src/index.ts` |
 | How two clients reach Farcaster's inbox | `quilcast@f2eedb9` `server/dm.mjs`, `server/upload.mjs`, `src/write.ts`; `quorum-mobile@37c0fe6` `services/farcaster/directCastAuth.ts` |
@@ -490,3 +496,86 @@ Its one advantage is reach: everyone on Farcaster is there.
 | Farcaster's direct-cast drafts | `farcasterxyz/protocol` discussions 226 and 99, issue 5, read on the web |
 | The rename on 2026-09-10 | news search summaries; `coinbase/coinbase-wallet-sdk` pull request 1911 |
 | No messaging proposal in the Hypersnap organisation | GitHub searches of `farcasterorg`, read on the web |
+
+---
+
+## 13. Re-read 2026-11-25
+
+Asked on 2026-11-25. Quorum, Coinbase and wagmi did not move. XMTP did, and
+the earlier reading of it was wrong.
+
+### 13.1 XMTP is no longer a shared network
+
+§1.4 described XMTP as a network with fees and a gateway, from
+documentation last changed on 2026-04-07. XMTP's main repository already
+carried version 8 of the browser SDK on 2026-11-06, in the commit pinned as
+`libxmtp`, and that README says the SDK "owns its worker and OPFS storage".
+I read it and did not see that it meant a different model.
+
+Version 8, from XMTP's own documentation in that repository (**pinned**):
+
+- "The new XMTP SDKs use a backend that you operate. The backend does not
+  join or copy the previous XMTP network. All participants in a conversation
+  must use the same deployment."
+- "There is no default network or fallback endpoint."
+- The backend is one binary on PostgreSQL 17 or later, holding all durable
+  state there.
+- Old data moves through a local archive. The last legacy majors are Browser
+  7, Node 6 and Agent 2.
+- The recommended version is 8.0.0-rc4. On npm, `latest` is still 7.1.0
+  (2026-07-29) and 8.0.0-rc5 is a prerelease from 2026-11-16.
+
+No source I could read says the old network launched its fee-charging
+phase, or that it closed. The April documentation still said "expected to
+launch in early 2026", and the node operator's latest release shown is from
+30 March.
+
+### 13.2 What that does to the recommendation
+
+| | Before | Now |
+| --- | --- | --- |
+| Who a Home inbox can reach | anyone whose address has an XMTP inbox, across apps | only people on the same deployment, which means Home's own |
+| What Home runs | a funded gateway | a backend and a PostgreSQL database |
+| Fees | about $5 per 100,000 messages | none stated; Home pays for its own servers |
+| Reach to Coinbase wallet users | yes | no, unless that app and Home share a backend |
+| Support | the shipping SDK | a release candidate; XMTP's own migration page calls Browser 7 and Node 6 the "last legacy SDK majors" |
+
+So XMTP stops being the fallback with reach. It remains an audited,
+MIT-licensed way to give Home's own readers encrypted chat that works with
+smart wallets, but only among themselves, and at the price of a server.
+
+**Revised decision.** Quorum stays first, behind the same two gates.
+Farcaster's inbox stays a link. XMTP is no longer named as the second
+provider. If either gate fails, the choice is between a self-hosted XMTP
+backend for Home's own readers and shipping no inbox, and that choice
+should wait until there are readers to message each other.
+
+**Overturned if** Quilibrium refuses and Home's readers ask for chat
+anyway, in which case a self-hosted backend is the route; or if XMTP states
+that its shared network continues and that apps can still use it.
+
+### 13.3 Quorum and the wallet: no movement
+
+- **Quorum.** No code change since 2026-08-25 (desktop), 2026-10-23 (mobile)
+  and 2026-08-24 (shared library); only a documentation folder was renamed on
+  11-22. The mobile app has no releases. Nothing says delivery improved.
+  Both gates stand.
+- **Coinbase's wallet.** SDK 2.6.0 is unchanged since 10-29, with no
+  successor and no deprecation in its releases. The contract is unchanged.
+  wagmi's connector is at 8.2.4. Coinbase's help pages, read through search,
+  say the app's chat runs on XMTP, is stored on the device and is lost if the
+  app is deleted or the device changed, with groups up to 250. They also
+  say importing a passkey wallet is limited to Apple devices. Those are
+  **unverified**: a search summary.
+- **Mini apps and wallets.** A client that ports Quilcast's check refuses
+  mini app requests that would have the reader's wallet sign for a Farcaster
+  account or call Farcaster's contracts, "so a compromised mini app cannot
+  take over an account" (commit message in `ivcained/fiddy`, 11-22). It
+  supports the walkthrough's decision to open mini apps in a new tab.
+- **Base.** Nothing new for November. Two mainnet stalls in two days in
+  June 2026 are reported, and a single sequencer (**web**, secondary).
+
+### 13.4 What was not found
+
+Any proposal for private messages on Hypersnap, any Farcaster statement on
+direct casts since the 2025 drafts, or any Quorum statement about Farcaster.

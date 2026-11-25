@@ -19,7 +19,7 @@ on Linux. Nothing here is inferred from reading code.
 | 6 | The app bundles with them | `pnpm --filter farcaster-web build` | ✓ in 1m 12s |
 | 7 | The seam works on real artifacts | opt-in `integration.test.ts` | 7 assertions |
 | 8 | The chip, the hidden row and the seam | client's own vitest + jsdom | 14 assertions |
-| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 295/295 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
+| 9 | Protocol facts match their sources | `pnpm audit:protocol` | 311/311 claims hold at the pinned commits, across the Snapchain page, the protocol-mechanics page, the end-to-end runbook, the client-landscape page, the Hypersnap page, the both-networks page, the design page, the experience walkthrough, the messages-and-wallet page and the Base feasibility page |
 | 10 | The device half of the write path | `pnpm validate:write-path` | 13/13 with `@farcaster/core` 0.21.0: a scoped, expiring gasless key requested by an app fid; a cast, a reaction and a follow signed and valid; refusals; a fid above 2^32 |
 
 Gates 5–8 are the ones that were missing before, and they are the ones that
@@ -369,6 +369,29 @@ Snapchain page was written.
     signup that night. 295 of 295 across 32 sources.
   - *Not verified.* No node could be reached, so no height was read here.
     The last third-party reading is from 01:38 UTC on 13 November.
+- **Everything re-read, 2026-11-25.** The request: research everything
+  covered in this chat for the most current information.
+  - *What moved.* Hypersnap `a85fd22` to `3fab17d` (0.17.7 to 0.17.21) and
+    Snapchain `43ca24d` to `3839f06` (v0.17.0). Not moved: the reference
+    client, Neynar's specification, Coinbase's SDK and wallet contract, the
+    wagmi connector, and the three Quorum repositories except for a
+    documentation rename.
+  - *Six claims failed at the new heads and were restated:* Snapchain's
+    release, V24 now scheduled, the feature gates (channels now V25),
+    Hypersnap's version, its validator schedule (now a rotation), and the
+    size of its registration code.
+  - *Sixteen new claims:* the rotation to eleven keys held by nine
+    operators, the fixed per-account quota, the native-account repair, the
+    streaming snapshots, the drift between the two engines, Snapchain's
+    0.17.0, Hypersnap's README, XMTP's self-hosted version 8, and Quilcast's
+    free signup. 311 of 311 across 34 sources, at the pinned commits and at
+    every living head.
+  - *One correction to an earlier page.* The 11-10 reading of XMTP rested
+    on documentation last changed in April; its main repository already
+    carried the self-hosted version 8 on 11-06. See
+    [`../research/messages-and-wallet.md`](../research/messages-and-wallet.md) §13.
+  - *Not verified.* No node or production endpoint could be reached.
+    Halt fixes are read from commit subjects, which the audit does not pin.
   - *Not verified.* Coinbase's and XMTP's documentation sites and all news
     sites are blocked here, so their repositories were read instead. No
     message was sent and no wallet was connected. Whether Quilibrium permits

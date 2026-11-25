@@ -123,7 +123,7 @@ dependency in §2 items 1 and 2 and replaces it with work Home controls.
 | **Write path** | casts, reactions, follows, profile edits signed in the browser and submitted through the service to `/v1/submitMessage`, with read-back confirmation | replaces the `apiClient.createCast` family, one mutation at a time |
 | **Storage display** | `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit | a small settings panel |
 | **Notifications and search** | Neynar `/v2/farcaster/notifications/`, `/cast/search/`, `/user/search/` | behind the same adapter |
-| **Channels** | the Client API (`api.farcaster.xyz`) until V24 ships channels on Snapchain; it needs an approved signer to call | the service, because the app-key token is a signature |
+| **Channels** | the Client API (`api.farcaster.xyz`) until V25 ships channels on Snapchain; it needs an approved signer to call | the service, because the app-key token is a signature |
 
 Not every item is needed to be operational at L2. The minimum is the adapter,
 reason synthesis for the derivable reasons, SIWF, signer onboarding and the

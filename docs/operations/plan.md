@@ -3,7 +3,7 @@
 The decision, in order of execution, with each step tied to something that has
 been checked rather than believed. "Validated" below means one of three things:
 a claim the audits re-derive from pinned source commits (`pnpm audit:claims`,
-34 claims; `pnpm audit:protocol`, 295 claims), a gate that ran in this
+34 claims; `pnpm audit:protocol`, 311 claims), a gate that ran in this
 repository's sandbox and passed, or a file read at a named commit. "Untested"
 means it needs a real network or device and is listed with the test that
 settles it. Written 2026-10-14. **The decision in §0 was revised on
@@ -161,9 +161,10 @@ gateway, node settings and three preference facets added, is in
 | 7 | **Storage headroom.** `storageLimitsByFid` on sign-in; a warning before the 101st cast on a single 2025 unit | a small settings panel | the 2025 unit limits are pinned (audit: "2025 storage unit limits") | the number matches the node |
 
 Channels stay on the Client API until on-protocol channels reach mainnet;
-their message types are gated to V24, which is not on the schedule (audit:
-"V24 (channels) is not on the mainnet schedule"). They were gated to V21
-until October 2026, when V21 was used for something else.
+their message types are gated to V25, which is not on the schedule (audit:
+"V25 (channels) is not on the mainnet schedule"; V24 went live on 2026-11-24
+without them). They were gated to V21 until October 2026,
+when V21 was used for something else, then to V24, and since 2026-11-13 to V25.
 
 Items 1, 3 and 5 are where Home becomes a client of both networks at once:
 providers and nodes as configuration with a network tag on every item, login
@@ -213,7 +214,7 @@ a list of nodes with per-node status. The reasoning and three small additions
 | Gasless signers, their limits, and the deeplink flow | pinned: 9 audit rows across the Snapchain and docs sources |
 | The device half of the write path works with the published SDK | run 2026-11-10: `pnpm validate:write-path`, 13 checks against `@farcaster/core` 0.21.0 |
 | The production API refuses casts without opt-in | web: two independent reports of 2026-10-15 and 10-16 ([design page](../research/optimal-design.md) §1.1); **untested** here |
-| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `a85fd22`; the fork activated on 2026-11-12 ([design page §10](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13)) |
+| Hypersnap's fork is scheduled in code, with a relay, free accounts and no storage rent | pinned: the fork rows of the audit, against `3fab17d`; the fork activated on 2026-11-12 ([design page §10](../research/optimal-design.md#10-after-the-fork-re-read-2026-11-13)) |
 | Read nodes need no RPC and can write | pinned: 2 rows read from `src/main.rs` and `src/mempool/mempool.rs` |
 | Public read nodes exist | pinned: "public node registry"; their policy **untested** |
 | Neynar is the ecosystem default | six client manifests read 2026-10-14 (five depend on Neynar); both node guides recommend it (pinned: "both node guides recommend Neynar") |
@@ -235,8 +236,10 @@ against upstream HEAD and names any claim that moves.
 | Neynar's API changes or closes after the 2026-10-15 Network School acquisition | the adapter's provider switch: a Hypersnap node serves the same shapes with no key ([`../research/hypersnap.md`](../research/hypersnap.md) §3, §6) |
 | Farcaster's auth server (`auth.farcaster.xyz`, SIWF and Quick Auth) stops answering under Network School, as reported for a day on 2026-10-14 | protocol tokens verified against Home's node (`@farcasterorg/quick-auth`, MIT) beside Home's own SIWF verification ([`../research/both-networks.md`](../research/both-networks.md) §2) |
 | The Hypersnap validator fork split the network on 2026-11-12 | the design assumes it: a network tag on every item, dedupe by message hash, writes posted to a node on each network ([design page](../research/optimal-design.md) §2, §4.5); watch it with the four checks in its §6.2 |
+| XMTP's new SDKs have no shared network, so Home's inbox would reach only Home's own readers | Quorum stays the only planned provider; XMTP self-hosted is a later choice ([messages and wallet §13](../research/messages-and-wallet.md#13-re-read-2026-11-25)) |
+| Hypersnap admits only 1,008 messages an hour per account on each node, and a new account may be refused before a node has seen it | the status line per network names the refusal; Home retries only on the reader's press ([design page §11](../research/optimal-design.md#11-re-read-2026-11-25)) |
 | A Farcaster account registered after the fork does not exist on Hypersnap, or the reverse | sign-in asks each network for the account; the status line per network says where a post was refused ([design page §10.3](../research/optimal-design.md#103-what-changes-for-the-design)) |
-| Hypersnap loses quorum, which needs six of its eight validators | Home keeps a Farcaster-side provider; a stalled network is shown as stalled, not hidden |
+| Hypersnap loses quorum, which needs eight of its eleven validator keys, one operator holding three | Home keeps a Farcaster-side provider; a stalled network is shown as stalled, not hidden |
 | The fork is reversed or abandoned | nothing in the design depends on it; the weekly audit names the heights if they move |
 | The production API closes to third-party origins, or its ranked feed is gated by the social contract | nothing depends on it since the revision of 2026-11-10; Home's own ranking and reasons are the default |
 | Home is tempted to start a third network to get accounts owned by smart wallets | [`../research/base-fork-feasibility.md`](../research/base-fork-feasibility.md): propose an account and key registry on Base to Hypersnap first; a separate validator set only with partners |

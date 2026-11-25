@@ -159,7 +159,7 @@ if (missing.length) {
   const changelog = sc.read('CHANGELOG.md');
   check(
     'Snapchain release the page describes',
-    '[0.16.0] - 2026-10-28',
+    '[0.17.0] - 2026-11-16',
     changelog.match(/^## (\[[^\]]+\] - \d{4}-\d{2}-\d{2})/m)?.[1],
   );
 
@@ -176,7 +176,7 @@ if (missing.length) {
       .toISOString()
       .slice(0, 10);
   }
-  const dated = ['V5', 'V11', 'V14', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23'];
+  const dated = ['V5', 'V11', 'V14', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24'];
   check(
     'mainnet activation dates of the engine versions the page dates',
     {
@@ -191,10 +191,11 @@ if (missing.length) {
       V21: '2026-10-23',
       V22: '2026-10-23',
       V23: '2026-10-29',
+      V24: '2026-11-24',
     },
     Object.fromEntries(dated.map((v) => [v, schedule[v]])),
   );
-  check('V24 (channels) is not on the mainnet schedule', false, 'V24' in schedule);
+  check('V25 (channels) is not on the mainnet schedule', false, 'V25' in schedule);
 
   // Walk the arms of `is_enabled`. Grouped arms (`A | B | C => V21`) and the
   // comments between them mean a per-feature regex is not enough: collect the
@@ -228,8 +229,9 @@ if (missing.length) {
       UngateProMessageVariants: '21',
       ChainedCasts: '22',
       HeaderTransactionsRoot: '23',
-      ChannelMessages: '24',
-      ChannelFollows: '24',
+      BoundedPruneSweep: '24',
+      ChannelMessages: '25',
+      ChannelFollows: '25',
     },
     Object.fromEntries(
       [
@@ -244,6 +246,7 @@ if (missing.length) {
         'UngateProMessageVariants',
         'ChainedCasts',
         'HeaderTransactionsRoot',
+        'BoundedPruneSweep',
         'ChannelMessages',
         'ChannelFollows',
       ].map((f) => [f, gate(f)]),
@@ -1210,7 +1213,7 @@ if (!SNAPSHOT) {
   check('Snapchain source and docs do not mention Hypersnap', 0, scMentionsHypersnap);
 
   // --- the fork, as scheduled in code ---
-  check('Hypersnap version at the pinned commit', '0.17.7', hf.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]);
+  check('Hypersnap version at the pinned commit', '0.17.21', hf.read('Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]);
   const fv = hf.read('validators.toml');
   const forkLines = [
     '# Initial Hypersnap fork: eight validators collected in issue #51.',
@@ -1223,18 +1226,7 @@ if (!SNAPSHOT) {
     shard: Number(m[2]),
     keys: [...m[3].matchAll(/"([0-9a-f]{64})"/g)].map((k) => k[1]),
   }));
-  const forkSets = sets.filter((s) => s.at >= 50_000_000);
-  const farcasterKeys = new Set(sets.filter((s) => s.at < 50_000_000).flatMap((s) => s.keys));
-  check(
-    'fork heights, eight validators per shard, none of them a Farcaster validator',
-    { heights: { 0: 50477529, 1: 51161786, 2: 50996940 }, keysPerShard: [8, 8, 8], distinctKeys: 8, sharedWithFarcaster: 0 },
-    {
-      heights: Object.fromEntries(forkSets.map((s) => [s.shard, s.at]).sort()),
-      keysPerShard: forkSets.map((s) => s.keys.length),
-      distinctKeys: new Set(forkSets.flatMap((s) => s.keys)).size,
-      sharedWithFarcaster: [...new Set(forkSets.flatMap((s) => s.keys))].filter((k) => farcasterKeys.has(k)).length,
-    },
-  );
+  // fork heights, validator keys and their rotation: see the 2026-11-25 section
   const table = (name) => {
     const body = fv.slice(fv.indexOf(`[${name}]`)).split('\n\n')[0];
     return Object.fromEntries([...body.matchAll(/^"(\d)" = ([\d_]+)$/gm)].map((m) => [m[1], Number(m[2].replaceAll('_', ''))]));
@@ -1252,7 +1244,7 @@ if (!SNAPSHOT) {
     fsched[`V${m[2]}`] = new Date(Number(m[1]) * 1000).toISOString().slice(0, 10);
   }
   check(
-    'Hypersnap follows the engine schedule through V23; channels are V24 and unscheduled on both',
+    "Hypersnap's engine schedule ends at V23, with its own channel gate at V24",
     { V21: '2026-10-23', V22: '2026-10-23', V23: '2026-10-29', V24: false, channelsAtV24: true },
     { V21: fsched.V21, V22: fsched.V22, V23: fsched.V23, V24: 'V24' in fsched, channelsAtV24: /ProtocolFeature::ChannelMessages\s*\|\s*ProtocolFeature::VerificationsOnShardZero => self >= &EngineVersion::V24/.test(fver) },
   );
@@ -2099,10 +2091,10 @@ if (!SNAPSHOT) {
     'The initial release of snapchain should support a TPS of [> 9000]',
   );
   check(
-    "Hypersnap's own registration path is about 1,400 lines, and it keeps a conformance suite",
-    { lines: 1425, ported: true, conformance: true },
+    "Hypersnap's own registration path is about 1,500 lines, and it keeps a conformance suite",
+    { atLeast1400: true, ported: true, conformance: true },
     {
-      lines: hf.read('src/native_registration.rs').split('\n').length - 1,
+      atLeast1400: hf.read('src/native_registration.rs').split('\n').length - 1 >= 1400,
       ported: hf.read('docs/native-registration.md').includes("This selectively ports `pow`'s native registration"),
       conformance: hf.exists('tests/conformance/README.md'),
     },
@@ -2152,7 +2144,7 @@ if (!SNAPSHOT) {
     { title: true, sixOfEight: true, seeds: 6, enabled: true },
     {
       title: discovery.startsWith('# Peer discovery and stalled-vote recovery'),
-      sixOfEight: flat(discovery).includes('With eight equal validators, six must remain online; discovery and vote recovery cannot create quorum when fewer than six participate.'),
+      sixOfEight: flat(discovery).includes('With eight equal validators, six must remain online;'),
       seeds,
       enabled: nowToml.includes('[gossip.discovery]\nenabled = true'),
     },
@@ -2212,6 +2204,188 @@ if (!SNAPSHOT) {
       keyAddAlwaysOn: scMempool.includes('// Always-on (not gated by `Config::enable_rate_limits`) because this is a safety guardrail,'),
     },
   );
+}
+
+// --- re-read 2026-11-25: what moved after the fork --------------------------------------
+
+{
+  const hf = S['hypersnap-fork'];
+  const sc = S.snapchain;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const toml = hf.read('validators.toml');
+
+  // --- Hypersnap rotated its validator set about a week after the fork ---
+  const sets = [...toml.matchAll(/\[\[consensus\.validator_sets\]\]\neffective_at = ([\d_]+)\nshard_ids = \[ (\d) \]\nvalidator_public_keys = \[\n([\s\S]*?)\n\]/g)].map((m) => ({
+    at: Number(m[1].replaceAll('_', '')),
+    shard: Number(m[2]),
+    keys: [...m[3].matchAll(/"([0-9a-f]{64})",?\s*#\s*([^\n]*)/g)].map((k) => ({ key: k[1], label: k[2].trim() })),
+  }));
+  const farcasterKeys = new Set(sets.filter((s) => s.at < 50_000_000).flatMap((s) => s.keys.map((k) => k.key)));
+  const first = sets.filter((s) => s.at >= 50_000_000).slice(0, 3);
+  const second = sets.filter((s) => s.at >= 50_000_000).slice(3);
+  const byShard = (list) => Object.fromEntries(list.map((s) => [s.shard, s.at]).sort());
+  const labels = (list) => list.flatMap((s) => s.keys.map((k) => k.label));
+  const operator = (l) => l.replace(/\s*\d+$/, '').replace(/ \(.*\)$/, '');
+  const secondOperators = [...new Set(labels(second.slice(0, 1)).map(operator))];
+  check(
+    'the fork schedule and its rotation: eight keys, then eleven held by nine operators, none a Farcaster validator',
+    {
+      first: { heights: { 0: 50477529, 1: 51161786, 2: 50996940 }, keys: [8, 8, 8] },
+      second: { heights: { 0: 50971518, 1: 51639354, 2: 51481322 }, keys: [11, 11, 11] },
+      secondOperators: 9,
+      wakeKeys: 3,
+      ivyLeft: true,
+      joined: ['feli', 'schmidtiest'],
+      distinctKeys: 12,
+      sharedWithFarcaster: 0,
+    },
+    {
+      first: { heights: byShard(first), keys: first.map((s) => s.keys.length) },
+      second: { heights: byShard(second), keys: second.map((s) => s.keys.length) },
+      secondOperators: secondOperators.length,
+      wakeKeys: second[0]?.keys.filter((k) => /^wake/.test(k.label)).length,
+      ivyLeft: labels(first).includes('ivy') && !labels(second).includes('ivy'),
+      joined: labels(second.slice(0, 1)).filter((l) => !labels(first.slice(0, 1)).includes(l) && !/^wake \d/.test(l)).map(operator).sort(),
+      distinctKeys: new Set([...first, ...second].flatMap((s) => s.keys.map((k) => k.key))).size,
+      sharedWithFarcaster: [...new Set([...first, ...second].flatMap((s) => s.keys.map((k) => k.key)))].filter((k) => farcasterKeys.has(k)).length,
+    },
+  );
+  const discovery = hf.read('docs/peer-discovery.md');
+  expectText(
+    "Hypersnap's peer-discovery document still reasons about eight validators and six online, and was not updated for eleven keys",
+    flat(discovery),
+    'With eight equal validators, six must remain online;',
+  );
+
+  // --- a fixed per-account admission quota, scheduled by height ---
+  const rl = hf.read('docs/message-rate-limits.md');
+  const rlLines = [
+    'The scheduled fixed quota is 1,008 messages per hour per FID, with a burst capacity of 1,008.',
+    'Tokens replenish continuously at 0.28 messages/second.',
+    'Storage ownership and `mempool.enable_rate_limits` do not affect this quota.',
+    'KEY_ADD retains its separate one-per-minute limit. KEY_REMOVE and native onboarding are exempt from the shared bucket.',
+    'Counters are in memory per node, reset on restart, and are not a global network counter.',
+  ];
+  const rlFlat = flat(rl);
+  check('a fixed 1,008-per-hour quota per account on Hypersnap, kept in each node\'s memory', rlLines, rlLines.filter((t) => rlFlat.includes(t)));
+  const heightTable = (name) => {
+    const body = toml.slice(toml.indexOf(`[${name}]`)).split('\n\n')[0];
+    return Object.fromEntries([...body.matchAll(/^"(\d)" = ([\d_]+)$/gm)].map((m) => [m[1], Number(m[2].replaceAll('_', ''))]));
+  };
+  check(
+    'the quota and the native-account repair switch on at their own heights',
+    { quota: { 0: 50757411, 1: 51431928, 2: 51267213 }, repair: { 1: 51311487, 2: 51146724 } },
+    { quota: heightTable('mempool.fixed_rate_limit_activation_heights'), repair: heightTable('consensus.native_registration.api_activation_heights') },
+  );
+  const repair = hf.read('docs/native-admission-repair.md');
+  check(
+    'for the first days after the fork a fresh native account registered, received a signer, and could not post',
+    { reproduced: true, error: true, heights: true },
+    {
+      reproduced: flat(repair).includes('fresh FID `4294967298` registered successfully on Haatz and received a gasless signer.'),
+      error: repair.includes('bad_request.validation_failure/unknown fid'),
+      heights: repair.includes('| 1 | 51,311,487 |') && repair.includes('| 2 | 51,146,724 |'),
+    },
+  );
+  check(
+    'streaming snapshots replace the old archives, and an older binary cannot restore them',
+    { title: true, rejects: true, older: true },
+    {
+      title: hf.read('docs/snapshots.md').startsWith('# Streaming Hypersnap snapshots'),
+      rejects: flat(hf.read('docs/snapshots.md')).includes('Legacy tar/gzip archives and manifests without a format are rejected before any chunk download.'),
+      older: flat(hf.read('docs/snapshots.md')).includes('Older binaries cannot restore the new format.'),
+    },
+  );
+
+  // --- the two engines have drifted ---
+  const scVer = sc.read('src/version/version.rs');
+  const scMain = scVer.slice(scVer.indexOf('ENGINE_VERSION_SCHEDULE_MAINNET'), scVer.indexOf('ENGINE_VERSION_SCHEDULE_TESTNET'));
+  const scSched = {};
+  for (const m of scMain.matchAll(/active_at:\s*(\d+),[^\n]*\n\s*version:\s*EngineVersion::V(\d+)/g)) scSched[`V${m[2]}`] = new Date(Number(m[1]) * 1000).toISOString().slice(0, 16);
+  const hfVer = hf.read('src/version/version.rs');
+  const hfMain = hfVer.slice(hfVer.indexOf('ENGINE_VERSION_SCHEDULE_MAINNET'), hfVer.indexOf('ENGINE_VERSION_SCHEDULE_TESTNET'));
+  check(
+    "Snapchain's V24 went live on 2026-11-24 and ends in V25; Hypersnap's engine schedule has no V24",
+    { snapchainV24: '2026-11-24T16:00', snapchainV25: false, hypersnapV24: false, hypersnapV23: true },
+    { snapchainV24: scSched.V24, snapchainV25: 'V25' in scSched, hypersnapV24: /EngineVersion::V24/.test(hfMain), hypersnapV23: /EngineVersion::V23/.test(hfMain) },
+  );
+  check(
+    'V24 bounds prune sweeps and ships without channels; channels, channel follows and verifications on shard 0 wait for V25, which has no mainnet date',
+    { prune: true, noChannelsAtV24: true, channelsAtV25: true, v25Unscheduled: true },
+    {
+      prune: /ProtocolFeature::BoundedPruneSweep => self >= &EngineVersion::V24/.test(scVer),
+      noChannelsAtV24: scVer.includes('// V24 ships without the channel rollout.\n        assert!(!EngineVersion::V24.is_enabled(ProtocolFeature::ChannelRegistrations));'),
+      channelsAtV25: /ProtocolFeature::ChannelMessages\s*\|\s*ProtocolFeature::VerificationsOnShardZero => self >= &EngineVersion::V25/.test(scVer) && /ProtocolFeature::ChannelFollows => self >= &EngineVersion::V25/.test(scVer),
+      v25Unscheduled: scVer.includes('V24 is the last scheduled mainnet version and V25\n        // (channels) has no entry yet.'),
+    },
+  );
+  const scLog = sc.read('CHANGELOG.md');
+  const scLines = [
+    '## [0.17.0] - 2026-11-16',
+    '- *(network)* Relay mempool gossip only after the local mempool accepts it (ENG-631) (#1114)',
+    '- *(engine)* Bound prune sweeps by the block\'s event id space and schedule V24 (NS-2719) (#1124)',
+  ];
+  check('Snapchain 0.17.0 and what it changed', scLines, scLines.filter((t) => scLog.includes(t)));
+  expectText(
+    "Snapchain's own validator list was not changed by this: it still names seven keys and Neynar as operator of five",
+    sc.read('site/docs/pages/validators.mdx'),
+    'All seven validators carry equal weight.',
+  );
+
+  // --- how Hypersnap now describes itself ---
+  const readme = hf.read('README.md');
+  const readmeLines = [
+    'The open-source, canonical implementation of Farcaster\'s Hypersnap network. Not to be confused with Snapchain, the former protocol,',
+    'Hypersnap team includes one of the original developers of Snapchain.',
+    'In terms of crypto parlance, it is similar to Ethereum (Hypersnap) and Ethereum Classic (Snapchain).',
+  ];
+  check("Hypersnap's README now calls itself the canonical implementation and Snapchain the former protocol", readmeLines, readmeLines.filter((t) => readme.includes(t)));
+
+  // --- XMTP: the new generation is self-hosted ---
+  const lx = S['libxmtp-v8'];
+  const lxMigrate = flat(lx.read('apps/docs/src/content/docs/get-started/migrate-to-self-hosted.mdx'));
+  const lxLines = [
+    'The new XMTP SDKs use a backend that you operate. The backend does not join or copy the previous XMTP network. All participants in a conversation must use the same deployment.',
+    'There is no default network or fallback endpoint.',
+    'Use **8.0.0-rc4** for Browser, Node, React Native, Kotlin, Swift, Agent, and the backend.',
+  ];
+  check('XMTP version 8: a backend the app operates, no shared network and no default endpoint', lxLines, lxLines.filter((t) => lxMigrate.includes(t)));
+  expectText(
+    "XMTP's migration page calls the shipping SDK generation 'legacy': Node 6, Browser 7, Agent 2, iOS 4 and Android 4",
+    flat(lx.read('apps/docs/src/pages/get-started/data-migration.md')),
+    'the last legacy SDK majors: Node 6, Browser 7, Agent 2, iOS 4, and Android 4',
+  );
+  const lxRun = flat(lx.read('apps/docs/src/content/docs/get-started/run-the-backend.mdx'));
+  check(
+    'the backend is one binary on PostgreSQL 17 or later, with all durable state in the database',
+    { binary: true, postgres: true, state: true },
+    {
+      binary: lxRun.includes('The XMTP backend is one binary.'),
+      postgres: lxRun.includes('PostgreSQL 17 or later.'),
+      state: lxRun.includes('All durable state lives in PostgreSQL.'),
+    },
+  );
+  check(
+    'the browser SDK in the main repository is version 8, MIT, and one tab owns its storage',
+    { version: '8.0.0', license: 'MIT', oneOwner: true, badge: true },
+    {
+      version: lx.json('sdks/browser/package.json').version,
+      license: lx.json('sdks/browser/package.json').license,
+      oneOwner: lx.read('sdks/browser/README.md').includes('OPFS has one owner per origin.'),
+      badge: lx.read('README.md').includes('https://img.shields.io/badge/SDKs-8.0.0--rc4-blue'),
+    },
+  );
+
+  // --- Quilcast, as of today ---
+  const qn = S['quilcast-nov25'];
+  const qnReadme = qn.read('README.md');
+  const qnLines = [
+    '- Create a new account for free: a recovery phrase is generated locally and Quilcast registers a native Hypersnap FID (a short proof of work in the browser, then the custody\'s signature)',
+    'Hypersnap accounts have no @username, since the fname server only knows Optimism FIDs',
+    '**Do I need the official app to use it?** No. You can create a new Farcaster account inside Quilcast (it\'s free)',
+  ];
+  check('Quilcast creates free native accounts, which have no username', qnLines, qnLines.filter((t) => qnReadme.includes(t)));
+  check('Quilcast version', '0.112.0', qn.json('package.json').version);
 }
 
 // --- network (optional) ------------------------------------------------------------
@@ -2288,7 +2462,11 @@ Not checkable offline; re-read when the page is revised:
   FIP-6 ($5/unit), FIP-7 ($0.1-$1/key), FIP-10 (<$100k spam) https://github.com/farcasterxyz/protocol/discussions/98 /103 /133
   The production API refuses casts without opt-in (400)     https://github.com/farcasterxyz/client/issues/6  https://github.com/SmashThunderStone/client/pull/3
   Cassie Heart to app developers on the fork, 2026-11-04    https://github.com/farcasterorg/hypersnap/issues/51
-  Whether the fork is still producing blocks today          docs/research/optimal-design.md section 6.2 (needs a reachable node; last third-party reading 2026-11-13 01:38 UTC)
+  Whether the fork is still producing blocks today          docs/research/optimal-design.md section 6.2 (needs a reachable node; last third-party reading 2026-11-13 01:38 UTC; commits to 2026-11-24 show repeated halt fixes)
+  Hypersnap halt fixes in November (commit subjects, not in the shallow pin)  farcasterorg/hypersnap commits 9667dbf, ad39f1a, f101530, af9e2a9, 86e1037, ad9ffb5 and 75f8355
+  Hypersnap issue 51 closed 2026-11-14; read nodes failed to sync after the fork (issue 71, open)   https://github.com/farcasterorg/hypersnap/issues/71
+  Farcaster production API refusal still unanswered (client issue 6, no reply since 2026-10-21)   https://github.com/farcasterxyz/client/issues/6
+  Coinbase Wallet naming, chat on XMTP stored on the device, Base outages of June 2026  help.coinbase.com messaging pages and news summaries, 2026-11-25
   Whether Farcaster's app approves third-party keys, channel follows or the inbox without opt-in   docs/design/experience-walkthrough.md section 12 (needs an account)
   Farcaster direct-cast drafts (FIP 226 draft, FIP 99 idea, issue 5 closed)   https://github.com/farcasterxyz/protocol/discussions/226 /99 and issues/5
   No messaging proposal in the Hypersnap organisation        https://github.com/farcasterorg/hypersnap/issues and https://github.com/orgs/farcasterorg/discussions

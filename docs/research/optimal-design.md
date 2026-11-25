@@ -15,9 +15,11 @@ are as extracted. **unverified** means one secondary source. The production
 API, the public nodes, farcaster.xyz and x.com cannot be reached from this
 sandbox, so nothing here was tested against a live network.
 
-**Updated 2026-11-13: the fork activated on the evening of 12 November.**
-What happened, and what it changes here, is in
-[§10](#10-after-the-fork-re-read-2026-11-13). Sections 0 to 9 are as written
+**Updated 2026-11-25.** The fork activated on the evening of 12 November
+([§10](#10-after-the-fork-re-read-2026-11-13)), and twelve days later
+the validator set had been rotated to eleven keys, channels had moved to
+Snapchain's version 25, and XMTP had stopped being a shared network
+([§11](#11-re-read-2026-11-25)). Sections 0 to 9 are as written
 on 10 November, with the schedule, version and relay facts brought up to
 the commit now pinned.
 
@@ -35,7 +37,7 @@ the commit now pinned.
 - **Three facts changed the plan of 2026-10-14.** Farcaster's production API
   now refuses casts from accounts that have not accepted Network School's
   social contract (§1.1). Hypersnap stops following Farcaster's validators at
-  fixed block heights, reached on the evening of 2026-11-12, with its own eight validators,
+  fixed block heights, reached on the evening of 2026-11-12, with its own validators (eight keys at the fork, eleven from the rotation of about 21 November),
   a relay, free accounts and no storage rent (§1.2). And Farcaster's own
   network activated three engine versions in a week, one of them a day after
   its release (§1.1). A client that depends on one party's servers, or
@@ -72,7 +74,7 @@ the commit now pinned.
 | 10-24 | Neynar's hosted node endpoints answer 402, "X-PAYMENT header or API key required". Neynar's API spec was still being published on 11-02 (v3.188.0). | **web**: [ivcained/fiddy#67]; git log of `neynarxyz/OAS` |
 | 10-25 | `@farcaster/core` 0.21.0 ships the gasless key builders (`makeKeyAddBody`, `makeKeyAdd`). A fork of the reference client that pinned 0.18.11 had written them by hand nine days earlier. | **run**: §7; **pinned**: `smashcast` |
 | 10-28 | Snapchain 0.16.0: four consensus fixes and V23, which "changes the shard and block header hash". It was scheduled for mainnet at 07:00 UTC the next day: "Every validator and read node must run this build before its network activates"; "A node still on an older build stops following the chain at activation." | **pinned**: changelog and schedule; **web**: PRs #1092, #1094 |
-| 10-28 | On-protocol channels move from V21 to V24, unscheduled "behind its registrar precondition". | **pinned**: gates; **web**: PR #1092 |
+| 10-28 | On-protocol channels move from V21 to V24, unscheduled "behind its registrar precondition". On 11-13 they move again, to V25 (§11). | **pinned**: gates; **web**: PR #1092 |
 | 10-30 | A new reference-client snapshot, `73a39bd`: dependency and code-scanning fixes, ticketed `NS-2162`. The README still says both clients run "pointing to the current production API by Farcaster" and "Fork it and build on it". | **pinned** (client checks); **run**: Home's gates against it |
 | — | The outcome of the $2,048 client prize was not found. | — |
 
@@ -98,7 +100,7 @@ are the second schedule, see §10):
 
 - **A validator swap, at heights.** Shard 0 at block 50,477,529, shard 2 at
   50,996,940, shard 1 at 51,161,786. From those blocks a Hypersnap node
-  accepts blocks signed by eight community validators, none of whose keys is
+  accepts blocks signed by community validators (eight keys at the fork, eleven from the rotation, §11), none of whose keys is
   in any Farcaster validator set. Gossip moves to `hypersnap/*` topics at the
   same heights. "Existing Snapchain validators will not relay the new topics."
 - **A relay in both directions.** The `shuttle` "relays compatible signed user
@@ -147,17 +149,17 @@ a feed the reader can inspect and tune.
 
 | | Farcaster (Snapchain) | Hypersnap |
 | --- | --- | --- |
-| Validators | seven keys, five needed to commit; five listed as Neynar's, whose team is now at Network School | eight community operators, named in `validators.toml` |
-| Software and licence | Snapchain 0.16.0, GPL-3.0 | Hypersnap 0.17.7, a fork, GPL-3.0 |
+| Validators | seven keys, five needed to commit; five listed as Neynar's, whose team is now at Network School | eight keys at the fork, then eleven held by nine operators, named in `validators.toml` |
+| Software and licence | Snapchain 0.17.0, GPL-3.0 | Hypersnap 0.17.21, a fork, GPL-3.0 |
 | Engine rules | V23 | the same schedule through V23, ported by hand |
 | Identity | fids on OP Mainnet | the same fids, plus native fids from 2^32 |
 | New account | an OP Mainnet transaction and storage rent | free: custody signature and proof of work |
 | Storage | rented units; messages beyond them are pruned | unlimited after the fork; nothing pruned by quota |
 | Rate limits | per fid, from storage | key adds once a minute; storage-derived limits off |
-| Channels | off-protocol in Farcaster's Client API; V24 unscheduled | the same V24 gate today; "rather soon" without a payment, by its maintainer |
+| Channels | off-protocol in Farcaster's Client API; V25 unscheduled | its own V24 gate in its own schedule; "rather soon" without a payment, by its maintainer |
 | Messages cross by | the relay, when both sides accept them | the relay; native accounts never cross |
 | Shaped API on the node | none; Neynar sells one | 140 `/v2/farcaster/*` routes, 102 of the 103 in Neynar's current spec |
-| Public nodes | `snap`, `crackle`, `pop`; Neynar's now need a key or payment | `haatz`; the eight validators list their hosts in issue #51 |
+| Public nodes | `snap`, `crackle`, `pop`; Neynar's now need a key or payment | `haatz`; the validators list their hosts in issue #51, and six public RPC endpoints answered on 11-14 |
 | Who can keep a message out | its validators | its validators |
 | Who can keep a person out of an app | Network School, in its own app and API | no one yet; there is no first-party app |
 
@@ -401,7 +403,7 @@ keeps storage limits on (**pinned**).
 | How the node is run | What it follows | Farcaster content it holds | Feeds, search and webhooks built in | What can go wrong |
 | --- | --- | --- | --- | --- |
 | Stock Snapchain | Farcaster's validators | all of it, exactly | no | releases must be installed within a day |
-| Hypersnap as installed | Farcaster's validators until each shard's fork height, then the eight community validators | everything up to the fork; after it, identity from OP Mainnet as before, plus the messages the relay carries | yes | the relay is a courtesy, not consensus (§1.2); a node started after the fork is given only Farcaster's nine bootstrap peers, and the relay's notes say Farcaster's validators "will not relay the new topics", so it may need Hypersnap peers added by hand (an inference from the files, not observed) |
+| Hypersnap as installed | Farcaster's validators until each shard's fork height, then the community validators | everything up to the fork; after it, identity from OP Mainnet as before, plus the messages the relay carries | yes | the relay is a courtesy, not consensus (§1.2); a node started after the fork is given only Farcaster's nine bootstrap peers, and the relay's notes say Farcaster's validators "will not relay the new topics", so it may need Hypersnap peers added by hand (an inference from the files, not observed) |
 | Hypersnap software with Farcaster's validator list | Farcaster's validators | all of it, exactly | yes | unsupported. A read node re-executes every block and stops on a root mismatch (**pinned**), so it halts at the first consensus change Hypersnap does not port. One operator switched to exactly this on 2026-10-22 (**pinned**: `fatline`) |
 
 So a Hypersnap node is possible as Home's reader of Farcaster, and after
@@ -551,9 +553,9 @@ accepted by a node. `plan.md` §1.3 and §6.2 above are those tests.
 
 | Source | Read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `43ca24d`, 2026-11-12 (pinned as `snapchain`, re-pinned 2026-11-13 from `1405794`; `8f82bcc` kept as `snapchain-8f82bcc`) | here | 0.15.0, 0.16.0, V21 to V23, channels at V24, GPL-3.0, no mention of Hypersnap |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `3839f06`, 2026-11-23 (pinned as `snapchain`, re-pinned 2026-11-25 from `43ca24d`, earlier `1405794`; `8f82bcc` kept as `snapchain-8f82bcc`) | here | 0.15.0, 0.16.0, V21 to V23, channels at V24, GPL-3.0, no mention of Hypersnap |
 | [neynarxyz/OAS](https://github.com/neynarxyz/OAS) `0c4d078`, 2026-11-02 (re-pinned) | here | the 103 shaped paths a Hypersnap node is compared against |
-| [farcasterorg/hypersnap](https://github.com/farcasterorg/hypersnap) `a85fd22`, 2026-11-13 (pinned as `hypersnap-fork`, re-pinned from `ce9d003`, which is kept as `hypersnap-ce9d003` for the first schedule) | here | the fork schedule and validators, relay, native registration, storage, API routes, node roles |
+| [farcasterorg/hypersnap](https://github.com/farcasterorg/hypersnap) `3fab17d`, 2026-11-24 (pinned as `hypersnap-fork`, re-pinned 2026-11-25 from `a85fd22`; `ce9d003` is kept as `hypersnap-ce9d003` for the first schedule) | here | the fork schedule and validators, relay, native registration, storage, API routes, node roles |
 | [farcasterxyz/client](https://github.com/farcasterxyz/client) `73a39bd`, 2026-10-30 | here | the gates and the patch; README statements |
 | [SmashThunderStone/client](https://github.com/SmashThunderStone/client) `152a46b`, 2026-10-17 (pinned as `smashcast`) | here | a reference-client fork on the protocol; the preflight measurements; the key domain |
 | [backmeupplz/quilcast](https://github.com/backmeupplz/quilcast) `f2eedb9`, 2026-11-10 (pinned) | here | a live direct-to-node client |
@@ -632,7 +634,8 @@ statement from Hypersnap's lead developer, Network School or Neynar.
    Farcaster. Keys added on-chain do not cross either. Gasless keys do.
 4. **The relay carries less by default.** Types 1 to 8 and 11 to 17.
    Channel messages cross only where an operator lists them.
-5. **Hypersnap needs six of its eight validators online.** One pause was
+5. **Hypersnap needs two thirds of its validator keys online:** six of
+   eight at the fork, eight of eleven since the rotation (§11). One pause was
    seen in the first three hours.
 6. **Farcaster tightened its side the day before.** Snapchain now checks
    the signer of every gossiped message and turns rate limits on by
@@ -647,3 +650,138 @@ above is exactly what that status line is for.
 
 The checks in §6.2 are still unrun, and are now the first thing to do from
 a machine that can reach the nodes.
+
+---
+
+## 11. Re-read 2026-11-25
+
+Asked on 2026-11-25: research everything covered in this chat again for the
+most current information. Twelve days after the re-read in §10.
+
+**Not verified.** No node and no Farcaster endpoint can be reached from this
+sandbox: the two public nodes, the production API and the client API all
+refuse the connection, as before. So no block height was read here. What
+follows rests on repository commits, GitHub pages, package registries and
+news summaries, read on 2026-11-25. Coinbase's and XMTP's documentation
+sites are blocked; XMTP's documentation was read from its repository.
+
+### 11.1 What moved, and what did not
+
+| Source | 11-13 | 11-25 |
+| --- | --- | --- |
+| Hypersnap | 0.17.7 | 0.17.21, `3fab17d`, 11-24 |
+| Snapchain | v0.16.0 plus commits | v0.17.0 (11-16), `3839f06`, 11-23 |
+| Reference client | `73a39bd` | unchanged; no commit since 10-30 |
+| Neynar's API specification | `0c4d078` | unchanged |
+| Coinbase SDK `@base-org/account` | 2.6.0 | unchanged, 2.6.0 |
+| Coinbase smart wallet contract | 07-17 | unchanged |
+| wagmi connectors | 8.2.4 | 8.2.4 |
+| XMTP browser SDK | 7.1.0 | 7.1.0 on npm; 8.0.0-rc5 as a prerelease since 11-16 |
+| Quorum, three repositories | no changes since August and October | one documentation rename on 11-22 |
+| Quilcast | 0.79.0 | 0.112.0, 109 commits |
+
+### 11.2 Hypersnap after the first week
+
+**The validator set was rotated.** From eight keys to eleven, held by nine
+operators (**pinned**). ivy left; schmidtiest and feli joined; wake now
+holds three keys. The heights are shard 0 at 50,971,518, shard 2 at
+51,481,322 and shard 1 at 51,639,354. At the block rate the maintainers
+measured, about 0.636 a second, those heights fall between 19:00 and 22:10
+UTC on 21 November, if the chain did not stall. I could not confirm they
+were reached. Quorum needs more than two thirds of the keys: eight of
+eleven. Wake's three keys are 27 percent. If wake goes offline the chain
+keeps going with exactly the eight it needs, and one more validator offline
+stops it. The peer-discovery document still says "eight equal validators,
+six must remain online"; it was not updated.
+
+**The block rate is not one a second.** The maintainers' own samples show
+3,600 blocks in about 5,660 seconds on all three shards, 0.636 a second
+(**pinned**). Snapchain's rate is about one.
+
+**Consensus fixes kept coming.** Commit subjects, read from the history
+and not pinned by the audit: "restarting round from previous block causes
+halt" (11-14), "set explicit block deadline for native fids to submit
+messages to avoid consensus fork" (11-14), "shard 0 event catch-up should
+not permanently stall the network" (11-21), "wait 90 seconds for a certified
+chunk's shard-zero dependency" (11-22), and "various consensus halt sources"
+(11-22), whose description lists a startup check ending "Any other
+mismatch: the shard halts and asks for a snapshot restore". No page I could
+read reports a mainnet-wide halt, its length or its end. Two further fixes
+were open on 11-22 and are not in the commits to 11-24: a deadlock that
+wedges a node, and event-id exhaustion after 16,384 merges.
+
+**Read nodes could not sync after the fork.** Issue 71, opened 11-13 and
+still open, has a maintainer saying newer nodes were pulling Snapchain
+backups and that 0.17.9 would use a new snapshot source. Snapshots became
+streamed, and "older binaries cannot restore the new format" (**pinned**).
+
+**New accounts could register and not post.** Hypersnap's own document of
+the repair records that a fresh native account "registered successfully on
+Haatz and received a gasless signer", and its first cast was refused with
+"unknown fid". The repair took effect on shard 1 at 51,311,487 and on shard
+2 at 51,146,724, projected for 2026-11-15 19:58 UTC (**pinned**). Quilcast
+shipped free signup on 11-13, before the repair. How many accounts were in
+that window is not known.
+
+**A fixed quota per account.** 1,008 messages an hour, a burst of 1,008,
+refilled at 0.28 a second, shared by casts, reactions, follows and profile
+changes, independent of storage; key additions stay at one a minute. Each
+node counts in its own memory (**pinned**). Heights: shard 0 at 50,757,411,
+shard 1 at 51,431,928, shard 2 at 51,267,213, projected for 11-18.
+
+**The public API was not hardened.** A pull request opened 11-25 lists no
+connection limits or header timeouts, an unauthenticated route that retries
+on-chain events, and redirect-following webhooks (**web**). It is not
+merged.
+
+**The README changed its stance.** It now calls Hypersnap "the canonical
+implementation of Farcaster's Hypersnap network", calls Snapchain "the former
+protocol", and describes Network School's takeover in hostile terms
+(**pinned**). Those are the maintainers' words and not findings. The
+practical meaning is that the dispute is now written into the repository
+itself, and a client that reads both networks is reading on both sides of it.
+
+**The two engines have drifted.** Snapchain's version 24 went live on
+2026-11-24 16:00 UTC. Hypersnap's engine schedule still ends at version 23
+(**pinned**). Snapchain's version 24 bounds prune sweeps, a storage matter
+Hypersnap no longer has, so relayed messages are not affected. It does show
+the rule sets diverging, as the lead developer predicted.
+
+### 11.3 Farcaster's side
+
+- **Channels slipped again.** On 2026-11-13 Snapchain moved on-protocol
+  channels from version 24 to version 25. Version 24 shipped on 11-24
+  "without the channel rollout", and version 25 "waits on the mainnet
+  channel registrar" with no date (**pinned**). Every page that said
+  "channels at V24" is corrected.
+- **Version 0.17.0** (11-16) checks the signer of every gossiped message,
+  relays gossip only after the local mempool accepts it, and rejects commit
+  certificates with a repeated signer (**pinned**). Its code still does not
+  mention Hypersnap.
+- **Validators:** the list is unchanged, seven keys.
+- **The production API's refusal is unanswered.** The reference client's
+  issue about it is open with one comment, from 10-21, and the client has no
+  commit since 10-30. I could not test the API. Nothing found says it opened.
+- **News:** nothing newer than mid-October on Network School, Neynar's
+  developer platform, or third-party client policy.
+
+### 11.4 What this changes
+
+1. **Home's design does not move.** Channels stay "Add to feed". Both
+   networks stay providers. Nothing built depends on the dates above.
+2. **Home must expect refusals.** The status line per network now has two
+   more reasons to show: a per-account hourly quota on Hypersnap, and "unknown
+   account" for a new account that has not reached a node.
+3. **One public Hypersnap node is not enough.** Hypersnap's own repair
+   document lists six public RPC endpoints that answered on 11-14. The gateway
+   should hold more than one, and its read fallback should be bounded.
+4. **Account creation, if Home adds it, must say what the account is.** Home
+   does not create accounts in its first build. A free account would be
+   Hypersnap-only with no username, and the interface should say so before
+   the reader chooses.
+5. **The decentralization margin is thin.** Eight of eleven keys, with one
+   operator on three. Home reads from it; it does not need to run it.
+6. **Messaging changes.** XMTP's new generation is self-hosted. See
+   [messages and wallet §13](messages-and-wallet.md#13-re-read-2026-11-25).
+7. **The node-level checks in §6.2 are still the first thing to do** from a
+   machine that can reach the nodes.

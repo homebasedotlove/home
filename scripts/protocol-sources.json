@@ -1,8 +1,8 @@
 {
   "snapchain": {
     "url": "https://github.com/farcasterxyz/snapchain.git",
-    "sha": "43ca24d748759758bade1a402172409b6122526e",
-    "date": "2026-11-12"
+    "sha": "3839f060d48fc80120c03136af46314979ef3163",
+    "date": "2026-11-23"
   },
   "snapchain-8f82bcc": {
     "url": "https://github.com/farcasterxyz/snapchain.git",
@@ -90,8 +90,8 @@
   },
   "hypersnap-fork": {
     "url": "https://github.com/farcasterorg/hypersnap.git",
-    "sha": "a85fd221bb311fc2b25670a8215e6ce41e231e8a",
-    "date": "2026-11-13"
+    "sha": "3fab17d1b6a1cabb455312a85586fe229b7d2143",
+    "date": "2026-11-24"
   },
   "hypersnap-ce9d003": {
     "url": "https://github.com/farcasterorg/hypersnap.git",
@@ -287,6 +287,30 @@
     "frozen": true,
     "sparse": [
       "/research/infrastructure/643-hypersnap-run-a-node/README.md"
+    ]
+  },
+  "libxmtp-v8": {
+    "url": "https://github.com/xmtp/libxmtp.git",
+    "sha": "18955abd48dfc0f4906f1291e94edff7cb1f2d17",
+    "date": "2026-11-23",
+    "frozen": true,
+    "sparse": [
+      "/README.md",
+      "/sdks/browser/package.json",
+      "/sdks/browser/README.md",
+      "/apps/docs/src/content/docs/get-started/migrate-to-self-hosted.mdx",
+      "/apps/docs/src/content/docs/get-started/run-the-backend.mdx",
+      "/apps/docs/src/pages/get-started/data-migration.md"
+    ]
+  },
+  "quilcast-nov25": {
+    "url": "https://github.com/backmeupplz/quilcast.git",
+    "sha": "a36cf5947b37572282c4af845eb5460e88aa6888",
+    "date": "2026-11-25",
+    "frozen": true,
+    "sparse": [
+      "/README.md",
+      "/package.json"
     ]
   }
 }

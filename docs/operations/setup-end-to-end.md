@@ -202,7 +202,7 @@ The fifteen private endpoints the core screens use, and where each goes:
 | `/v2/user`, `/v2/user-by-username`, `/v2/me` | node `userDataByFid`, `userNameProofByName`; the session for `me` |
 | `/v2/followers`, `/v2/following` | node `linksByTargetFid`, `linksByFid`; Neynar `followers`, `following` with profiles attached |
 | `/v2/cast-likes`, `/v2/cast-recasters`, `/v2/recasts` | node `reactionsByCast`; Neynar `reactions/cast` |
-| `/v2/all-channels`, `/v2/channel` | Client API `fc/channels` family (needs an approved signer) until V24 lands on mainnet, then node `channelMetadata` |
+| `/v2/all-channels`, `/v2/channel` | Client API `fc/channels` family (needs an approved signer) until V25 lands on mainnet, then node `channelMetadata` |
 | `/v2/signed-key-request` | the service's signer routes |
 | `/v2/onboarding` | gone; onboarding is SIWF plus a signer |
 | `/v1/generate-image-upload-url`, `/v1/prepare-video-upload`, `/v1/upload-video-with-tus`, `/v1/uploaded-video` | `/media/upload-url`; video is a later milestone |

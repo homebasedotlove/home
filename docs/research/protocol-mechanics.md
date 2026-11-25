@@ -2,7 +2,7 @@
 
 Three questions, answered from the sources that define the protocol: the
 specification and the FIPs that changed it, the contracts and their
-documentation, the Snapchain implementation at `v0.16.0`, and the published
+documentation, the Snapchain implementation at `v0.17.0`, and the published
 client libraries. Written 2026-10-09. Every number below that can be checked
 against a file is pinned by `scripts/audit-protocol-claims.mjs`; the rest
 names its source inline.
@@ -135,7 +135,7 @@ sequenced into shard 0 and fanned out:
 | `EVENT_TYPE_SIGNER` (1) | KeyRegistry | a key was added or removed, with the app's `SignedKeyRequest` metadata |
 | `EVENT_TYPE_STORAGE_RENT` (4) | StorageRegistry | units rented, by whom, expiring when |
 | `EVENT_TYPE_TIER_PURCHASE` (5) | TierRegistry on Base | Pro status, which gated 10K casts and banners until V21 and four embeds until V20 |
-| `EVENT_TYPE_CHANNEL_REGISTER` (6) | channel registrar | channel ownership (gated to V24, not yet on mainnet) |
+| `EVENT_TYPE_CHANNEL_REGISTER` (6) | channel registrar | channel ownership (gated to V25, not yet on mainnet) |
 
 The node configuration has one RPC URL for OP Mainnet, a second for Base and a
 third `l1_rpc_url` for Ethereum, the last needed to validate `.eth` username
@@ -204,7 +204,7 @@ The message types in use today, from the Snapchain proto:
 | 5 | `LINK_ADD` | 15 | `LEND_STORAGE` |
 | 6 | `LINK_REMOVE` | 16 | `KEY_ADD` |
 | 7 | `VERIFICATION_ADD_ETH_ADDRESS` | 17 | `KEY_REMOVE` |
-| 8 | `VERIFICATION_REMOVE` | 18–21 | `CHANNEL_UPDATE`, `CHANNEL_MEMBER`, `CHANNEL_PIN`, `CHANNEL_MODERATE` (gated to V24) |
+| 8 | `VERIFICATION_REMOVE` | 18–21 | `CHANNEL_UPDATE`, `CHANNEL_MEMBER`, `CHANNEL_PIN`, `CHANNEL_MODERATE` (gated to V25) |
 
 ### 2.2 Hash, then sign
 
@@ -273,7 +273,7 @@ with the code that does each step.
    mempool of the shard the fid routes to.
 3. **Sharding.** `shard = (sha256(fid as 8 bytes)[0..4] mod num_shards) + 1`.
    Mainnet has two data shards; shard 0 carries blocks, on-chain events and
-   the state that must be globally ordered (channels, verifications from V24).
+   the state that must be globally ordered (channels, verifications from V25).
 4. **Admission.** The mempool rejects duplicates, applies the feature gates for
    the current engine version, and charges the rate limiters: one `KEY_ADD`
    per minute per fid always; otherwise, where the operator enabled it,
@@ -379,7 +379,7 @@ Everything is a keyed lookup; there is no query language and no join.
 | Accounts and keys | `fids`, `onChainIdRegistryEventByAddress`, `onChainSignersByFid`, `signersByFid` | the last returns on-chain and gasless keys with scopes and expiry, plus the nonces a `KEY_ADD` needs |
 | Storage | `storageLimitsByFid` | per-type limit and usage, unit cohorts, units |
 | Names | `userNameProofByName`, `userNameProofsByFid`; the fname server's `/transfers?name=` | |
-| Channels (V24) | `channelMetadata`, `channelMembers`, `channelFollowers`, `channelPin`, `channelModerations`, `channelOwner` | code present, not yet active on mainnet |
+| Channels (V25) | `channelMetadata`, `channelMembers`, `channelFollowers`, `channelPin`, `channelModerations`, `channelOwner` | code present, not yet active on mainnet |
 | Node state | `info` (version, shards, `nextEngineVersionTimestamp`), `currentPeers` | |
 
 A "following" timeline is therefore `linksByFid` for the reader, then
@@ -474,7 +474,7 @@ Home has to compute its own discovery reasons.
 | [farcasterxyz/protocol](https://github.com/farcasterxyz/protocol) `docs/OVERVIEW.md`, `docs/SPECIFICATION.md`, `vectors/` | `aa6bdfb`, 2026-06-18 | design rationale, message and CRDT rules, fname server |
 | FIPs [#98 Flexible Storage](https://github.com/farcasterxyz/protocol/discussions/98), [#103 Onchain Signers](https://github.com/farcasterxyz/protocol/discussions/103), [#133 Gateways](https://github.com/farcasterxyz/protocol/discussions/133), [#207 Snapchain](https://github.com/farcasterxyz/protocol/discussions/207), [#236 Farcaster Pro](https://github.com/farcasterxyz/protocol/discussions/236), [#238](https://github.com/farcasterxyz/protocol/discussions/238), [#266 Snapchain Signers](https://github.com/farcasterxyz/protocol/discussions/266), [#276 Channels](https://github.com/farcasterxyz/protocol/discussions/276), [#277 Config Registry](https://github.com/farcasterxyz/protocol/discussions/277) | read 2026-10-09 | why each on-chain piece exists; chain choices |
 | [farcasterxyz/contracts](https://github.com/farcasterxyz/contracts) `docs/docs.md` | `58d6b28`, 2026-08-13 | deployment map, invariants, migration, assumptions |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `src/`, `proto/`, `site/docs/` | `43ca24d`, 2026-11-12, v0.16.0 plus unreleased commits (re-pinned 2026-11-13) | validation, mempool, consensus, sharding, events, connectors, API reference, whitepaper |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) `src/`, `proto/`, `site/docs/` | `3839f06`, 2026-11-23, v0.17.0 plus later commits (re-pinned 2026-11-25) | validation, mempool, consensus, sharding, events, connectors, API reference, whitepaper |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | architecture pages, FAQ, developer guides |
 | `@farcaster/core` 0.21.0, `@farcaster/hub-nodejs` 0.18.0 | npm, 2026-10-25 | builders, signers, error codes, clients |
 | [Dan Romero, 2023-08-22](https://x.com/dwr/status/1693986385315963024) | via search excerpt | the stated reasons for OP Mainnet |

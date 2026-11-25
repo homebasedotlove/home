@@ -44,7 +44,7 @@ mainnet since 2026-05-07) wherever the user has a wallet.
 
 ## 1. What changed since Hubble
 
-The Snapchain repository at `v0.16.0` (2026-10-28) is the reference
+The Snapchain repository at `v0.17.0` (2026-11-16) is the reference
 implementation and the only one on mainnet. Hubble is retired. Facts a client
 author needs, with where each comes from:
 
@@ -78,7 +78,8 @@ holds the mainnet schedule. Features that matter to a client:
 | V21 | 2026-10-23 | 10,000-byte casts and profile banners for every fid, no longer only Pro (FIP #273) |
 | V22 | 2026-10-23 | Chained casts and a cast format version (FIP #278) |
 | V23 | 2026-10-29 | A transactions root in block and shard headers; unique on-chain event keys. Scheduled the day after its release |
-| V24 | **not scheduled** | On-protocol channels (FIP #276, draft). Code has been in since `0.14.1`, gated, "blocked on the mainnet registrar deployment"; it was moved from V21 to V24 in October 2026 |
+| V24 | **2026-11-24 16:00 UTC** | Bounds the prune sweep one block may run, so a single message from an account far over its storage limit cannot halt a shard (`BoundedPruneSweep`). Ships without channels |
+| V25 | **not scheduled** | On-protocol channels (FIP #276, draft). Code has been in since `0.14.1`, gated, "blocked on the mainnet registrar deployment"; it was moved from V21 to V24 in October 2026 and from V24 to V25 on 2026-11-13 |
 
 The protocol specification repository (2026-06-18) still documents neither
 `KEY_ADD` nor channels. Read the Snapchain repo, not the spec, for current
@@ -229,7 +230,7 @@ with `GET /v2/farcaster/user/fid/` to reserve a fresh FID.
 | Surface | Today | On the horizon |
 | --- | --- | --- |
 | Ranked home feed with reasons and scores | private `~api`; nothing public | nothing proposed |
-| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V24; registrations through a stock Basenames registrar, Base by default with Ethereum L1 still under consideration |
+| Channels: metadata, members, follows, pins, moderation | `api.farcaster.xyz` Client API (documented, app-key auth) | FIP #276 draft; `ChannelUpdate` 18, `ChannelMember` 19, `ChannelPin` 20, `ChannelModerate` 21 are in the proto and gated to V25; registrations through a stock Basenames registrar, Base by default with Ethereum L1 still under consideration |
 | Direct casts | off-protocol, API keys on request | FIP #226 draft since 2025-03 |
 | Blocks, verifications of connected accounts, primary addresses, starter packs | Client API | partly on protocol already (primary addresses since V5) |
 | Notifications, search, spam labels, quality scores, Pro | backend | nothing public |
@@ -320,7 +321,7 @@ Concretely:
    (1024 as long casts, 10 KB for Pro); 4 embeds; 1000 messages per block.
 5. **Delivery is best-effort.** A successful `submitMessage` can still miss a
    block; `dataBytes` is mandatory; confirmation means reading back.
-6. **Half the product is off-protocol** (section 2.6): channels until V24
+6. **Half the product is off-protocol** (section 2.6): channels until V25
    ships on mainnet, moderation, direct casts, notifications, search, labels,
    Pro. The documented way in is `api.farcaster.xyz`, which needs an approved
    signer to call.
@@ -347,7 +348,7 @@ Repositories were shallow-cloned; the commit date is the state read.
 
 | Source | State read | Used for |
 | --- | --- | --- |
-| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `43ca24d`, 2026-11-12, v0.16.0 plus unreleased commits (re-pinned 2026-11-13 from `1405794`) | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
+| [farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain) | `3839f06`, 2026-11-23, v0.17.0 plus later commits (re-pinned 2026-11-25 from `43ca24d`) | version schedule, limits, rate limits, protos, HTTP API, node guide, writing guide, validators |
 | [farcasterxyz/protocol](https://github.com/farcasterxyz/protocol) | `aa6bdfb`, 2026-06-18 | specification, FIP discussions [#225](https://github.com/farcasterxyz/protocol/discussions/225), [#226](https://github.com/farcasterxyz/protocol/discussions/226), [#229](https://github.com/farcasterxyz/protocol/discussions/229), [#238](https://github.com/farcasterxyz/protocol/discussions/238), [#262](https://github.com/farcasterxyz/protocol/discussions/262), [#263](https://github.com/farcasterxyz/protocol/discussions/263), [#266](https://github.com/farcasterxyz/protocol/discussions/266), [#269](https://github.com/farcasterxyz/protocol/discussions/269), [#272](https://github.com/farcasterxyz/protocol/discussions/272), [#276](https://github.com/farcasterxyz/protocol/discussions/276), [#277](https://github.com/farcasterxyz/protocol/discussions/277) |
 | [farcasterxyz/docs](https://github.com/farcasterxyz/docs) | `3a02c82`, 2026-04-07 | Client API reference, signer requests, apps, contracts, direct casts |
 | [farcasterxyz/contracts](https://github.com/farcasterxyz/contracts) | `58d6b28`, 2026-08-13 | StorageRegistry, SnapchainConfigRegistry, TierRegistry |
