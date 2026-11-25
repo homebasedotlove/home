@@ -28,6 +28,7 @@ on:
       - docs/research/base-fork-feasibility.md
       - docs/research/validation-2026-11-25.md
       - docs/research/base-protocol-bluesky-and-storage.md
+      - docs/research/interop-layer-on-base.md
       - scripts/validate-write-path.mjs
       - scripts/audit-protocol-claims.mjs
       - scripts/fetch-protocol-sources.sh

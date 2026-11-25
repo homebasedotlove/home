@@ -411,8 +411,11 @@ There are three designs.
 
 **Reasons that sound strong and are not:**
 
-- *Cheaper accounts.* Base and Optimism are both OP Stack chains, so fees are of
-  the same class (**background**); I did not read current fees.
+- *Cheaper accounts.* Base and Optimism were both OP Stack chains, so fees were of
+  the same class (**background**). Base was reported in February 2026 to be moving
+  to its own stack (**web**, unconfirmed; see
+  [`interop-layer-on-base.md`](interop-layer-on-base.md) §6). I did not read current
+  fees.
 - *Distribution through Coinbase.* Unverified and out of Home's control.
 - *The Home experience.* Everything Home promises (a ranked feed with reasons and
   controls, receipts, one signature for two networks, messages and a wallet) sits

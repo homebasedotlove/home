@@ -2910,6 +2910,62 @@ if (!SNAPSHOT) {
   );
 }
 
+// --- docs/research/interop-layer-on-base.md ---------------------------------------------------------------
+
+{
+  const sc = S.snapchain;
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  const proto = sc.read('proto/definitions/message.proto');
+  const ver = sc.read('src/core/validations/verification.rs');
+  const l1 = sc.read('src/mempool/l1_validator.rs');
+  const oe = sc.read('src/connectors/onchain_events/mod.rs');
+  check(
+    'a Farcaster account can verify an address with a message the wallet signs; contract wallets are accepted only with chain id 1 or 10, and the accepted claim chain ids are 0, 1, 5, 10 and 420, so Base is not one',
+    { body: true, contractIds: true, list: [0, 1, 5, 10, 420], base: false },
+    {
+      body: proto.includes('message VerificationAddAddressBody {') && proto.includes('uint32 chain_id = 5; // 0 for EOA verifications, 1 or 10 for contract verifications'),
+      contractIds: proto.includes('uint32 verification_type = 4; // Type of verification. 0 = EOA, 1 = contract'),
+      list: (/const EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS: \[u16; \d+\] = \[([^\]]*)\];/.exec(ver)?.[1] ?? '').split(',').map((s) => Number(s.trim())),
+      base: /EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS: \[u16; \d+\] = \[[^\]]*8453/.test(ver),
+    },
+  );
+  check(
+    "Farcaster's node resolves Basename username proofs against Base's ENS registry",
+    { basenameType: true, registryConstant: true, suffix: true },
+    {
+      basenameType: l1.includes('Ok(UserNameType::UsernameTypeBasename) => {'),
+      registryConstant: oe.includes('static BASE_MAINNET_ENS_REGISTRY: Address = address!("0xB94704422c2a1E396835A571837Aa5AE53285a95");'),
+      suffix: l1.includes('Basename does not end with base.eth'),
+    },
+  );
+  const regi = S.contracts.read('src/IdRegistry.sol');
+  check(
+    "a Farcaster account takes a recovery address at registration and can change it with the owner's signature",
+    { register: true, recoveryOf: true, transfer: true },
+    {
+      register: regi.includes('function register(address to, address recovery) external whenNotPaused returns (uint256 fid) {'),
+      recoveryOf: regi.includes('mapping(uint256 fid => address recovery) public recoveryOf;'),
+      transfer: regi.includes('function transferAndChangeRecovery(address to, address recovery, uint256 deadline, bytes calldata sig) external {'),
+    },
+  );
+  const plc = flat(S['did-method-plc'].read('website/spec/v0.1/did-plc.md'));
+  const atp = flat(S['atproto-website'].read('src/app/[locale]/specs/atp/en.mdx'));
+  check(
+    'Bluesky rotation keys are plain secp256k1 or P-256 keys, and applications extend the protocol by publishing record schemas under their own names, which any account can hold in its repository',
+    { rotation: true, lexicons: true, interoperate: true },
+    {
+      rotation: plc.includes('Only `secp256k1` ("k256") and NIST P-256 ("p256") keys are currently supported for rotation keys'),
+      lexicons: atp.includes('The core application development and extension mechanism is to design and publish new Lexicon schemas under independent NSID hierarchies.'),
+      interoperate: atp.includes('Applications interoperate by reading and writing user data records following published Lexicon schemas.'),
+    },
+  );
+  check(
+    "Coinbase's smart wallet lets owners be passkeys or Ethereum addresses and replays owner updates across chains",
+    true,
+    flat(S['coinbase-smart-wallet'].read('README.md')).includes('Passkey owners and Ethereum address owners') && S['coinbase-smart-wallet'].read('README.md').includes('Cross-chain replayability for owner updates'),
+  );
+}
+
 // --- network (optional) ------------------------------------------------------------
 
 const info = [];
